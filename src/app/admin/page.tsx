@@ -17,7 +17,7 @@ export default function AdminPage() {
   // Check cookie on mount
   useEffect(() => {
     const match = document.cookie.match(/admin_auth=([^;]+)/);
-    if (match && match[1] === "admin1234") {
+    if (match && match[1]) {
       setAuthenticated(true);
     }
   }, []);
