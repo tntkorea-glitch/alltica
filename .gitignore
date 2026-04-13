@@ -47,3 +47,6 @@ next-env.d.ts
 *.pfx
 secrets/
 credentials*.json
+
+.vercel
+.env*.local
