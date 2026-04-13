@@ -42,13 +42,15 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const password = searchParams.get("password");
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin1234";
+    const authHeader = request.headers.get("Authorization");
+    const password = authHeader?.replace("Bearer ", "");
 
-    if (password !== "admin1234") {
+    if (password !== ADMIN_PASSWORD) {
       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
     const formSlug = searchParams.get("formSlug");
     let submissions = getSubmissions();
 
