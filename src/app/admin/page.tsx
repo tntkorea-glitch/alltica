@@ -47,14 +47,23 @@ export default function AdminPage() {
     }
   }, [authenticated, filterSlug, fetchSubmissions]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === "admin1234") {
-      document.cookie = `admin_auth=${password}; path=/; max-age=${60 * 60 * 24}`;
-      setAuthenticated(true);
-      setError("");
-    } else {
-      setError("비밀번호가 올바르지 않습니다.");
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) {
+        document.cookie = `admin_auth=${password}; path=/; max-age=${60 * 60 * 24}`;
+        setAuthenticated(true);
+        setError("");
+      } else {
+        setError("비밀번호가 올바르지 않습니다.");
+      }
+    } catch {
+      setError("로그인 처리 중 오류가 발생했습니다.");
     }
   };
 
