@@ -27,8 +27,10 @@ export default function AdminPage() {
     try {
       const cookieMatch = document.cookie.match(/admin_auth=([^;]+)/);
       const pw = cookieMatch?.[1] || password;
-      const url = `/api/submissions?password=${encodeURIComponent(pw)}${filterSlug ? `&formSlug=${filterSlug}` : ""}`;
-      const res = await fetch(url);
+      const url = `/api/submissions${filterSlug ? `?formSlug=${filterSlug}` : ""}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${pw}` },
+      });
       if (!res.ok) throw new Error("인증 실패");
       const data = await res.json();
       setSubmissions(data);
