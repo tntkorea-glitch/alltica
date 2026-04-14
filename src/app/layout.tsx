@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import Header from "@/components/Header";
 import FloatingContact from "@/components/FloatingContact";
@@ -19,6 +20,9 @@ export default function RootLayout({
       lang="ko"
       className="h-full antialiased scroll-smooth"
     >
+      <head>
+        <Script src="/inapp-guard.js" strategy="beforeInteractive" />
+      </head>
       <body className="min-h-full flex flex-col bg-white">
         <Header />
         <main className="flex-1">{children}</main>
