@@ -3,8 +3,8 @@ import { seminars } from "@/lib/seminars";
 import SeminarCard from "@/components/SeminarCard";
 
 export const metadata = {
-  title: "세미나/교육 신청 | 알티카",
-  description: "알티카에서 진행하는 세미나와 교육 과정을 신청하세요.",
+  title: "세미나/교육 신청 | Alltica",
+  description: "Alltica에서 진행하는 세미나와 교육 과정을 신청하세요.",
 };
 
 export default function SeminarsPage() {
@@ -40,7 +40,7 @@ export default function SeminarsPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">세미나 · 교육 신청</h1>
           </div>
           <p className="text-blue-100/70 text-sm sm:text-base max-w-2xl">
-            현장에서 바로 쓰는 커리큘럼으로 구성된 알티카의 세미나와 교육 과정입니다. 명함을 업로드하시면 신청이 더 간편해집니다.
+            현장에서 바로 쓰는 커리큘럼으로 구성된 Alltica의 세미나와 교육 과정입니다. 명함을 업로드하시면 신청이 더 간편해집니다.
           </p>
         </div>
       </div>
