@@ -56,7 +56,7 @@ export const seminars: Seminar[] = [
     dateDisplay: "2026년 5월 22일 (목) 10:00 – 16:00",
     startAt: "2026-05-22T10:00:00+09:00",
     endAt: "2026-05-22T16:00:00+09:00",
-    location: "서울 강남구 · 알티카 교육센터 2층",
+    location: "대구 수성구 두산동 교육장 2층",
     instructor: "이수진 교육팀장",
     price: 200000,
     capacity: 20,
