@@ -70,6 +70,25 @@ alter table public.applications enable row level security;
 -- service_role은 RLS 우회하므로 API 라우트에서만 조작 가능
 
 -- ============================================================
+-- app_settings table (테마 등 사이트 전역 설정)
+-- ============================================================
+create table if not exists public.app_settings (
+  key   text primary key,
+  value text,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.app_settings (key, value)
+values ('theme', 'navy')
+on conflict (key) do nothing;
+
+alter table public.app_settings enable row level security;
+-- anon/authenticated 읽기만 허용 (쓰기는 service_role 로만)
+drop policy if exists "app_settings read" on public.app_settings;
+create policy "app_settings read" on public.app_settings
+  for select to anon, authenticated using (true);
+
+-- ============================================================
 -- Storage bucket: 명함 이미지
 -- ============================================================
 -- Supabase Dashboard > Storage > New bucket 에서 수동 생성:
