@@ -880,3 +880,130 @@ function FormsTab({
     </>
   );
 }
+
+// ============================================================
+// Settings tab — 스킨 선택기
+// ============================================================
+function SettingsTab({
+  authHeader,
+}: {
+  authHeader: () => { Authorization: string };
+}) {
+  const [current, setCurrent] = useState<ThemeId>("navy");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState<ThemeId | null>(null);
+  const [msg, setMsg] = useState<string>("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/settings/theme");
+      const { theme } = await res.json();
+      setCurrent(theme);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function apply(theme: ThemeId) {
+    if (saving || theme === current) return;
+    setSaving(theme);
+    setMsg("");
+    try {
+      const res = await fetch("/api/settings/theme", {
+        method: "PUT",
+        headers: { ...authHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({ theme }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: "저장 실패" }));
+        throw new Error(error);
+      }
+      setCurrent(theme);
+      // 즉시 화면에 적용
+      document.documentElement.setAttribute("data-theme", theme);
+      setMsg("테마가 적용되었습니다. 전체 사이트에 반영되려면 페이지를 새로고침하세요.");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "테마 저장에 실패했습니다.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-bold text-gray-900">사이트 스킨 설정</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          선택하신 테마가 <b>전체 사이트의 모든 방문자</b>에게 동일하게 적용됩니다.
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="p-12 text-center text-gray-400 text-sm bg-white rounded-2xl border border-gray-100">
+          불러오는 중...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {THEMES.map((t) => {
+            const isCurrent = current === t.id;
+            const isSaving = saving === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => apply(t.id)}
+                disabled={isSaving}
+                className={`relative text-left bg-white rounded-2xl border-2 overflow-hidden transition-all ${
+                  isCurrent
+                    ? "border-brand shadow-lg"
+                    : "border-gray-100 hover:border-gray-300 hover:shadow-md"
+                }`}
+              >
+                {/* Preview swatch */}
+                <div
+                  className="h-28 relative"
+                  style={{
+                    background: `linear-gradient(135deg, ${t.preview[0]} 0%, ${t.preview[1]} 50%, ${t.preview[2]} 100%)`,
+                  }}
+                >
+                  {isCurrent && (
+                    <span className="absolute top-2 right-2 bg-white text-brand text-xs font-bold px-2 py-1 rounded-full shadow">
+                      ✓ 현재
+                    </span>
+                  )}
+                  {isSaving && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    </span>
+                  )}
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-gray-900 text-sm">{t.name}</h3>
+                    <span className="text-[10px] text-gray-400 font-mono">{t.id}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">{t.hint}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {msg && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-sm">
+          {msg}
+        </div>
+      )}
+    </div>
+  );
+}
