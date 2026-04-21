@@ -33,7 +33,7 @@ export const formTemplates: FormTemplate[] = [
   },
   {
     slug: "recruit",
-    title: "인력 모집 지원",
+    title: "인재 모집 지원",
     description: "함께 성장할 인재를 찾고 있습니다. 지금 바로 지원하세요.",
     icon: "👥",
     fields: [
