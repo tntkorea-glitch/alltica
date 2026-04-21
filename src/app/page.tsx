@@ -1,5 +1,7 @@
 import FormCard from "@/components/FormCard";
+import SeminarCard from "@/components/SeminarCard";
 import { formTemplates } from "@/lib/forms";
+import { seminars } from "@/lib/seminars";
 import Link from "next/link";
 
 export default function Home() {
