@@ -28,7 +28,7 @@ export default function Header() {
             scrolled ? "text-[#1e3a5f]" : "text-white"
           }`}
         >
-          통합 신청센터
+          Alltica
         </Link>
 
         {/* Desktop nav */}
