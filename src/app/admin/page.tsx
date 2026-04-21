@@ -306,7 +306,7 @@ export default function AdminPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {tab === "seminars" ? (
+        {tab === "seminars" && (
           <SeminarsTab
             apps={apps}
             filteredApps={filteredApps}
@@ -320,7 +320,8 @@ export default function AdminPage() {
             onExport={exportExcel}
             onRowClick={setSelectedApp}
           />
-        ) : (
+        )}
+        {tab === "forms" && (
           <FormsTab
             submissions={submissions}
             loading={subsLoading}
@@ -330,6 +331,7 @@ export default function AdminPage() {
             onRowClick={setSelectedSub}
           />
         )}
+        {tab === "settings" && <SettingsTab authHeader={authHeader} />}
       </div>
 
       {selectedApp && (
