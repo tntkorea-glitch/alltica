@@ -76,7 +76,7 @@ export const seminars: Seminar[] = [
       "제품을 새로 입점한 파트너",
     ],
     tags: ["제품교육", "실습"],
-    status: "open",
+    status: "upcoming",
   },
   {
     slug: "sales-strategy-2026-06",
