@@ -1,3 +1,3 @@
 - [User Profile](user_profile.md) — 사용자 기본 프로필 및 작업 환경
-- [Project Init](project_init.md) — seminar-app 프로젝트 생성 정보
+- [Project Init](project_init.md) — alltica 프로젝트 생성 정보 (원래 seminar-app)
 - [Project Status](project_status.md) — 현재 진행 상태 및 다음 작업
