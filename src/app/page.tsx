@@ -46,18 +46,18 @@ export default function Home() {
 
           {/* CTA buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up delay-300" style={{ opacity: 0, animationFillMode: "forwards" }}>
-            <a
-              href="#forms"
+            <Link
+              href="/seminars"
               className="w-full sm:w-auto px-8 py-4 bg-white text-[#1e3a5f] font-bold rounded-2xl text-base hover:bg-blue-50 transition-all shadow-xl shadow-black/10 hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.98]"
             >
-              신청서 보기
-            </a>
-            <Link
-              href="/forms/inquiry"
+              🎓 세미나 신청하기
+            </Link>
+            <a
+              href="#forms"
               className="w-full sm:w-auto px-8 py-4 bg-white/10 text-white font-bold rounded-2xl text-base border border-white/20 hover:bg-white/20 transition-all backdrop-blur-sm hover:-translate-y-0.5 active:scale-[0.98]"
             >
-              문의하기
-            </Link>
+              전체 신청서 보기
+            </a>
           </div>
 
           {/* Stats */}
