@@ -39,7 +39,7 @@ export default function Home() {
           </h1>
 
           <p className="text-lg sm:text-xl text-blue-100/80 max-w-2xl mx-auto leading-relaxed mb-10 animate-fade-in-up delay-200">
-            세미나 교육, 제품 구매, 인력 모집, 파트너 신청까지
+            세미나 교육, 제품 구매, 인재 모집, 파트너 신청까지
             <br className="hidden sm:block" />
             필요한 모든 신청을 빠르고 간편하게 접수하세요
           </p>
