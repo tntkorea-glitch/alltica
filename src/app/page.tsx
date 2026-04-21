@@ -209,7 +209,7 @@ export default function Home() {
               WHY US
             </span>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
-              왜 통합 신청센터인가요?
+              왜 Alltica 인가요?
             </h2>
           </div>
 
