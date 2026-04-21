@@ -4,6 +4,10 @@ const API_KEY = process.env.SOLAPI_API_KEY;
 const API_SECRET = process.env.SOLAPI_API_SECRET;
 const SENDER = process.env.SOLAPI_SENDER;
 
+// SolAPI 단문(SMS) 최대 바이트 (EUC-KR 기준: 한글 2B, ASCII 1B). 초과 시 LMS 로 자동 전환되어 과금 달라짐.
+export const SMS_MAX_BYTES = 90;
+export const LMS_MAX_BYTES = 2000;
+
 let messageService: SolapiMessageService | null = null;
 
 function getService(): SolapiMessageService {
@@ -22,13 +26,38 @@ function normalizePhone(phone: string): string {
   return phone.replace(/[^0-9]/g, "");
 }
 
+export function byteLength(str: string): number {
+  let n = 0;
+  for (let i = 0; i < str.length; i++) {
+    n += str.charCodeAt(i) > 127 ? 2 : 1;
+  }
+  return n;
+}
+
+export function truncateToBytes(str: string, maxBytes: number, suffix = ".."): string {
+  if (byteLength(str) <= maxBytes) return str;
+  const suffixBytes = byteLength(suffix);
+  const limit = Math.max(0, maxBytes - suffixBytes);
+  let bytes = 0;
+  let end = 0;
+  for (let i = 0; i < str.length; i++) {
+    const w = str.charCodeAt(i) > 127 ? 2 : 1;
+    if (bytes + w > limit) break;
+    bytes += w;
+    end = i + 1;
+  }
+  return str.slice(0, end) + suffix;
+}
+
 export interface SendSmsOptions {
   to: string;
   text: string;
   from?: string;
+  /** 강제 단문 전송. 기본 true — 90바이트 초과 시 자동 자름. false 로 주면 LMS 로 자동 전환(과금 상승). */
+  forceShort?: boolean;
 }
 
-export async function sendSms({ to, text, from }: SendSmsOptions): Promise<void> {
+export async function sendSms({ to, text, from, forceShort = true }: SendSmsOptions): Promise<void> {
   const sender = from || SENDER;
   if (!sender) {
     throw new Error(
@@ -36,10 +65,16 @@ export async function sendSms({ to, text, from }: SendSmsOptions): Promise<void>
     );
   }
 
+  const body = forceShort ? truncateToBytes(text, SMS_MAX_BYTES) : text;
+  const bytes = byteLength(body);
+  // 단문: <=90, 장문(LMS): <=2000
+  const type: "SMS" | "LMS" = bytes <= SMS_MAX_BYTES ? "SMS" : "LMS";
+
   await getService().send({
     to: normalizePhone(to),
     from: normalizePhone(sender),
-    text,
+    text: body,
+    type,
   });
 }
 
