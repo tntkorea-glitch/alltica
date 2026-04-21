@@ -86,6 +86,47 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Seminars section */}
+      <section id="seminars-preview" className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <span className="inline-block text-sm font-bold text-[#1e3a5f] bg-blue-50 px-4 py-1.5 rounded-full mb-4">
+              SEMINAR
+            </span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">
+              진행 중인 세미나
+            </h2>
+            <p className="text-gray-500 text-sm sm:text-base">
+              명함 업로드로 1분이면 신청 완료
+            </p>
+          </div>
+          <Link
+            href="/seminars"
+            className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-[#1e3a5f] hover:underline"
+          >
+            전체 보기 →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {seminars
+            .filter((s) => s.status === "open" || s.status === "upcoming")
+            .slice(0, 3)
+            .map((s) => (
+              <SeminarCard key={s.slug} seminar={s} />
+            ))}
+        </div>
+
+        <div className="text-center mt-8 sm:hidden">
+          <Link
+            href="/seminars"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-[#1e3a5f]"
+          >
+            전체 세미나 보기 →
+          </Link>
+        </div>
+      </section>
+
       {/* Form Cards Grid */}
       <section id="forms" className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
         <div className="text-center mb-14">
