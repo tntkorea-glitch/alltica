@@ -299,6 +299,9 @@ export default function AdminPage() {
               {submissions.length}
             </span>
           </TabButton>
+          <TabButton active={tab === "settings"} onClick={() => setTab("settings")}>
+            ⚙️ 설정
+          </TabButton>
         </div>
       </div>
 
