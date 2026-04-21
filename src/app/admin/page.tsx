@@ -73,7 +73,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  const [tab, setTab] = useState<"seminars" | "forms">("seminars");
+  const [tab, setTab] = useState<"seminars" | "forms" | "settings">("seminars");
 
   // Seminar applications
   const [apps, setApps] = useState<Application[]>([]);
