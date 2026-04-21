@@ -68,7 +68,7 @@ export default function SeminarApplyForm({ seminar }: Props) {
         name: fields.name || prev.name,
         company: fields.company || prev.company,
         position: fields.position || prev.position,
-        phone: fields.phone || prev.phone,
+        phone: fields.phone ? formatPhone(fields.phone) : prev.phone,
         email: fields.email || prev.email,
         address: fields.address || prev.address,
       }));
