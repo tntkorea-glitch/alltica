@@ -3,6 +3,7 @@
 import { useState, FormEvent, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Seminar, formatPrice } from "@/lib/seminars";
+import { formatPhone } from "@/lib/phone";
 
 interface Props {
   seminar: Seminar;
