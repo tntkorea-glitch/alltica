@@ -37,7 +37,7 @@ export default function Header() {
             { href: "/", label: "홈" },
             { href: "/seminars", label: "세미나 신청" },
             { href: "/forms/product", label: "제품 문의" },
-            { href: "/forms/recruit", label: "인력 모집" },
+            { href: "/forms/recruit", label: "인재 모집" },
             { href: "/forms/partner", label: "파트너 신청" },
             { href: "/forms/inquiry", label: "일반 문의" },
           ].map((item) => (
@@ -94,7 +94,7 @@ export default function Header() {
             { href: "/", label: "홈" },
             { href: "/seminars", label: "세미나 신청" },
             { href: "/forms/product", label: "제품 문의" },
-            { href: "/forms/recruit", label: "인력 모집" },
+            { href: "/forms/recruit", label: "인재 모집" },
             { href: "/forms/partner", label: "파트너 신청" },
             { href: "/forms/inquiry", label: "일반 문의" },
           ].map((item) => (
