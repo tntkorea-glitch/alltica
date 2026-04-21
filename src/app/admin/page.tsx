@@ -7,6 +7,7 @@ import { formatPhone } from "@/lib/phone";
 import { formatPrice, seminars as allSeminars } from "@/lib/seminars";
 import { Submission } from "@/lib/types";
 import { formTemplates } from "@/lib/forms";
+import { THEMES, ThemeId } from "@/lib/theme";
 
 type ApplicationStatus = "pending" | "confirmed" | "cancelled";
 type PaymentStatus = "unpaid" | "paid" | "refunded";
