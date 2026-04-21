@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, BUSINESS_CARD_BUCKET } from "@/lib/supabase";
-import { sendSmsSafe } from "@/lib/sms";
+import { sendSmsSafe, byteLength, SMS_MAX_BYTES } from "@/lib/sms";
 import { getSeminarBySlug, formatPrice } from "@/lib/seminars";
+
+const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+
+function shortDateLabel(iso: string): string {
+  const d = new Date(iso);
+  const ampm = d.getHours() < 12 ? "오전" : "오후";
+  return `${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]}) ${ampm}`;
+}
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
