@@ -2,29 +2,6 @@ import { FormTemplate } from "./types";
 
 export const formTemplates: FormTemplate[] = [
   {
-    slug: "seminar",
-    title: "세미나/교육 신청",
-    description: "뷰티 세미나, 제품 교육, 마케팅 교육 등 다양한 교육 과정을 신청하세요.",
-    icon: "🎓",
-    fields: [
-      { name: "name", label: "이름", type: "text", required: true, placeholder: "홍길동" },
-      { name: "phone", label: "연락처", type: "tel", required: true, placeholder: "010-0000-0000" },
-      { name: "email", label: "이메일", type: "email", required: true, placeholder: "example@email.com" },
-      { name: "organization", label: "소속(회사/단체명)", type: "text", required: false, placeholder: "소속 회사 또는 단체명" },
-      { name: "position", label: "직책", type: "text", required: false, placeholder: "직책을 입력하세요" },
-      {
-        name: "course",
-        label: "신청 교육과정",
-        type: "select",
-        required: true,
-        options: ["뷰티 세미나", "제품 교육", "마케팅 교육", "기타"],
-      },
-      { name: "preferredDate", label: "교육 희망일", type: "date", required: true },
-      { name: "attendees", label: "참석 인원", type: "number", required: true, placeholder: "1" },
-      { name: "requests", label: "요청사항", type: "textarea", required: false, placeholder: "추가 요청사항이 있으시면 입력해주세요" },
-    ],
-  },
-  {
     slug: "product",
     title: "제품 구매 문의",
     description: "제품 구매 관련 문의를 남겨주시면 빠르게 안내드리겠습니다.",
