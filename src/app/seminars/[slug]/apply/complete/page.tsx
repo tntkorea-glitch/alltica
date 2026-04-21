@@ -11,7 +11,7 @@ export function generateStaticParams() {
 }
 
 export const metadata = {
-  title: "신청이 완료되었습니다 | 알티카",
+  title: "신청이 완료되었습니다 | Alltica",
 };
 
 export default async function ApplyCompletePage({ params }: PageProps) {
@@ -21,7 +21,7 @@ export default async function ApplyCompletePage({ params }: PageProps) {
 
   const bankName = process.env.BANK_NAME || "은행";
   const bankAccount = process.env.BANK_ACCOUNT_NUMBER || "(관리자에게 확인)";
-  const bankHolder = process.env.BANK_ACCOUNT_NAME || "알티카";
+  const bankHolder = process.env.BANK_ACCOUNT_NAME || "Alltica";
 
   return (
     <div className="min-h-screen bg-gray-50">
