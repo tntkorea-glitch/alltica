@@ -10,7 +10,7 @@ export default function Home() {
       {/* Hero - Full screen */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* Gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0f1b2d] via-[#1e3a5f] to-[#1a365d] animate-gradient" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-deep via-brand to-[#1a365d] animate-gradient" />
 
         {/* Decorative elements */}
         <div className="absolute inset-0 overflow-hidden">
@@ -48,7 +48,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up delay-300">
             <Link
               href="/seminars"
-              className="w-full sm:w-auto px-8 py-4 bg-white text-[#1e3a5f] font-bold rounded-2xl text-base hover:bg-blue-50 transition-all shadow-xl shadow-black/10 hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.98]"
+              className="w-full sm:w-auto px-8 py-4 bg-white text-brand font-bold rounded-2xl text-base hover:bg-blue-50 transition-all shadow-xl shadow-black/10 hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.98]"
             >
               🎓 세미나 신청하기
             </Link>
@@ -90,7 +90,7 @@ export default function Home() {
       <section id="seminars-preview" className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
         <div className="flex items-end justify-between mb-10">
           <div>
-            <span className="inline-block text-sm font-bold text-[#1e3a5f] bg-blue-50 px-4 py-1.5 rounded-full mb-4">
+            <span className="inline-block text-sm font-bold text-brand bg-blue-50 px-4 py-1.5 rounded-full mb-4">
               SEMINAR
             </span>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">
@@ -102,7 +102,7 @@ export default function Home() {
           </div>
           <Link
             href="/seminars"
-            className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-[#1e3a5f] hover:underline"
+            className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline"
           >
             전체 보기 →
           </Link>
@@ -120,7 +120,7 @@ export default function Home() {
         <div className="text-center mt-8 sm:hidden">
           <Link
             href="/seminars"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-[#1e3a5f]"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-brand"
           >
             전체 세미나 보기 →
           </Link>
@@ -130,7 +130,7 @@ export default function Home() {
       {/* Form Cards Grid */}
       <section id="forms" className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
         <div className="text-center mb-14">
-          <span className="inline-block text-sm font-bold text-[#1e3a5f] bg-blue-50 px-4 py-1.5 rounded-full mb-4">
+          <span className="inline-block text-sm font-bold text-brand bg-blue-50 px-4 py-1.5 rounded-full mb-4">
             APPLICATION
           </span>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
@@ -152,7 +152,7 @@ export default function Home() {
       <section className="bg-gray-50 py-20 sm:py-28 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <span className="inline-block text-sm font-bold text-[#1e3a5f] bg-blue-50 px-4 py-1.5 rounded-full mb-4">
+            <span className="inline-block text-sm font-bold text-brand bg-blue-50 px-4 py-1.5 rounded-full mb-4">
               PROCESS
             </span>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
@@ -205,7 +205,7 @@ export default function Home() {
       <section className="py-20 sm:py-28 px-4 sm:px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <span className="inline-block text-sm font-bold text-[#1e3a5f] bg-blue-50 px-4 py-1.5 rounded-full mb-4">
+            <span className="inline-block text-sm font-bold text-brand bg-blue-50 px-4 py-1.5 rounded-full mb-4">
               WHY US
             </span>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
@@ -273,7 +273,7 @@ export default function Home() {
 
       {/* CTA Banner */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1e3a5f] via-[#1e3a5f] to-[#2a5080]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand via-brand to-brand-light" />
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-400/10 rounded-full blur-3xl" />
@@ -289,7 +289,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
               href="#forms"
-              className="w-full sm:w-auto px-8 py-4 bg-white text-[#1e3a5f] font-bold rounded-2xl text-base hover:bg-blue-50 transition-all shadow-xl hover:-translate-y-0.5"
+              className="w-full sm:w-auto px-8 py-4 bg-white text-brand font-bold rounded-2xl text-base hover:bg-blue-50 transition-all shadow-xl hover:-translate-y-0.5"
             >
               신청서 작성하기
             </a>

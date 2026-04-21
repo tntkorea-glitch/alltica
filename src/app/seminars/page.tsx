@@ -19,7 +19,7 @@ export default function SeminarsPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0f1b2d] via-[#1e3a5f] to-[#2a5080]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-deep via-brand to-brand-light" />
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-400/10 rounded-full blur-3xl" />
           <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-indigo-400/10 rounded-full blur-3xl" />

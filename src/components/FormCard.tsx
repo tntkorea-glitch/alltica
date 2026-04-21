@@ -30,7 +30,7 @@ export default function FormCard({ form, index }: FormCardProps) {
           <span className="drop-shadow-sm">{form.icon}</span>
         </div>
 
-        <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-[#1e3a5f] transition-colors">
+        <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-brand transition-colors">
           {form.title}
         </h3>
         <p className="text-sm text-gray-500 leading-relaxed mb-5">
@@ -38,7 +38,7 @@ export default function FormCard({ form, index }: FormCardProps) {
         </p>
 
         {/* CTA */}
-        <div className="flex items-center text-sm font-bold text-[#1e3a5f] opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+        <div className="flex items-center text-sm font-bold text-brand opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
           신청하기
           <svg className="w-4 h-4 ml-1.5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />

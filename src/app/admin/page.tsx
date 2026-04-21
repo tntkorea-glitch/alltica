@@ -244,12 +244,12 @@ export default function AdminPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="비밀번호"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f] text-sm"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand text-sm"
             />
             {loginError && <p className="text-red-500 text-xs">{loginError}</p>}
             <button
               type="submit"
-              className="w-full bg-[#1e3a5f] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#16304f] transition-colors"
+              className="w-full bg-brand text-white py-3 rounded-xl font-bold text-sm hover:bg-brand-hover transition-colors"
             >
               로그인
             </button>
@@ -272,7 +272,7 @@ export default function AdminPage() {
             <p className="text-xs text-gray-500 truncate">세미나 신청 및 문의 현황 관리</p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/" className="text-sm text-gray-500 hover:text-[#1e3a5f] transition-colors px-2">
+            <Link href="/" className="text-sm text-gray-500 hover:text-brand transition-colors px-2">
               사이트로
             </Link>
             <button
@@ -288,7 +288,7 @@ export default function AdminPage() {
         <div className="max-w-7xl mx-auto mt-4 flex gap-1 border-b border-gray-100 -mb-4">
           <TabButton active={tab === "seminars"} onClick={() => setTab("seminars")}>
             🎓 세미나 신청{" "}
-            <span className="ml-1 text-xs bg-[#1e3a5f]/10 text-[#1e3a5f] px-1.5 py-0.5 rounded">
+            <span className="ml-1 text-xs bg-brand/10 text-brand px-1.5 py-0.5 rounded">
               {apps.length}
             </span>
           </TabButton>
@@ -354,7 +354,7 @@ function TabButton({
       onClick={onClick}
       className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
         active
-          ? "border-[#1e3a5f] text-[#1e3a5f]"
+          ? "border-brand text-brand"
           : "border-transparent text-gray-500 hover:text-gray-800"
       }`}
     >
@@ -420,7 +420,7 @@ function SeminarsTab({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="이름 / 상호 / 연락처 / 이메일 검색"
-          className="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#1e3a5f]"
+          className="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand"
         />
         <button
           onClick={onRefresh}
@@ -517,7 +517,7 @@ function SeminarsTab({
                       <Td>
                         <button
                           onClick={() => onRowClick(app)}
-                          className="text-[#1e3a5f] hover:underline text-xs font-semibold"
+                          className="text-brand hover:underline text-xs font-semibold"
                         >
                           상세
                         </button>
@@ -552,11 +552,11 @@ function StatCard({
       onClick={onClick}
       className={`bg-white rounded-xl p-4 border text-left transition-all ${
         active
-          ? "border-[#1e3a5f] ring-2 ring-[#1e3a5f]/20 shadow-sm"
+          ? "border-brand ring-2 ring-brand/20 shadow-sm"
           : "border-gray-100 hover:border-gray-200"
       }`}
     >
-      <p className={`text-2xl font-bold ${tone === "primary" ? "text-[#1e3a5f]" : "text-gray-900"}`}>
+      <p className={`text-2xl font-bold ${tone === "primary" ? "text-brand" : "text-gray-900"}`}>
         {count}
       </p>
       <p className="text-xs text-gray-500 truncate mt-0.5" title={label}>
@@ -611,13 +611,13 @@ function ApplicationDetailModal({
             <Row label="상호/회사">{app.company || "-"}</Row>
             <Row label="직책">{app.position || "-"}</Row>
             <Row label="연락처">
-              <a href={`tel:${app.phone}`} className="text-[#1e3a5f] hover:underline">
+              <a href={`tel:${app.phone}`} className="text-brand hover:underline">
                 {formatPhone(app.phone)}
               </a>
             </Row>
             <Row label="이메일">
               {app.email ? (
-                <a href={`mailto:${app.email}`} className="text-[#1e3a5f] hover:underline">
+                <a href={`mailto:${app.email}`} className="text-brand hover:underline">
                   {app.email}
                 </a>
               ) : (
@@ -693,7 +693,7 @@ function SubmissionDetailModal({
                   href={path}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block text-sm text-[#1e3a5f] hover:underline"
+                  className="block text-sm text-brand hover:underline"
                 >
                   📎 {path.split("/").pop()}
                 </a>
@@ -804,7 +804,7 @@ function FormsTab({
           <h2 className="font-bold text-gray-900 text-sm">
             문의 목록 <span className="text-gray-400 font-normal">({submissions.length})</span>
           </h2>
-          <button onClick={onRefresh} className="text-xs text-[#1e3a5f] hover:underline">
+          <button onClick={onRefresh} className="text-xs text-brand hover:underline">
             새로고침
           </button>
         </div>
@@ -834,7 +834,7 @@ function FormsTab({
                       {formatKST(sub.submittedAt)}
                     </Td>
                     <Td>
-                      <span className="text-xs bg-blue-50 text-[#1e3a5f] px-2 py-1 rounded-full font-medium whitespace-nowrap">
+                      <span className="text-xs bg-blue-50 text-brand px-2 py-1 rounded-full font-medium whitespace-nowrap">
                         {sub.formTitle}
                       </span>
                     </Td>
@@ -859,7 +859,7 @@ function FormsTab({
                     <Td>
                       <button
                         onClick={() => onRowClick(sub)}
-                        className="text-[#1e3a5f] hover:underline text-xs font-semibold"
+                        className="text-brand hover:underline text-xs font-semibold"
                       >
                         상세
                       </button>

@@ -25,7 +25,7 @@ export default function Header() {
         <Link
           href="/"
           className={`text-lg sm:text-xl font-extrabold tracking-tight transition-colors ${
-            scrolled ? "text-[#1e3a5f]" : "text-white"
+            scrolled ? "text-brand" : "text-white"
           }`}
         >
           Alltica
@@ -46,7 +46,7 @@ export default function Header() {
               href={item.href}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 scrolled
-                  ? "text-gray-600 hover:text-[#1e3a5f] hover:bg-gray-50"
+                  ? "text-gray-600 hover:text-brand hover:bg-gray-50"
                   : "text-white/80 hover:text-white hover:bg-white/10"
               }`}
             >
@@ -61,8 +61,8 @@ export default function Header() {
             href="/forms/inquiry"
             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
               scrolled
-                ? "bg-[#1e3a5f] text-white hover:bg-[#16304f] shadow-md shadow-[#1e3a5f]/20"
-                : "bg-white text-[#1e3a5f] hover:bg-white/90 shadow-md shadow-black/10"
+                ? "bg-brand text-white hover:bg-brand-hover shadow-md shadow-brand/20"
+                : "bg-white text-brand hover:bg-white/90 shadow-md shadow-black/10"
             }`}
           >
             문의하기
@@ -102,7 +102,7 @@ export default function Header() {
               key={item.href}
               href={item.href}
               onClick={() => setMenuOpen(false)}
-              className="py-2.5 px-3 rounded-lg text-sm font-medium text-gray-700 hover:text-[#1e3a5f] hover:bg-gray-50 transition-colors"
+              className="py-2.5 px-3 rounded-lg text-sm font-medium text-gray-700 hover:text-brand hover:bg-gray-50 transition-colors"
             >
               {item.label}
             </Link>

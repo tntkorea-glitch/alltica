@@ -26,7 +26,7 @@ export default async function ApplyCompletePage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0f1b2d] via-[#1e3a5f] to-[#2a5080]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-deep via-brand to-brand-light" />
         <div className="relative z-10 max-w-2xl mx-auto pt-28 pb-14 px-4 sm:px-6 text-center">
           <div className="text-6xl mb-4">✅</div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-2">
@@ -84,7 +84,7 @@ export default async function ApplyCompletePage({ params }: PageProps) {
             </Link>
             <Link
               href="/"
-              className="flex-1 text-center bg-[#1e3a5f] text-white py-3 rounded-xl font-semibold hover:bg-[#16304f] transition-colors"
+              className="flex-1 text-center bg-brand text-white py-3 rounded-xl font-semibold hover:bg-brand-hover transition-colors"
             >
               홈으로 돌아가기
             </Link>
@@ -111,7 +111,7 @@ function Row({
       <span className="text-gray-500 w-20 shrink-0">{label}</span>
       <span
         className={`flex-1 ${
-          emphasize ? "text-[#1e3a5f] font-extrabold" : "text-gray-800 font-medium"
+          emphasize ? "text-brand font-extrabold" : "text-gray-800 font-medium"
         }`}
       >
         {value}

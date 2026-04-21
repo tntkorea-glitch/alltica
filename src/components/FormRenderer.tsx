@@ -132,7 +132,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
         </p>
         <a
           href="/"
-          className="inline-flex items-center gap-2 bg-[#1e3a5f] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#16304f] transition-colors"
+          className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-xl font-semibold hover:bg-brand-hover transition-colors"
         >
           홈으로 돌아가기
         </a>
@@ -157,7 +157,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
               placeholder={field.placeholder}
               className={`w-full px-4 py-3 rounded-xl border ${
                 errors[field.name] ? "border-red-400 bg-red-50" : "border-gray-200"
-              } focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f] transition-colors text-sm`}
+              } focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm`}
             />
           )}
 
@@ -169,7 +169,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
               placeholder={field.placeholder || "010-0000-0000"}
               className={`w-full px-4 py-3 rounded-xl border ${
                 errors[field.name] ? "border-red-400 bg-red-50" : "border-gray-200"
-              } focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f] transition-colors text-sm`}
+              } focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm`}
             />
           )}
 
@@ -181,7 +181,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
               placeholder={field.placeholder}
               className={`w-full px-4 py-3 rounded-xl border ${
                 errors[field.name] ? "border-red-400 bg-red-50" : "border-gray-200"
-              } focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f] transition-colors text-sm`}
+              } focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm`}
             />
           )}
 
@@ -194,7 +194,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
               placeholder={field.placeholder}
               className={`w-full px-4 py-3 rounded-xl border ${
                 errors[field.name] ? "border-red-400 bg-red-50" : "border-gray-200"
-              } focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f] transition-colors text-sm`}
+              } focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm`}
             />
           )}
 
@@ -205,7 +205,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
               onChange={(e) => handleChange(field.name, e.target.value)}
               className={`w-full px-4 py-3 rounded-xl border ${
                 errors[field.name] ? "border-red-400 bg-red-50" : "border-gray-200"
-              } focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f] transition-colors text-sm`}
+              } focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm`}
             />
           )}
 
@@ -217,7 +217,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
               rows={4}
               className={`w-full px-4 py-3 rounded-xl border ${
                 errors[field.name] ? "border-red-400 bg-red-50" : "border-gray-200"
-              } focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f] transition-colors text-sm resize-y`}
+              } focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm resize-y`}
             />
           )}
 
@@ -227,7 +227,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
               onChange={(e) => handleChange(field.name, e.target.value)}
               className={`w-full px-4 py-3 rounded-xl border ${
                 errors[field.name] ? "border-red-400 bg-red-50" : "border-gray-200"
-              } focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f] transition-colors text-sm bg-white`}
+              } focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm bg-white`}
             >
               <option value="">선택해주세요</option>
               {field.options?.map((opt) => (
@@ -248,7 +248,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
                     type="checkbox"
                     checked={((formData[field.name] as string[]) || []).includes(opt)}
                     onChange={(e) => handleCheckbox(field.name, opt, e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-[#1e3a5f] focus:ring-[#1e3a5f]"
+                    className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
                   />
                   {opt}
                 </label>
@@ -259,7 +259,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
           {field.type === "file" && (
             <div className={`relative rounded-xl border-2 border-dashed ${
               errors[field.name] ? "border-red-400 bg-red-50" : "border-gray-200"
-            } p-6 text-center hover:border-[#1e3a5f]/40 transition-colors`}>
+            } p-6 text-center hover:border-brand/40 transition-colors`}>
               <input
                 type="file"
                 accept={field.accept}
@@ -267,7 +267,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
               {files[field.name] ? (
-                <p className="text-sm text-[#1e3a5f] font-medium">
+                <p className="text-sm text-brand font-medium">
                   📎 {files[field.name].name}
                 </p>
               ) : (
@@ -290,7 +290,7 @@ export default function FormRenderer({ form }: FormRendererProps) {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full bg-[#1e3a5f] text-white py-4 rounded-xl font-bold text-base hover:bg-[#16304f] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-[#1e3a5f]/20"
+        className="w-full bg-brand text-white py-4 rounded-xl font-bold text-base hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-brand/20"
       >
         {submitting ? (
           <span className="flex items-center justify-center gap-2">

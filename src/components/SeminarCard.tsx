@@ -29,7 +29,7 @@ export default function SeminarCard({ seminar }: { seminar: Seminar }) {
         </div>
       </div>
 
-      <h3 className="text-lg font-bold text-gray-900 mb-1 leading-snug group-hover:text-[#1e3a5f] transition-colors">
+      <h3 className="text-lg font-bold text-gray-900 mb-1 leading-snug group-hover:text-brand transition-colors">
         {seminar.title}
       </h3>
       {seminar.subtitle && (
@@ -54,9 +54,9 @@ export default function SeminarCard({ seminar }: { seminar: Seminar }) {
       <div className="flex items-end justify-between mt-5 pt-4 border-t border-gray-100">
         <div>
           <div className="text-xs text-gray-400 mb-0.5">참가비</div>
-          <div className="text-xl font-extrabold text-[#1e3a5f]">{formatPrice(seminar.price)}</div>
+          <div className="text-xl font-extrabold text-brand">{formatPrice(seminar.price)}</div>
         </div>
-        <span className="text-sm font-semibold text-[#1e3a5f] group-hover:translate-x-1 transition-transform">
+        <span className="text-sm font-semibold text-brand group-hover:translate-x-1 transition-transform">
           상세보기 →
         </span>
       </div>

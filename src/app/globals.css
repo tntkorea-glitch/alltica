@@ -1,18 +1,70 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --primary: #1e3a5f;
-  --primary-light: #2a5080;
-  --accent: #3b82f6;
+/* ============================================================
+   Theme tokens — runtime switching via [data-theme="..."]
+   ============================================================ */
+:root,
+[data-theme="navy"] {
+  --theme-brand: #1e3a5f;
+  --theme-brand-hover: #16304f;
+  --theme-brand-deep: #0f1b2d;
+  --theme-brand-light: #2a5080;
 }
 
+[data-theme="peach"] {
+  --theme-brand: #ec4899;        /* pink-500 */
+  --theme-brand-hover: #db2777;  /* pink-600 */
+  --theme-brand-deep: #f472b6;   /* pink-400 */
+  --theme-brand-light: #fbbf24;  /* amber-400 */
+}
+
+[data-theme="mint"] {
+  --theme-brand: #10b981;        /* emerald-500 */
+  --theme-brand-hover: #059669;  /* emerald-600 */
+  --theme-brand-deep: #34d399;   /* emerald-400 */
+  --theme-brand-light: #06b6d4;  /* cyan-500 */
+}
+
+[data-theme="lavender"] {
+  --theme-brand: #8b5cf6;        /* violet-500 */
+  --theme-brand-hover: #7c3aed;  /* violet-600 */
+  --theme-brand-deep: #a78bfa;   /* violet-400 */
+  --theme-brand-light: #ec4899;  /* pink-500 */
+}
+
+[data-theme="sunset"] {
+  --theme-brand: #f97316;        /* orange-500 */
+  --theme-brand-hover: #ea580c;  /* orange-600 */
+  --theme-brand-deep: #fb923c;   /* orange-400 */
+  --theme-brand-light: #f43f5e;  /* rose-500 */
+}
+
+[data-theme="ocean"] {
+  --theme-brand: #0ea5e9;        /* sky-500 */
+  --theme-brand-hover: #0284c7;  /* sky-600 */
+  --theme-brand-deep: #38bdf8;   /* sky-400 */
+  --theme-brand-light: #6366f1;  /* indigo-500 */
+}
+
+/* ============================================================
+   Tailwind v4 @theme — brand utilities
+   These classes (bg-brand, text-brand, bg-brand/20, etc.)
+   resolve to the CSS vars above at runtime.
+   ============================================================ */
 @theme inline {
+  --color-brand: var(--theme-brand);
+  --color-brand-hover: var(--theme-brand-hover);
+  --color-brand-deep: var(--theme-brand-deep);
+  --color-brand-light: var(--theme-brand-light);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
 body {

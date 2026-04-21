@@ -26,7 +26,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-white">
         <Header />
         <main className="flex-1">{children}</main>
-        <footer className="bg-[#0f1b2d] text-white/50 px-4 sm:px-6 py-10">
+        <footer className="bg-brand-deep text-white/50 px-4 sm:px-6 py-10">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8 pb-8 border-b border-white/10">
               <div>

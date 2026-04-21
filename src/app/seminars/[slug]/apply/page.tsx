@@ -29,7 +29,7 @@ export default async function SeminarApplyPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0f1b2d] via-[#1e3a5f] to-[#2a5080]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-deep via-brand to-brand-light" />
         <div className="relative z-10 max-w-2xl mx-auto pt-28 pb-14 px-4 sm:px-6">
           <Link
             href={`/seminars/${seminar.slug}`}

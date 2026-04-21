@@ -34,7 +34,7 @@ export default async function SeminarDetailPage({ params }: PageProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0f1b2d] via-[#1e3a5f] to-[#2a5080]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-deep via-brand to-brand-light" />
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-400/10 rounded-full blur-3xl" />
           <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-indigo-400/10 rounded-full blur-3xl" />
@@ -99,7 +99,7 @@ export default async function SeminarDetailPage({ params }: PageProps) {
             <ol className="space-y-2">
               {seminar.curriculum.map((item, idx) => (
                 <li key={idx} className="flex gap-3 items-start">
-                  <span className="shrink-0 w-6 h-6 rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-bold flex items-center justify-center mt-0.5">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-brand/10 text-brand text-xs font-bold flex items-center justify-center mt-0.5">
                     {idx + 1}
                   </span>
                   <span className="text-gray-700 text-sm leading-relaxed pt-0.5">{item}</span>
@@ -114,7 +114,7 @@ export default async function SeminarDetailPage({ params }: PageProps) {
             <ul className="space-y-1.5">
               {seminar.target.map((item, idx) => (
                 <li key={idx} className="flex gap-2 items-start text-gray-700 text-sm">
-                  <span className="text-[#1e3a5f] mt-0.5">✓</span>
+                  <span className="text-brand mt-0.5">✓</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -126,7 +126,7 @@ export default async function SeminarDetailPage({ params }: PageProps) {
             {canApply ? (
               <Link
                 href={`/seminars/${seminar.slug}/apply`}
-                className="block w-full text-center bg-[#1e3a5f] text-white py-4 rounded-xl font-bold text-base hover:bg-[#16304f] transition-colors shadow-lg shadow-[#1e3a5f]/20"
+                className="block w-full text-center bg-brand text-white py-4 rounded-xl font-bold text-base hover:bg-brand-hover transition-colors shadow-lg shadow-brand/20"
               >
                 {isOpen ? "지금 신청하기" : "사전 신청 접수"}
               </Link>
@@ -161,7 +161,7 @@ function InfoRow({
       <span className="text-2xl">{icon}</span>
       <div>
         <div className="text-xs text-gray-500 mb-0.5">{label}</div>
-        <div className={`text-sm ${emphasize ? "text-[#1e3a5f] font-extrabold text-base" : "text-gray-800 font-medium"}`}>
+        <div className={`text-sm ${emphasize ? "text-brand font-extrabold text-base" : "text-gray-800 font-medium"}`}>
           {value}
         </div>
       </div>

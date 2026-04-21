@@ -143,15 +143,15 @@ export default function SeminarApplyForm({ seminar }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-8" noValidate>
       {/* Seminar summary strip */}
-      <div className="bg-[#1e3a5f]/5 border border-[#1e3a5f]/10 rounded-xl p-4 flex items-center justify-between gap-4">
+      <div className="bg-brand/5 border border-brand/10 rounded-xl p-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-xs text-gray-500 mb-0.5">신청 대상 세미나</div>
-          <div className="text-sm font-bold text-[#1e3a5f]">{seminar.title}</div>
+          <div className="text-sm font-bold text-brand">{seminar.title}</div>
           <div className="text-xs text-gray-500 mt-0.5">{seminar.dateDisplay}</div>
         </div>
         <div className="text-right shrink-0">
           <div className="text-xs text-gray-500">참가비</div>
-          <div className="text-base font-extrabold text-[#1e3a5f]">{formatPrice(seminar.price)}</div>
+          <div className="text-base font-extrabold text-brand">{formatPrice(seminar.price)}</div>
         </div>
       </div>
 
@@ -167,7 +167,7 @@ export default function SeminarApplyForm({ seminar }: Props) {
         </div>
 
         {!businessCard ? (
-          <div className="relative rounded-xl border-2 border-dashed border-gray-200 p-6 text-center hover:border-[#1e3a5f]/40 transition-colors">
+          <div className="relative rounded-xl border-2 border-dashed border-gray-200 p-6 text-center hover:border-brand/40 transition-colors">
             <input
               ref={fileInputRef}
               type="file"
@@ -189,7 +189,7 @@ export default function SeminarApplyForm({ seminar }: Props) {
               <div className="text-sm font-medium text-gray-800 truncate">{businessCard.name}</div>
               <div className="text-xs mt-0.5">
                 {ocrState === "running" && (
-                  <span className="text-[#1e3a5f] inline-flex items-center gap-1">
+                  <span className="text-brand inline-flex items-center gap-1">
                     <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -279,7 +279,7 @@ export default function SeminarApplyForm({ seminar }: Props) {
             onChange={(e) => updateField("requests", e.target.value)}
             rows={3}
             placeholder="추가 요청사항이 있으시면 입력해주세요"
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f] transition-colors text-sm resize-y"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm resize-y"
           />
         </div>
       </section>
@@ -287,7 +287,7 @@ export default function SeminarApplyForm({ seminar }: Props) {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full bg-[#1e3a5f] text-white py-4 rounded-xl font-bold text-base hover:bg-[#16304f] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-[#1e3a5f]/20"
+        className="w-full bg-brand text-white py-4 rounded-xl font-bold text-base hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-brand/20"
       >
         {submitting ? (
           <span className="flex items-center justify-center gap-2">
@@ -337,7 +337,7 @@ function TextField({
         placeholder={placeholder}
         className={`w-full px-4 py-3 rounded-xl border ${
           error ? "border-red-400 bg-red-50" : "border-gray-200"
-        } focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f] transition-colors text-sm`}
+        } focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm`}
       />
       {error && <p className="text-red-500 text-xs mt-1.5">{error}</p>}
     </div>
