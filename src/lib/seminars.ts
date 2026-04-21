@@ -106,7 +106,7 @@ export const seminars: Seminar[] = [
     instructor: "이수진 교육팀장",
     price: 200000,
     capacity: 20,
-    summary: "알티카 주요 제품의 성분·효능·시연을 한 번에 마스터하는 실습 중심 교육",
+    summary: "Alltica 주요 제품의 성분·효능·시연을 한 번에 마스터하는 실습 중심 교육",
     description:
       "영업·판매·원장님 대상 제품 교육 과정입니다. 성분 해설, 피부 타입별 권장 솔루션, 판매 시 응대 스크립트, 실제 시연과 체험까지 현장 실무에 바로 적용할 수 있도록 설계되었습니다. 중식 제공.",
     curriculum: [
