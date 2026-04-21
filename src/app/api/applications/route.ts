@@ -129,9 +129,9 @@ export async function POST(request: NextRequest) {
 
     const dateLabel = shortDateLabel(seminar.startAt);
 
-    // 신청자용: 브랜드 + 날짜 + 접수완료 + 참가비 + 계좌 + 안내 (약 75-85 바이트)
+    // 신청자용: 브랜드 + 날짜 + 접수완료 + 참가비 + 계좌 + 안내 (약 80-88 바이트)
     const applicantText =
-      `[알티카] ${dateLabel} 세미나 접수완료\n` +
+      `[알티카] ${dateLabel} 접수완료\n` +
       `참가비 ${formatPrice(seminar.price)}\n` +
       `${bankName} ${bankAccount}\n` +
       `입금 후 확정`;
