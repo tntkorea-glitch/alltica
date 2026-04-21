@@ -114,7 +114,7 @@ export const seminars: Seminar[] = [
     dateDisplay: "2026년 6월 19일 (목) 14:00 – 17:00",
     startAt: "2026-06-19T14:00:00+09:00",
     endAt: "2026-06-19T17:00:00+09:00",
-    location: "온라인 (Zoom)",
+    location: "대구 수성구 두산동 교육장 2층",
     instructor: "최디지털 강사",
     price: 100000,
     capacity: 50,
