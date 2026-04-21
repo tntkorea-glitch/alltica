@@ -3,6 +3,9 @@ import { getSupabaseAdmin, BUSINESS_CARD_BUCKET } from "@/lib/supabase";
 import { sendSmsSafe, byteLength, SMS_MAX_BYTES } from "@/lib/sms";
 import { getSeminarBySlug, formatPrice } from "@/lib/seminars";
 
+export const runtime = "nodejs";
+export const maxDuration = 30;
+
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 
 function shortDateLabel(iso: string): string {
@@ -10,9 +13,6 @@ function shortDateLabel(iso: string): string {
   const ampm = d.getHours() < 12 ? "오전" : "오후";
   return `${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]}) ${ampm}`;
 }
-
-export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const MAX_CARD_BYTES = 8 * 1024 * 1024; // 8MB
 
@@ -129,7 +129,6 @@ export async function POST(request: NextRequest) {
 
     const dateLabel = shortDateLabel(seminar.startAt);
 
-    // 신청자용: 브랜드 + 날짜 + 접수완료 + 참가비 + 계좌 + 안내 (약 80-88 바이트)
     const applicantText =
       `[Alltica] ${dateLabel} 접수완료\n` +
       `참가비 ${formatPrice(seminar.price)}\n` +
@@ -139,7 +138,6 @@ export async function POST(request: NextRequest) {
     console.log(`[sms] 신청자 메시지 ${byteLength(applicantText)}B (단문 한도 ${SMS_MAX_BYTES}B)`);
     await sendSmsSafe({ to: payload.phone, text: applicantText, forceShort: true });
 
-    // 관리자용: 브랜드 + 신규신청 + 이름/전화 + 날짜 (약 50-70 바이트)
     const adminPhonesRaw = process.env.ADMIN_NOTIFY_PHONES || "";
     const adminPhones = adminPhonesRaw
       .split(",")
@@ -160,6 +158,58 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "신청 처리 중 오류가 발생했습니다.";
     console.error("[api/applications]", err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// ============================================================
+// GET /api/applications — 관리자 페이지에서 조회
+// Bearer <ADMIN_PASSWORD> 헤더 필수, optional: ?seminarSlug=xxx
+// ============================================================
+const SIGNED_URL_EXPIRY = 60 * 60; // 1시간
+
+export async function GET(request: NextRequest) {
+  const adminPassword = process.env.ADMIN_PASSWORD || "admin1234";
+  const authHeader = request.headers.get("Authorization");
+  const pw = authHeader?.replace("Bearer ", "");
+  if (pw !== adminPassword) {
+    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  }
+
+  try {
+    const supabase = getSupabaseAdmin();
+    const { searchParams } = new URL(request.url);
+    const seminarSlug = searchParams.get("seminarSlug");
+
+    let query = supabase
+      .from("applications")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (seminarSlug) query = query.eq("seminar_slug", seminarSlug);
+
+    const { data: rows, error } = await query;
+    if (error) {
+      console.error("[applications GET]", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // 명함 이미지 서명 URL 발급 (병렬)
+    const withSigned = await Promise.all(
+      (rows || []).map(async (row) => {
+        let signedUrl: string | null = null;
+        if (row.business_card_url) {
+          const { data: signed } = await supabase.storage
+            .from(BUSINESS_CARD_BUCKET)
+            .createSignedUrl(row.business_card_url, SIGNED_URL_EXPIRY);
+          signedUrl = signed?.signedUrl || null;
+        }
+        return { ...row, business_card_signed_url: signedUrl };
+      })
+    );
+
+    return NextResponse.json(withSigned);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "조회 중 오류가 발생했습니다.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
