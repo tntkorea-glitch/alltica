@@ -81,7 +81,7 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
 
-  // Old form submissions (일반 문의 / 제품 / 인력 / 파트너)
+  // Old form submissions (일반 문의 / 제품 / 인재 / 파트너)
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [subsLoading, setSubsLoading] = useState(false);
   const [formFilterSlug, setFormFilterSlug] = useState("");
