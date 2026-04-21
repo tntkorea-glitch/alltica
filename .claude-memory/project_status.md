@@ -5,79 +5,84 @@ type: project
 originSessionId: 748b6203-c04d-455a-8603-299ed4a2a4cb
 ---
 ## 현재 상태 (2026-04-21)
-통합 신청센터 사이트 구축 완료 + 배포 완료.
-프로젝트 리네임: seminar-app → alltica (2026-04-21). 폴더 `D:\dev\alltica`로 이동 완료.
 
-**완성된 기능:**
-- 풀스크린 히어로 랜딩 페이지 (Class101/MoneyUpClass/윤자동 벤치마킹 디자인)
-- 5개 신청서 폼: 세미나/교육, 제품 구매, 인력 모집, 파트너 신청, 일반 문의
-- 동적 폼 렌더러 (text, tel, email, textarea, select, checkbox, date, number, file 지원)
-- 파일 업로드 (public/uploads/)
-- 관리자 대시보드 (/admin)
-- 관리자 인증: 환경변수(ADMIN_PASSWORD) 기반, 서버 API(/api/auth)로 검증
-- API 보안: Authorization 헤더(Bearer) 방식으로 submissions 조회
-- 파일 기반 JSON 스토리지 (data/submissions.json)
-- 스크롤 반응 헤더, 카카오톡 플로팅 버튼
-- 자동 커밋/푸시 훅 + gitleaks pre-commit hook
-- Vercel 배포 완료 (도메인: alltica.vercel.app)
+alltica = 통합 신청센터 + 세미나 신청 시스템. 도메인 `alltica.co.kr` 연결 완료 (호스팅케이알 DNS, Vercel A 레코드 `216.150.1.1`).
 
-**Why:** 기존 Tally/네이버폼 8개+ 분산된 신청서를 하나로 통합하기 위함.
+**핵심 환경:**
+- Next.js 16.2.3 + React 19.2.4 + Tailwind v4 + TypeScript
+- Supabase (프로젝트 ref `omzkzxrncypfluxfwrpg`) — applications, app_settings 테이블 + business-cards Storage 버킷
+- OCR: Claude Vision (Haiku 4.5, tool_use)
+- SMS: SolAPI (단문 90B 강제, postica와 크레덴셜 공유)
+- 결제: 계좌이체 수동 (국민은행 / 티엔티코리아 / `BANK_*` env)
+- 배포: Vercel (alltica.vercel.app + alltica.co.kr)
+- 자동 커밋/푸시 훅 (Stop 이벤트) + gitleaks pre-commit
 
-## 리네임 완료 (2026-04-21)
-- GitHub repo: `seminar-app` → `alltica` ✅
-- 로컬 remote URL: `https://github.com/tntkorea-glitch/alltica.git` ✅
-- Vercel 프로젝트명 + 도메인: `alltica.vercel.app` ✅
+## 완성된 기능 (Phase 1 MVP — 2026-04-21)
 
-## 주의: 2026-04-21 원격 전체 삭제 사고
-다른 PC에서 폴더 리네임 중 원본 폴더 비워진 채로 auto-commit이 발동,
-전체 파일 삭제 커밋(`8d4b337`)이 원격에 push됨. 이 PC에서 force-push로 복구(`845ba70`).
+**세미나 신청 시스템:**
+- `/seminars` 목록, `/seminars/[slug]` 상세, `/seminars/[slug]/apply` 신청 폼, `/apply/complete` 접수완료+계좌안내
+- 세미나 7개(postica 인스타 자동화, 4/27 월 + 4/28~30 오전/오후) + 제품교육 5/22 + B2B영업 6/5 + 디지털광고 6/19. 전부 대구 수성구 두산동 교육장 2층.
+- postica 세미나: 노태영 대표 / 10,000원 / 정원 20명 / 인스타 자동화 주제
+- 명함 업로드 시 Claude Vision 으로 OCR → 이름/회사/직책/연락처/이메일/주소 자동 채움 + 검토/수정 가능
+- 연락처 자동 하이픈 포매터 (`src/lib/phone.ts`)
+- Supabase applications 저장, 명함 이미지 Storage 업로드 (서명 URL)
+- SolAPI SMS 발송: 신청자(접수완료+계좌안내) + 관리자. `src/lib/sms.ts` 의 `byteLength`/`truncateToBytes`로 단문 90B 강제 (초과시 자동 trim)
+
+**관리자 페이지 (`/admin`):**
+- 탭 구조: 🎓 세미나 신청 / 📝 일반 문의 / ⚙️ 설정
+- 세미나 탭: 제목별 통계 카드(postica 7세션 합산 표시) / 검색 / 상세 모달(명함 미리보기) / xlsx 엑셀 다운로드(전체 + 제목별 시트)
+- 설정 탭: 6가지 스킨(네이비/피치블룸/민트프레시/라벤더/선셋글로우/오션브리즈) 카드, 클릭 시 Supabase `app_settings.theme`에 저장 + 전체 사이트 반영
+
+**테마 시스템:**
+- Tailwind v4 `@theme inline`으로 `--color-brand` 등을 CSS 변수(`--theme-brand`)로 매핑
+- `[data-theme="..."]` 셀렉터로 6개 팔레트 정의 in `globals.css`
+- `layout.tsx`에서 SSR 시 Supabase 조회 → `<html data-theme="X">` 주입
+- 69개 하드코딩 hex(`#1e3a5f` 등) 전부 `brand`/`brand-hover`/`brand-deep`/`brand-light` 토큰으로 교체됨
+
+**OG 메타 (카톡/SNS 링크 미리보기):**
+- `src/app/opengraph-image.tsx` — ImageResponse로 1200x630 동적 생성(Alltica 브랜딩)
+- `layout.tsx` metadata 에 `metadataBase` + `openGraph` + `twitter` 설정
+
+**브랜딩 통일:**
+- "통합 신청센터" → "Alltica"
+- "알티카" → "Alltica"
+- "인력" → "인재"
+
+**리네임 완료 (2026-04-21):**
+- GitHub repo: `seminar-app` → `alltica`
+- Vercel 프로젝트명 + 도메인: `alltica.vercel.app`
+- 커스텀 도메인: `alltica.co.kr` (호스팅케이알)
+
+## 환경변수 (`.env.local` — 민감값은 여기서만 보관)
+- `ADMIN_PASSWORD`
+- `ANTHROPIC_API_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
+- `SOLAPI_API_KEY` / `SOLAPI_API_SECRET` / `SOLAPI_SENDER` (01088425659)
+- `ADMIN_NOTIFY_PHONES` (01088425659)
+- `BANK_NAME` (기업은행) / `BANK_ACCOUNT_NUMBER` (010-5247-5659) / `BANK_ACCOUNT_NAME` (티엔티코리아)
+
+> ⚠️ VS Code 가 붙여넣기 시 자동 들여쓰기를 하면 `.env` 파서가 키를 인식 못 함. 모든 키는 반드시 컬럼 0에서 시작해야 함.
+
+## 중요 사고 기록
+
+**2026-04-21 원격 전체 삭제 사고:**
+다른 PC에서 폴더 리네임 중 원본 폴더가 비워진 채로 auto-commit 훅이 발동 → 전체 파일 삭제 커밋(`8d4b337`)이 원격에 push됨. 이 PC에서 force-push로 복구(`845ba70`).
 **교훈:** 폴더 리네임/이동 시 auto-commit 훅이 빈 디렉토리를 푸시하지 않도록 주의.
 
-## Phase 1 MVP 진행 (2026-04-21 착수)
+## Next up when resuming
 
-**목표:** 세미나 신청 자체 양식 (Tally/네이버폼 대체) + 명함 OCR 자동입력 + SMS 알림 + 계좌이체 수동 안내.
+**실제 운영 시작 전 테스트:**
+1. 프로덕션(`alltica.co.kr`)에서 세미나 신청 엔드투엔드 (명함 업로드 → OCR → 저장 → SMS 수신) 검증
+2. 카톡 OG 미리보기 — 카카오 디버거에서 `alltica.co.kr` 캐시 초기화
+3. 관리자 스킨 선택 UX 확인 (피치 블룸 추천)
 
-**구현된 코드 (2026-04-21, 빌드 통과):**
-- `supabase/schema.sql` — applications 테이블 + business-cards Storage 버킷 + RLS
-- `src/lib/seminars.ts` — 하드코딩 세미나 4개 (MVP용 플레이스홀더)
-- `src/lib/supabase.ts` — admin/public 클라이언트 분리
-- `src/lib/sms.ts` — SolAPI SMS 추상화 (sendSms/sendSmsSafe)
-- `src/lib/ocr.ts` — Claude Vision (claude-haiku-4-5) tool_use 로 명함 구조화 추출
-- `src/app/api/ocr/business-card/route.ts` — OCR 엔드포인트
-- `src/app/api/applications/route.ts` — 신청 저장 + 명함 Storage 업로드 + SMS 발송 (신청자 + 관리자)
-- `src/app/seminars/page.tsx` — 세미나 목록
-- `src/app/seminars/[slug]/page.tsx` — 세미나 상세 (비용/커리큘럼/추천대상)
-- `src/app/seminars/[slug]/apply/page.tsx` — 신청 폼 페이지
-- `src/app/seminars/[slug]/apply/complete/page.tsx` — 접수 완료 + 계좌이체 안내
-- `src/components/SeminarCard.tsx`, `src/components/SeminarApplyForm.tsx`
-- `src/app/page.tsx` — 홈에 "진행 중인 세미나" 섹션 + 히어로 CTA 변경
-- `.env.example` 작성 (Supabase/Anthropic/SolAPI/은행계좌 키 명세)
+**Phase 2 기능:**
+- 토스페이먼츠 PG 연동 (즉시 카드/간편결제). 수동 계좌이체 UX 축소
+- 카카오 비즈니스 채널 신청 → 알림톡 템플릿 승인 → SolAPI SMS → 알림톡 전환 (`src/lib/sms.ts` 에 type 분기 추가)
+- 세미나 관리자 CRUD (하드코딩 `src/lib/seminars.ts` → Supabase `seminars` 테이블)
+- NextAuth v5 기반 일반 사용자 로그인 (현재는 관리자 비밀번호 쿠키만)
+- 세미나 데이터 실제 내용으로 교체 (postica 외 나머지 3개는 여전히 플레이스홀더)
+- 세미나별 명함 OCR 정확도 A/B 모니터링 (OCR 실패 건 별도 로그)
 
-**의사결정 기록:**
-- OCR: Claude Vision (Anthropic 계정 기 보유, 한국어 명함 인식 우수)
-- DB: Supabase (타 프로젝트 계정 보유 → alltica 전용 새 프로젝트 권장)
-- 알림: SolAPI **SMS** (postica 에 이미 셋업됨, 크레덴셜 재사용). 알림톡은 사용자가 카카오 승인 미신청 상태.
-- 결제: Phase 1 은 계좌이체 수동 안내만. PG(토스페이먼츠) 는 Phase 2.
-- 효성CMS 는 정기출금이라 세미나 1회성 결제에 부적합 → 범위 제외.
-- 세미나 데이터: 하드코딩 파일 (MVP), 세미나 수 많아지면 Supabase `seminars` 테이블 + 관리자 CRUD 로 이관.
-
-## 2026-04-21 원격 전체 삭제 사고
-다른 PC에서 폴더 리네임 중 원본 폴더 비워진 채로 auto-commit이 발동,
-전체 파일 삭제 커밋(`8d4b337`)이 원격에 push됨. 이 PC에서 force-push로 복구(`845ba70`).
-**교훈:** 폴더 리네임/이동 시 auto-commit 훅이 빈 디렉토리를 푸시하지 않도록 주의.
-
-## Next up (사용자 준비물 + Phase 2)
-**사용자가 준비해야 실제 작동:**
-1. Supabase 새 프로젝트 생성 → URL / anon key / service_role key 제공
-2. Supabase SQL Editor 에 `supabase/schema.sql` 실행
-3. Anthropic API 키 발급 → 환경변수
-4. postica SolAPI 크레덴셜 (API Key/Secret/발신번호) alltica `.env.local` 에 복사
-5. 은행 계좌 정보 (BANK_NAME/BANK_ACCOUNT_NUMBER/BANK_ACCOUNT_NAME) 입력
-6. ADMIN_NOTIFY_PHONES 관리자 수신번호 설정
-
-**Phase 2 작업:**
-- 토스페이먼츠 PG 연동 (즉시 카드/간편결제)
-- 카카오 비즈니스 채널 + 알림톡 템플릿 승인 → 알림톡 전환
-- 커스텀 도메인 (alltica.co.kr 등)
-- 세미나 관리자 CRUD (하드코딩 → Supabase)
-- 세미나 실제 데이터로 교체 (현재 플레이스홀더)
+**알려진 제약:**
+- 기존 `/api/submissions` 는 여전히 파일 기반(`data/submissions.json`, `public/uploads/`) → Vercel 서버리스에서 실제로 저장 안 됨. 세미나가 아닌 "일반 문의/제품/파트너" 폼은 프로덕션에서 동작 안 하는 상태. 필요해지면 `applications`와 동일하게 Supabase로 이관 필요.
