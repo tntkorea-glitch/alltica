@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: PageProps) {
   const form = getFormBySlug(slug);
   if (!form) return { title: "페이지를 찾을 수 없습니다" };
   return {
-    title: `${form.title} | 통합 신청센터`,
+    title: `${form.title} | Alltica`,
     description: form.description,
   };
 }
