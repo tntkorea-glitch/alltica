@@ -123,37 +123,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. SMS 발송 (실패해도 신청 자체는 성공 처리)
+    // 3. SMS 발송 (단문 90바이트 이내, 실패해도 신청 자체는 성공 처리)
     const bankName = process.env.BANK_NAME || "은행";
-    const bankAccount = process.env.BANK_ACCOUNT_NUMBER || "(관리자 확인)";
-    const bankHolder = process.env.BANK_ACCOUNT_NAME || "알티카";
+    const bankAccount = process.env.BANK_ACCOUNT_NUMBER || "관리자확인";
 
-    const applicantText = [
-      `[알티카] ${seminar.title} 신청이 접수되었습니다.`,
-      `- 일시: ${seminar.dateDisplay}`,
-      `- 장소: ${seminar.location}`,
-      `- 참가비: ${formatPrice(seminar.price)}`,
-      `- 입금계좌: ${bankName} ${bankAccount} (예금주 ${bankHolder})`,
-      "입금 확인 후 참가가 확정됩니다.",
-    ].join("\n");
+    const dateLabel = shortDateLabel(seminar.startAt);
 
-    await sendSmsSafe({ to: payload.phone, text: applicantText });
+    // 신청자용: 브랜드 + 날짜 + 접수완료 + 참가비 + 계좌 + 안내 (약 75-85 바이트)
+    const applicantText =
+      `[알티카] ${dateLabel} 세미나 접수완료\n` +
+      `참가비 ${formatPrice(seminar.price)}\n` +
+      `${bankName} ${bankAccount}\n` +
+      `입금 후 확정`;
 
+    console.log(`[sms] 신청자 메시지 ${byteLength(applicantText)}B (단문 한도 ${SMS_MAX_BYTES}B)`);
+    await sendSmsSafe({ to: payload.phone, text: applicantText, forceShort: true });
+
+    // 관리자용: 브랜드 + 신규신청 + 이름/전화 + 날짜 (약 50-70 바이트)
     const adminPhonesRaw = process.env.ADMIN_NOTIFY_PHONES || "";
     const adminPhones = adminPhonesRaw
       .split(",")
       .map((p) => p.trim())
       .filter(Boolean);
 
-    const adminText = [
-      `[알티카 신규 신청]`,
-      `세미나: ${seminar.title}`,
-      `신청자: ${payload.name}${payload.company ? ` / ${payload.company}` : ""}`,
-      `연락처: ${payload.phone}`,
-    ].join("\n");
+    const adminText =
+      `[알티카] 신규신청\n` +
+      `${payload.name} ${payload.phone}\n` +
+      `${dateLabel} 세미나`;
 
+    console.log(`[sms] 관리자 메시지 ${byteLength(adminText)}B`);
     await Promise.all(
-      adminPhones.map((phone) => sendSmsSafe({ to: phone, text: adminText }))
+      adminPhones.map((phone) => sendSmsSafe({ to: phone, text: adminText, forceShort: true }))
     );
 
     return NextResponse.json({ id: row.id, success: true }, { status: 201 });
