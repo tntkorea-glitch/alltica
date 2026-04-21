@@ -228,7 +228,7 @@ export default function SeminarApplyForm({ seminar }: Props) {
           <TextField
             label="연락처"
             value={form.phone}
-            onChange={(v) => updateField("phone", v)}
+            onChange={(v) => updateField("phone", formatPhone(v))}
             required
             error={errors.phone}
             placeholder="010-0000-0000"
