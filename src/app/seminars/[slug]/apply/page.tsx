@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: PageProps) {
   const seminar = getSeminarBySlug(slug);
   if (!seminar) return { title: "페이지를 찾을 수 없습니다" };
   return {
-    title: `${seminar.title} 신청 | 알티카`,
+    title: `${seminar.title} 신청 | Alltica`,
     description: `${seminar.title} 참가 신청 페이지`,
   };
 }
