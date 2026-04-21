@@ -7,7 +7,7 @@ import FloatingContact from "@/components/FloatingContact";
 export const metadata: Metadata = {
   title: "Alltica | 모든 신청, 한 곳에서",
   description:
-    "세미나 교육 신청, 제품 구매 문의, 인력 모집, 대리점/파트너 신청, 일반 문의까지 — 하나의 사이트에서 모든 신청을 관리하세요.",
+    "세미나 교육 신청, 제품 구매 문의, 인재 모집, 대리점/파트너 신청, 일반 문의까지 — 하나의 사이트에서 모든 신청을 관리하세요.",
 };
 
 export default function RootLayout({
