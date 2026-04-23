@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { seminars } from "@/lib/seminars";
+import { getAllSeminars } from "@/lib/seminars";
 import SeminarCard from "@/components/SeminarCard";
 
 export const metadata = {
@@ -7,7 +7,8 @@ export const metadata = {
   description: "Alltica에서 진행하는 세미나와 교육 과정을 신청하세요.",
 };
 
-export default function SeminarsPage() {
+export default async function SeminarsPage() {
+  const seminars = await getAllSeminars();
   const openOrUpcoming = seminars.filter(
     (s) => s.status === "open" || s.status === "upcoming"
   );

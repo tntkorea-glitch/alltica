@@ -1,19 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSeminarBySlug, seminars } from "@/lib/seminars";
+import { getSeminarBySlug, getAllSeminars } from "@/lib/seminars";
 import SeminarApplyForm from "@/components/SeminarApplyForm";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const seminars = await getAllSeminars();
   return seminars.map((s) => ({ slug: s.slug }));
 }
 
+export const dynamicParams = true;
+
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
-  const seminar = getSeminarBySlug(slug);
+  const seminar = await getSeminarBySlug(slug);
   if (!seminar) return { title: "페이지를 찾을 수 없습니다" };
   return {
     title: `${seminar.title} 신청 | Alltica`,
@@ -23,7 +26,7 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function SeminarApplyPage({ params }: PageProps) {
   const { slug } = await params;
-  const seminar = getSeminarBySlug(slug);
+  const seminar = await getSeminarBySlug(slug);
   if (!seminar) notFound();
 
   return (

@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSeminarBySlug, seminars, formatPrice } from "@/lib/seminars";
+import { getSeminarBySlug, getAllSeminars, formatPrice } from "@/lib/seminars";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const seminars = await getAllSeminars();
   return seminars.map((s) => ({ slug: s.slug }));
 }
+
+export const dynamicParams = true;
 
 export const metadata = {
   title: "신청이 완료되었습니다 | Alltica",
@@ -16,7 +19,7 @@ export const metadata = {
 
 export default async function ApplyCompletePage({ params }: PageProps) {
   const { slug } = await params;
-  const seminar = getSeminarBySlug(slug);
+  const seminar = await getSeminarBySlug(slug);
   if (!seminar) notFound();
 
   const bankName = process.env.BANK_NAME || "은행";

@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const seminar = getSeminarBySlug(payload.seminarSlug);
+    const seminar = await getSeminarBySlug(payload.seminarSlug);
     if (!seminar) {
       return NextResponse.json({ error: "존재하지 않는 세미나입니다." }, { status: 404 });
     }
@@ -136,11 +136,15 @@ export async function POST(request: NextRequest) {
       `${bankName} ${bankAccount}\n` +
       `입금 후 확정`;
 
-    console.log(`[sms] 신청자 메시지 ${byteLength(applicantText)}B (단문 한도 ${SMS_MAX_BYTES}B)`);
-    await sendSmsSafe({ to: payload.phone, text: applicantText, forceShort: true });
+    // 발신번호: 세미나에 설정된 강사 번호 우선, 없으면 전역 SOLAPI_SENDER
+    const senderPhone = seminar.instructorSenderPhone || undefined;
 
-    const adminPhonesRaw = process.env.ADMIN_NOTIFY_PHONES || "";
-    const adminPhones = adminPhonesRaw
+    console.log(`[sms] 신청자 메시지 ${byteLength(applicantText)}B (단문 한도 ${SMS_MAX_BYTES}B)`);
+    await sendSmsSafe({ to: payload.phone, text: applicantText, from: senderPhone, forceShort: true });
+
+    // 관리자 수신번호: 세미나 강사 번호 우선, 없으면 전역 ADMIN_NOTIFY_PHONES
+    const notifyPhonesRaw = seminar.instructorNotifyPhones || process.env.ADMIN_NOTIFY_PHONES || "";
+    const adminPhones = notifyPhonesRaw
       .split(",")
       .map((p) => p.trim())
       .filter(Boolean);
@@ -150,9 +154,11 @@ export async function POST(request: NextRequest) {
       `${payload.name} ${payload.phone}\n` +
       `${dateLabel} 세미나`;
 
-    console.log(`[sms] 관리자 메시지 ${byteLength(adminText)}B`);
+    console.log(`[sms] 관리자 메시지 ${byteLength(adminText)}B → ${adminPhones.length}명`);
     await Promise.all(
-      adminPhones.map((phone) => sendSmsSafe({ to: phone, text: adminText, forceShort: true }))
+      adminPhones.map((phone) =>
+        sendSmsSafe({ to: phone, text: adminText, from: senderPhone, forceShort: true }),
+      ),
     );
 
     return NextResponse.json({ id: row.id, success: true }, { status: 201 });

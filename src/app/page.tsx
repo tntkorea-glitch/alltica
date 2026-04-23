@@ -1,10 +1,11 @@
 import FormCard from "@/components/FormCard";
 import SeminarCard from "@/components/SeminarCard";
 import { formTemplates } from "@/lib/forms";
-import { seminars } from "@/lib/seminars";
+import { getAllSeminars } from "@/lib/seminars";
 import Link from "next/link";
 
-export default function Home() {
+export default async function Home() {
+  const seminars = await getAllSeminars();
   return (
     <div>
       {/* Hero - Full screen */}

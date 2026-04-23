@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import { formatPhone } from "@/lib/phone";
-import { formatPrice, seminars as allSeminars } from "@/lib/seminars";
+import { formatPrice, type Seminar } from "@/lib/seminars";
 import { Submission } from "@/lib/types";
 import { formTemplates } from "@/lib/forms";
 import { THEMES, ThemeId } from "@/lib/theme";
@@ -69,7 +69,7 @@ function sanitizeSheetName(name: string): string {
 }
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<"seminars" | "forms" | "settings">("seminars");
+  const [tab, setTab] = useState<"seminars" | "forms" | "users" | "settings">("seminars");
 
   // Seminar applications
   const [apps, setApps] = useState<Application[]>([]);
@@ -83,6 +83,15 @@ export default function AdminPage() {
   const [subsLoading, setSubsLoading] = useState(false);
   const [formFilterSlug, setFormFilterSlug] = useState("");
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
+
+  const [allSeminars, setAllSeminars] = useState<Seminar[]>([]);
+
+  useEffect(() => {
+    fetch("/api/seminars")
+      .then((r) => r.json())
+      .then(setAllSeminars)
+      .catch(() => {});
+  }, []);
 
   const fetchApps = useCallback(async () => {
     setAppsLoading(true);
@@ -238,6 +247,9 @@ export default function AdminPage() {
               {submissions.length}
             </span>
           </TabButton>
+          <TabButton active={tab === "users"} onClick={() => setTab("users")}>
+            👥 사용자
+          </TabButton>
           <TabButton active={tab === "settings"} onClick={() => setTab("settings")}>
             ⚙️ 설정
           </TabButton>
@@ -258,6 +270,7 @@ export default function AdminPage() {
             onRefresh={fetchApps}
             onExport={exportExcel}
             onRowClick={setSelectedApp}
+            allSeminars={allSeminars}
           />
         )}
         {tab === "forms" && (
@@ -270,11 +283,12 @@ export default function AdminPage() {
             onRowClick={setSelectedSub}
           />
         )}
+        {tab === "users" && <UsersTab />}
         {tab === "settings" && <SettingsTab />}
       </div>
 
       {selectedApp && (
-        <ApplicationDetailModal app={selectedApp} onClose={() => setSelectedApp(null)} />
+        <ApplicationDetailModal app={selectedApp} onClose={() => setSelectedApp(null)} allSeminars={allSeminars} />
       )}
       {selectedSub && (
         <SubmissionDetailModal sub={selectedSub} onClose={() => setSelectedSub(null)} />
@@ -323,6 +337,7 @@ function SeminarsTab({
   onRefresh,
   onExport,
   onRowClick,
+  allSeminars,
 }: {
   apps: Application[];
   filteredApps: Application[];
@@ -335,6 +350,7 @@ function SeminarsTab({
   onRefresh: () => void;
   onExport: () => void;
   onRowClick: (a: Application) => void;
+  allSeminars: Seminar[];
 }) {
   return (
     <>
@@ -531,9 +547,11 @@ function Badge({ children, tone }: { children: React.ReactNode; tone: string }) 
 function ApplicationDetailModal({
   app,
   onClose,
+  allSeminars,
 }: {
   app: Application;
   onClose: () => void;
+  allSeminars: Seminar[];
 }) {
   const sem = allSeminars.find((s) => s.slug === app.seminar_slug);
   return (
@@ -939,6 +957,227 @@ function SettingsTab() {
           {msg}
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// Users tab — role 관리 (user / instructor / admin)
+// ============================================================
+interface AdminUser {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  role: "user" | "instructor" | "admin";
+  provider: string | null;
+  last_login_at: string | null;
+  created_at: string;
+}
+
+const ROLE_LABEL: Record<AdminUser["role"], string> = {
+  user: "일반",
+  instructor: "강사",
+  admin: "관리자",
+};
+const ROLE_TONE: Record<AdminUser["role"], string> = {
+  user: "bg-gray-100 text-gray-700 border-gray-200",
+  instructor: "bg-blue-50 text-blue-700 border-blue-200",
+  admin: "bg-purple-50 text-purple-700 border-purple-200",
+};
+
+function UsersTab() {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/users");
+      if (!res.ok) throw new Error("조회 실패");
+      const data: AdminUser[] = await res.json();
+      setUsers(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function changeRole(userId: string, role: AdminUser["role"]) {
+    setSavingId(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      if (!res.ok) throw new Error("저장 실패");
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
+    } catch (err) {
+      console.error(err);
+      alert("저장 실패");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  async function changePhone(userId: string, phone: string) {
+    setSavingId(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      if (!res.ok) throw new Error("저장 실패");
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, phone: phone || null } : u)),
+      );
+    } catch (err) {
+      console.error(err);
+      alert("저장 실패");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">사용자 관리</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            강사 권한을 부여하면 <code className="text-brand">/teacher</code>에서 직접 세미나를
+            등록할 수 있습니다.
+          </p>
+        </div>
+        <button
+          onClick={load}
+          className="text-sm text-gray-500 hover:text-brand transition-colors"
+        >
+          새로고침
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="text-center text-gray-500 py-12">불러오는 중...</p>
+      ) : users.length === 0 ? (
+        <p className="text-center text-gray-500 py-12">등록된 사용자가 없습니다.</p>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <Th>이메일</Th>
+                <Th>이름</Th>
+                <Th>연락처</Th>
+                <Th>권한</Th>
+                <Th>가입일</Th>
+                <Th>최근 로그인</Th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {users.map((u) => (
+                <tr key={u.id} className="hover:bg-gray-50/50">
+                  <Td className="font-mono text-xs text-gray-700 whitespace-nowrap">
+                    {u.email}
+                  </Td>
+                  <Td className="whitespace-nowrap">{u.name || "-"}</Td>
+                  <Td className="whitespace-nowrap">
+                    <PhoneEditor
+                      initial={u.phone || ""}
+                      disabled={savingId === u.id}
+                      onSave={(v) => changePhone(u.id, v)}
+                    />
+                  </Td>
+                  <Td>
+                    <select
+                      value={u.role}
+                      disabled={savingId === u.id}
+                      onChange={(e) => changeRole(u.id, e.target.value as AdminUser["role"])}
+                      className={`text-xs font-semibold px-2 py-1 rounded-full border ${ROLE_TONE[u.role]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
+                    >
+                      {(["user", "instructor", "admin"] as const).map((r) => (
+                        <option key={r} value={r}>
+                          {ROLE_LABEL[r]}
+                        </option>
+                      ))}
+                    </select>
+                  </Td>
+                  <Td className="text-xs text-gray-500 whitespace-nowrap">
+                    {formatKST(u.created_at)}
+                  </Td>
+                  <Td className="text-xs text-gray-500 whitespace-nowrap">
+                    {u.last_login_at ? formatKST(u.last_login_at) : "-"}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PhoneEditor({
+  initial,
+  disabled,
+  onSave,
+}: {
+  initial: string;
+  disabled: boolean;
+  onSave: (v: string) => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => setValue(initial), [initial]);
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="text-xs text-gray-600 hover:text-brand underline-offset-2 hover:underline"
+      >
+        {initial ? formatPhone(initial) : "— 입력 —"}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        disabled={disabled}
+        placeholder="010-0000-0000"
+        className="w-32 text-xs px-2 py-1 border border-gray-200 rounded focus:outline-none focus:border-brand"
+      />
+      <button
+        onClick={() => {
+          onSave(value);
+          setEditing(false);
+        }}
+        disabled={disabled}
+        className="text-xs text-brand hover:underline"
+      >
+        저장
+      </button>
+      <button
+        onClick={() => {
+          setValue(initial);
+          setEditing(false);
+        }}
+        className="text-xs text-gray-400 hover:underline"
+      >
+        취소
+      </button>
     </div>
   );
 }

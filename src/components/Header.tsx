@@ -60,7 +60,17 @@ export default function Header() {
         {/* Session + CTA + admin */}
         <div className="hidden lg:flex items-center gap-3">
           {status === "authenticated" && session?.user ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {(session.user.role === "instructor" || session.user.role === "admin") && (
+                <Link
+                  href="/teacher"
+                  className={`text-sm font-semibold transition-colors ${
+                    scrolled ? "text-brand hover:text-brand-hover" : "text-white hover:text-white/80"
+                  }`}
+                >
+                  🎓 강사
+                </Link>
+              )}
               <span
                 className={`text-sm font-medium ${
                   scrolled ? "text-gray-700" : "text-white/90"
@@ -153,6 +163,15 @@ export default function Header() {
                 <div className="px-3 py-2 text-xs text-gray-500">
                   {session.user.name ?? session.user.email}
                 </div>
+                {(session.user.role === "instructor" || session.user.role === "admin") && (
+                  <Link
+                    href="/teacher"
+                    onClick={() => setMenuOpen(false)}
+                    className="block py-2.5 px-3 rounded-lg text-sm font-semibold text-brand hover:bg-gray-50 transition-colors"
+                  >
+                    🎓 강사 페이지
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={() => {
