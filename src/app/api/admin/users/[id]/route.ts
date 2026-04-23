@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { isAdminRequest } from "@/lib/admin-session";
+import { isAdminRequest, verifyAdminToken, ADMIN_COOKIE } from "@/lib/admin-session";
+import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const ROLES = ["user", "instructor", "admin"] as const;
+const ROLES = ["user", "instructor", "subadmin", "admin"] as const;
 type Role = (typeof ROLES)[number];
+
+// "주체 관리자(admin)"인지 확인: 쿠키(password)로 들어왔거나, 세션 role=admin 이어야 함.
+// subadmin 이 다른 사용자를 admin 으로 승격시키거나, 기존 admin 을 강등시키는 걸 막기 위함.
+async function isFullAdmin(request: Request): Promise<boolean> {
+  const cookie = request.headers.get("cookie") ?? "";
+  const match = cookie.match(new RegExp(`(?:^|;\\s*)${ADMIN_COOKIE}=([^;]+)`));
+  if (await verifyAdminToken(match?.[1])) return true;
+  const session = await auth();
+  return session?.user?.role === "admin";
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -14,6 +25,8 @@ export async function PATCH(
   if (!(await isAdminRequest(request))) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   }
+  const fullAdmin = await isFullAdmin(request);
+
   const { id } = await params;
   const body = (await request.json()) as { role?: string; phone?: string };
 
@@ -32,6 +45,28 @@ export async function PATCH(
   }
 
   const supabase = getSupabaseAdmin();
+
+  // 서브관리자 권한 제약: admin 으로 올리거나 admin 을 강등/수정하는 건 full admin 만
+  if (!fullAdmin) {
+    if (patch.role === "admin") {
+      return NextResponse.json(
+        { error: "관리자 승격은 최고관리자만 가능합니다." },
+        { status: 403 },
+      );
+    }
+    const { data: target } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", id)
+      .maybeSingle();
+    if (target?.role === "admin") {
+      return NextResponse.json(
+        { error: "관리자 계정은 최고관리자만 수정할 수 있습니다." },
+        { status: 403 },
+      );
+    }
+  }
+
   const { data, error } = await supabase
     .from("users")
     .update(patch)

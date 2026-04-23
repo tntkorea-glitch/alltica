@@ -28,7 +28,8 @@ export default async function EditSeminarPage({
     .eq("id", id)
     .maybeSingle();
   if (!row) notFound();
-  if (ctx.role !== "admin" && row.instructor_id !== ctx.userId) {
+  const isPriv = ctx.role === "admin" || ctx.role === "subadmin";
+  if (!isPriv && row.instructor_id !== ctx.userId) {
     redirect("/teacher");
   }
 

@@ -20,7 +20,8 @@ async function loadOwned(id: string) {
   if (error) return { error: error.message, status: 500 as const, ctx: null };
   if (!seminar) return { error: "세미나를 찾을 수 없습니다.", status: 404 as const, ctx: null };
 
-  if (ctx.role !== "admin" && seminar.instructor_id !== ctx.userId) {
+  const isPriv = ctx.role === "admin" || ctx.role === "subadmin";
+  if (!isPriv && seminar.instructor_id !== ctx.userId) {
     return { error: "본인이 등록한 세미나만 수정할 수 있습니다.", status: 403 as const, ctx: null };
   }
   return { ctx, status: 200 as const, error: null };

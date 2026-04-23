@@ -962,27 +962,31 @@ function SettingsTab() {
 }
 
 // ============================================================
-// Users tab — role 관리 (user / instructor / admin)
+// Users tab — role 관리 (user / instructor / subadmin / admin)
 // ============================================================
+type Role = "user" | "instructor" | "subadmin" | "admin";
+
 interface AdminUser {
   id: string;
   email: string;
   name: string | null;
   phone: string | null;
-  role: "user" | "instructor" | "admin";
+  role: Role;
   provider: string | null;
   last_login_at: string | null;
   created_at: string;
 }
 
-const ROLE_LABEL: Record<AdminUser["role"], string> = {
+const ROLE_LABEL: Record<Role, string> = {
   user: "일반",
   instructor: "강사",
+  subadmin: "서브관리자",
   admin: "관리자",
 };
-const ROLE_TONE: Record<AdminUser["role"], string> = {
+const ROLE_TONE: Record<Role, string> = {
   user: "bg-gray-100 text-gray-700 border-gray-200",
   instructor: "bg-blue-50 text-blue-700 border-blue-200",
+  subadmin: "bg-orange-50 text-orange-700 border-orange-200",
   admin: "bg-purple-50 text-purple-700 border-purple-200",
 };
 
@@ -1053,8 +1057,9 @@ function UsersTab() {
         <div>
           <h2 className="text-lg font-bold text-gray-900">사용자 관리</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            강사 권한을 부여하면 <code className="text-brand">/teacher</code>에서 직접 세미나를
-            등록할 수 있습니다.
+            <b>강사</b>는 <code className="text-brand">/teacher</code>에서 자기 세미나 CRUD ·
+            <b>서브관리자</b>는 관리자 페이지와 전체 세미나 접근 (단, 관리자 승격 권한은 없음) ·
+            <b>관리자</b>는 전체 권한.
           </p>
         </div>
         <button
@@ -1103,7 +1108,7 @@ function UsersTab() {
                       onChange={(e) => changeRole(u.id, e.target.value as AdminUser["role"])}
                       className={`text-xs font-semibold px-2 py-1 rounded-full border ${ROLE_TONE[u.role]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
                     >
-                      {(["user", "instructor", "admin"] as const).map((r) => (
+                      {(["user", "instructor", "subadmin", "admin"] as const).map((r) => (
                         <option key={r} value={r}>
                           {ROLE_LABEL[r]}
                         </option>

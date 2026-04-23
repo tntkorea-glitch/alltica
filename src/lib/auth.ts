@@ -2,7 +2,7 @@ import NextAuth, { type DefaultSession } from "next-auth";
 import Google from "next-auth/providers/google";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
-type UserRole = "user" | "instructor" | "admin";
+type UserRole = "user" | "instructor" | "subadmin" | "admin";
 
 declare module "next-auth" {
   interface Session {

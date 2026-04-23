@@ -61,7 +61,7 @@ export default function Header() {
         <div className="hidden lg:flex items-center gap-3">
           {status === "authenticated" && session?.user ? (
             <div className="flex items-center gap-3">
-              {(session.user.role === "instructor" || session.user.role === "admin") && (
+              {(session.user.role === "instructor" || session.user.role === "subadmin" || session.user.role === "admin") && (
                 <Link
                   href="/teacher"
                   className={`text-sm font-semibold transition-colors ${
@@ -163,7 +163,7 @@ export default function Header() {
                 <div className="px-3 py-2 text-xs text-gray-500">
                   {session.user.name ?? session.user.email}
                 </div>
-                {(session.user.role === "instructor" || session.user.role === "admin") && (
+                {(session.user.role === "instructor" || session.user.role === "subadmin" || session.user.role === "admin") && (
                   <Link
                     href="/teacher"
                     onClick={() => setMenuOpen(false)}

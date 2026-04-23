@@ -47,7 +47,8 @@ export async function GET() {
 
   const supabase = getSupabaseAdmin();
   let query = supabase.from("seminars").select("*").order("start_at", { ascending: true });
-  if (ctx.role !== "admin") {
+  const isPriv = ctx.role === "admin" || ctx.role === "subadmin";
+  if (!isPriv) {
     query = query.eq("instructor_id", ctx.userId);
   }
   const { data, error } = await query;

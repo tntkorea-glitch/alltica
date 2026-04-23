@@ -24,7 +24,8 @@ export async function GET(
     .maybeSingle();
   if (sErr) return NextResponse.json({ error: sErr.message }, { status: 500 });
   if (!seminar) return NextResponse.json({ error: "세미나 없음" }, { status: 404 });
-  if (ctx.role !== "admin" && seminar.instructor_id !== ctx.userId) {
+  const isPriv = ctx.role === "admin" || ctx.role === "subadmin";
+  if (!isPriv && seminar.instructor_id !== ctx.userId) {
     return NextResponse.json({ error: "본인 세미나만 조회 가능" }, { status: 403 });
   }
 

@@ -9,7 +9,8 @@ export default async function TeacherPage() {
   const ctx = await getTeacherContext();
   if (!ctx) redirect("/login?callbackUrl=/teacher");
 
-  const seminars = ctx.role === "admin"
+  const isPriv = ctx.role === "admin" || ctx.role === "subadmin";
+  const seminars = isPriv
     ? await getAllSeminars()
     : await getSeminarsByInstructor(ctx.userId);
 
@@ -20,7 +21,11 @@ export default async function TeacherPage() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-bold uppercase tracking-wider text-brand bg-blue-50 px-2 py-0.5 rounded">
-                {ctx.role === "admin" ? "관리자 (전체 세미나)" : "강사 대시보드"}
+                {ctx.role === "admin"
+                  ? "관리자 (전체 세미나)"
+                  : ctx.role === "subadmin"
+                    ? "서브관리자 (전체 세미나)"
+                    : "강사 대시보드"}
               </span>
             </div>
             <h1 className="text-2xl font-extrabold text-gray-900">내 세미나</h1>

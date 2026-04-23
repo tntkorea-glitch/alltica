@@ -53,5 +53,18 @@ export async function isAdminRequest(request: Request): Promise<boolean> {
   const cookie = request.headers.get("cookie") ?? "";
   const match = cookie.match(new RegExp(`(?:^|;\\s*)${ADMIN_COOKIE}=([^;]+)`));
   const token = match?.[1];
-  return verifyAdminToken(token);
+  if (await verifyAdminToken(token)) return true;
+  // NextAuth 세션 기반: role=admin | subadmin
+  return hasAdminSessionRole();
+}
+
+async function hasAdminSessionRole(): Promise<boolean> {
+  try {
+    const { auth } = await import("@/lib/auth");
+    const session = await auth();
+    const role = session?.user?.role;
+    return role === "admin" || role === "subadmin";
+  } catch {
+    return false;
+  }
 }
