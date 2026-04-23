@@ -80,9 +80,34 @@ alltica = 통합 신청센터 + 세미나 신청 시스템. 도메인 `alltica.c
 - 토스페이먼츠 PG 연동 (즉시 카드/간편결제). 수동 계좌이체 UX 축소
 - 카카오 비즈니스 채널 신청 → 알림톡 템플릿 승인 → SolAPI SMS → 알림톡 전환 (`src/lib/sms.ts` 에 type 분기 추가)
 - 세미나 관리자 CRUD (하드코딩 `src/lib/seminars.ts` → Supabase `seminars` 테이블)
-- NextAuth v5 기반 일반 사용자 로그인 (현재는 관리자 비밀번호 쿠키만)
 - 세미나 데이터 실제 내용으로 교체 (postica 외 나머지 3개는 여전히 플레이스홀더)
 - 세미나별 명함 OCR 정확도 A/B 모니터링 (OCR 실패 건 별도 로그)
+- 카카오/네이버 로그인 실연동 (현재 버튼만 있고 "준비 중" alert)
+
+## 로그인/관리자 인증 (2026-04-24 추가)
+
+**사용자 로그인 — NextAuth v5 JWT:**
+- `next-auth@5.0.0-beta.31` 설치, `src/lib/auth.ts` 에 `handlers/auth/signIn/signOut` export
+- 현재 활성 provider: **Google 만**. 카카오/네이버 버튼은 `/login` 페이지에 있으나 클릭 시 "준비 중" alert
+- Google 첫 로그인 시 `signIn` 콜백에서 Supabase `users` 테이블에 자동 insert (role=user), 재로그인 시 last_login_at 갱신
+- JWT 콜백에서 Supabase 조회해 `token.id` / `token.role` 주입 → 세션에 `user.id` / `user.role` 노출
+- `.env.local` 에 `AUTH_SECRET` 자동생성값 들어있음. `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` 은 빈 값 — **Google Cloud Console 셋업 필요**
+- Google OAuth 리디렉션 URI: `http://localhost:3008/api/auth/callback/google` / `https://alltica.co.kr/api/auth/callback/google`
+
+**관리자 인증 — httpOnly 쿠키 + HMAC 서명:**
+- 기존 `/api/auth` 엔드포인트 삭제
+- `/api/admin/login` (POST, password 검증 → `admin_session` 쿠키 발급, 7일 TTL) + `/api/admin/logout`
+- 토큰 포맷: `<exp>.<base64url(HMAC-SHA256(AUTH_SECRET, "admin."+exp))>` (`src/lib/admin-session.ts`)
+- **Next.js 16 `proxy.ts`** (`src/proxy.ts`) 가 `/admin/*` 가드 — 쿠키 없거나 만료 시 `/admin/login?next=...` 으로 리다이렉트
+- 백엔드 API (`/api/applications`, `/api/submissions`, `/api/settings/theme`) 는 `isAdminRequest(request)` 헬퍼로 쿠키 검증 — 기존 `Authorization: Bearer <pw>` 헤더 방식 완전 제거
+- 관리자 페이지는 더 이상 `authenticated` 클라이언트 state 없음. 새로고침해도 쿠키 유효하면 유지됨
+
+**Supabase 스키마 변경:**
+- `public.users` 테이블 추가 (id, email unique, name, image, provider, role enum(user|admin), last_login_at, created/updated_at)
+- RLS 활성, service_role 에서만 조작 — **Supabase SQL Editor 에서 `supabase/schema.sql` 재실행 필요 (CREATE IF NOT EXISTS 라 안전)**
+
+**Next.js 16 주의:**
+- `middleware.ts` 대신 `proxy.ts` (v16.0.0에서 개명). `export const config = { matcher }` 는 허용, 하지만 `runtime` 등 기타 필드는 금지 (proxy는 항상 Node.js 런타임)
 
 **알려진 제약:**
 - 기존 `/api/submissions` 는 여전히 파일 기반(`data/submissions.json`, `public/uploads/`) → Vercel 서버리스에서 실제로 저장 안 됨. 세미나가 아닌 "일반 문의/제품/파트너" 폼은 프로덕션에서 동작 안 하는 상태. 필요해지면 `applications`와 동일하게 Supabase로 이관 필요.
