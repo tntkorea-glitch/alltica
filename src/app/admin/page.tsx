@@ -69,10 +69,6 @@ function sanitizeSheetName(name: string): string {
 }
 
 export default function AdminPage() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
-
   const [tab, setTab] = useState<"seminars" | "forms" | "settings">("seminars");
 
   // Seminar applications
@@ -88,22 +84,15 @@ export default function AdminPage() {
   const [formFilterSlug, setFormFilterSlug] = useState("");
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
 
-  const authHeader = useCallback(() => {
-    const cookieMatch = document.cookie.match(/admin_auth=([^;]+)/);
-    const pw = cookieMatch?.[1] || password;
-    return { Authorization: `Bearer ${pw}` };
-  }, [password]);
-
-  useEffect(() => {
-    const match = document.cookie.match(/admin_auth=([^;]+)/);
-    if (match && match[1]) setAuthenticated(true);
-  }, []);
-
   const fetchApps = useCallback(async () => {
     setAppsLoading(true);
     try {
-      const res = await fetch(`/api/applications`, { headers: authHeader() });
-      if (!res.ok) throw new Error("인증 실패");
+      const res = await fetch(`/api/applications`);
+      if (res.status === 401) {
+        window.location.href = "/admin/login?next=/admin";
+        return;
+      }
+      if (!res.ok) throw new Error("조회 실패");
       const data: Application[] = await res.json();
       setApps(data);
     } catch (err) {
@@ -111,14 +100,18 @@ export default function AdminPage() {
     } finally {
       setAppsLoading(false);
     }
-  }, [authHeader]);
+  }, []);
 
   const fetchSubs = useCallback(async () => {
     setSubsLoading(true);
     try {
       const url = `/api/submissions${formFilterSlug ? `?formSlug=${formFilterSlug}` : ""}`;
-      const res = await fetch(url, { headers: authHeader() });
-      if (!res.ok) throw new Error("인증 실패");
+      const res = await fetch(url);
+      if (res.status === 401) {
+        window.location.href = "/admin/login?next=/admin";
+        return;
+      }
+      if (!res.ok) throw new Error("조회 실패");
       const data: Submission[] = await res.json();
       setSubmissions(data);
     } catch (err) {
@@ -126,41 +119,16 @@ export default function AdminPage() {
     } finally {
       setSubsLoading(false);
     }
-  }, [authHeader, formFilterSlug]);
+  }, [formFilterSlug]);
 
   useEffect(() => {
-    if (!authenticated) return;
     if (tab === "seminars") fetchApps();
     else fetchSubs();
-  }, [authenticated, tab, fetchApps, fetchSubs]);
+  }, [tab, fetchApps, fetchSubs]);
 
-  // Login handler
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const res = await fetch("/api/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (!res.ok) {
-        setLoginError("비밀번호가 올바르지 않습니다.");
-        return;
-      }
-      document.cookie = `admin_auth=${password}; path=/; max-age=${60 * 60 * 24}`;
-      setAuthenticated(true);
-      setLoginError("");
-    } catch {
-      setLoginError("로그인 처리 중 오류가 발생했습니다.");
-    }
-  }
-
-  function handleLogout() {
-    document.cookie = "admin_auth=; path=/; max-age=0";
-    setAuthenticated(false);
-    setPassword("");
-    setApps([]);
-    setSubmissions([]);
+  async function handleLogout() {
+    await fetch("/api/admin/logout", { method: "POST" });
+    window.location.href = "/admin/login";
   }
 
   // Group applications by seminar title (postica 7개 세션 합쳐서 표시)
@@ -234,35 +202,6 @@ export default function AdminPage() {
     XLSX.writeFile(wb, `alltica-세미나신청-${today}.xlsx`);
   }
 
-  if (!authenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 w-full max-w-sm">
-          <h1 className="text-xl font-bold text-gray-900 text-center mb-6">Alltica 관리자</h1>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand text-sm"
-            />
-            {loginError && <p className="text-red-500 text-xs">{loginError}</p>}
-            <button
-              type="submit"
-              className="w-full bg-brand text-white py-3 rounded-xl font-bold text-sm hover:bg-brand-hover transition-colors"
-            >
-              로그인
-            </button>
-          </form>
-          <Link href="/" className="block text-center text-xs text-gray-400 mt-4 hover:text-gray-600">
-            홈으로 돌아가기
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -331,7 +270,7 @@ export default function AdminPage() {
             onRowClick={setSelectedSub}
           />
         )}
-        {tab === "settings" && <SettingsTab authHeader={authHeader} />}
+        {tab === "settings" && <SettingsTab />}
       </div>
 
       {selectedApp && (
@@ -884,11 +823,7 @@ function FormsTab({
 // ============================================================
 // Settings tab — 스킨 선택기
 // ============================================================
-function SettingsTab({
-  authHeader,
-}: {
-  authHeader: () => { Authorization: string };
-}) {
+function SettingsTab() {
   const [current, setCurrent] = useState<ThemeId>("navy");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<ThemeId | null>(null);
@@ -918,7 +853,7 @@ function SettingsTab({
     try {
       const res = await fetch("/api/settings/theme", {
         method: "PUT",
-        headers: { ...authHeader(), "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ theme }),
       });
       if (!res.ok) {

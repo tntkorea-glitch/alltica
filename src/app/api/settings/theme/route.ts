@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import { isAdminRequest } from "@/lib/admin-session";
 
 export const runtime = "nodejs";
 
@@ -24,10 +25,7 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const adminPassword = process.env.ADMIN_PASSWORD || "admin1234";
-  const authHeader = request.headers.get("Authorization");
-  const pw = authHeader?.replace("Bearer ", "");
-  if (pw !== adminPassword) {
+  if (!(await isAdminRequest(request))) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   }
 

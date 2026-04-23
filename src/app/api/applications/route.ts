@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, BUSINESS_CARD_BUCKET } from "@/lib/supabase";
 import { sendSmsSafe, byteLength, SMS_MAX_BYTES } from "@/lib/sms";
 import { getSeminarBySlug, formatPrice } from "@/lib/seminars";
+import { isAdminRequest } from "@/lib/admin-session";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -164,15 +165,12 @@ export async function POST(request: NextRequest) {
 
 // ============================================================
 // GET /api/applications — 관리자 페이지에서 조회
-// Bearer <ADMIN_PASSWORD> 헤더 필수, optional: ?seminarSlug=xxx
+// admin_session 쿠키 필수, optional: ?seminarSlug=xxx
 // ============================================================
 const SIGNED_URL_EXPIRY = 60 * 60; // 1시간
 
 export async function GET(request: NextRequest) {
-  const adminPassword = process.env.ADMIN_PASSWORD || "admin1234";
-  const authHeader = request.headers.get("Authorization");
-  const pw = authHeader?.replace("Bearer ", "");
-  if (pw !== adminPassword) {
+  if (!(await isAdminRequest(request))) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   }
 

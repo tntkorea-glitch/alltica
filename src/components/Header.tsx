@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { signOut, useSession } from "next-auth/react";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -55,8 +57,46 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* CTA button */}
-        <div className="hidden lg:block">
+        {/* Session + CTA + admin */}
+        <div className="hidden lg:flex items-center gap-3">
+          {status === "authenticated" && session?.user ? (
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-sm font-medium ${
+                  scrolled ? "text-gray-700" : "text-white/90"
+                }`}
+              >
+                {session.user.name ?? session.user.email}
+              </span>
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className={`text-xs font-medium transition-colors ${
+                  scrolled ? "text-gray-400 hover:text-brand" : "text-white/60 hover:text-white"
+                }`}
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className={`text-sm font-medium transition-colors ${
+                scrolled ? "text-gray-600 hover:text-brand" : "text-white/80 hover:text-white"
+              }`}
+            >
+              로그인
+            </Link>
+          )}
+          <Link
+            href="/admin"
+            className={`text-xs font-medium transition-colors ${
+              scrolled ? "text-gray-400 hover:text-brand" : "text-white/50 hover:text-white/80"
+            }`}
+            title="관리자"
+          >
+            관리자
+          </Link>
           <Link
             href="/forms/inquiry"
             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
@@ -107,6 +147,40 @@ export default function Header() {
               {item.label}
             </Link>
           ))}
+          <div className="border-t border-gray-100 mt-2 pt-2 space-y-1">
+            {status === "authenticated" && session?.user ? (
+              <>
+                <div className="px-3 py-2 text-xs text-gray-500">
+                  {session.user.name ?? session.user.email}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    signOut({ callbackUrl: "/" });
+                  }}
+                  className="w-full text-left py-2.5 px-3 rounded-lg text-sm font-medium text-gray-700 hover:text-brand hover:bg-gray-50 transition-colors"
+                >
+                  로그아웃
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className="block py-2.5 px-3 rounded-lg text-sm font-medium text-gray-700 hover:text-brand hover:bg-gray-50 transition-colors"
+              >
+                로그인
+              </Link>
+            )}
+            <Link
+              href="/admin"
+              onClick={() => setMenuOpen(false)}
+              className="block py-2.5 px-3 rounded-lg text-xs font-medium text-gray-400 hover:text-brand hover:bg-gray-50 transition-colors"
+            >
+              관리자
+            </Link>
+          </div>
         </nav>
       )}
     </header>

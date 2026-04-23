@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import Header from "@/components/Header";
 import FloatingContact from "@/components/FloatingContact";
+import AuthSessionProvider from "@/components/providers/SessionProvider";
 import { getCurrentTheme } from "@/lib/theme";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://alltica.co.kr";
@@ -48,9 +49,10 @@ export default async function RootLayout({
         <Script src="/inapp-guard.js" strategy="beforeInteractive" />
       </head>
       <body className="min-h-full flex flex-col bg-white">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <footer className="bg-brand-deep text-white/50 px-4 sm:px-6 py-10">
+        <AuthSessionProvider>
+          <Header />
+          <main className="flex-1">{children}</main>
+          <footer className="bg-brand-deep text-white/50 px-4 sm:px-6 py-10">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8 pb-8 border-b border-white/10">
               <div>
@@ -71,8 +73,9 @@ export default async function RootLayout({
               </div>
             </div>
           </div>
-        </footer>
-        <FloatingContact />
+          </footer>
+          <FloatingContact />
+        </AuthSessionProvider>
       </body>
     </html>
   );

@@ -102,3 +102,30 @@ on conflict (id) do nothing;
 
 -- Storage RLS: service_role만 쓰기, 읽기는 서명 URL로만 접근 가능
 -- (기본값이 이미 이렇게 동작하므로 별도 policy 불필요)
+
+-- ============================================================
+-- users table (NextAuth v5 JWT 세션 + 영속 사용자 레코드)
+-- Google/Kakao/Naver 로그인 시 자동 생성.
+-- ============================================================
+create table if not exists public.users (
+  id         uuid primary key default gen_random_uuid(),
+  email      text not null unique,
+  name       text,
+  image      text,
+  provider   text,                      -- 'google' | 'kakao' | 'naver' | 'credentials'
+  role       text not null default 'user'
+             check (role in ('user', 'admin')),
+  last_login_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists users_email_idx on public.users (email);
+
+drop trigger if exists users_set_updated_at on public.users;
+create trigger users_set_updated_at
+  before update on public.users
+  for each row execute function public.set_updated_at();
+
+alter table public.users enable row level security;
+-- service_role 에서만 조작 (브라우저 직접 접근 차단)

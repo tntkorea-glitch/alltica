@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addSubmission, getSubmissions, saveUploadedFile } from "@/lib/storage";
 import { Submission } from "@/lib/types";
+import { isAdminRequest } from "@/lib/admin-session";
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,11 +43,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin1234";
-    const authHeader = request.headers.get("Authorization");
-    const password = authHeader?.replace("Bearer ", "");
-
-    if (password !== ADMIN_PASSWORD) {
+    if (!(await isAdminRequest(request))) {
       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
     }
 
