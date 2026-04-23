@@ -112,9 +112,10 @@ create table if not exists public.users (
   email      text not null unique,
   name       text,
   image      text,
+  phone      text,                      -- 강사용 — 세미나 SMS 발신번호로도 활용
   provider   text,                      -- 'google' | 'kakao' | 'naver' | 'credentials'
   role       text not null default 'user'
-             check (role in ('user', 'admin')),
+             check (role in ('user', 'instructor', 'admin')),
   last_login_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -129,3 +130,48 @@ create trigger users_set_updated_at
 
 alter table public.users enable row level security;
 -- service_role 에서만 조작 (브라우저 직접 접근 차단)
+
+-- ============================================================
+-- seminars table (강사가 직접 등록하는 세미나)
+-- ============================================================
+create table if not exists public.seminars (
+  id                       uuid primary key default gen_random_uuid(),
+  slug                     text not null unique,
+  title                    text not null,
+  subtitle                 text,
+  date_display             text not null,
+  start_at                 timestamptz not null,
+  end_at                   timestamptz,
+  location                 text not null,
+  instructor_name          text not null,  -- 표시용 (예: "노태영 대표")
+  instructor_id            uuid references public.users(id) on delete set null,
+  instructor_sender_phone  text,           -- 이 세미나의 SolAPI 발신번호 (solapi에 사전등록된 번호)
+  instructor_notify_phones text,           -- 관리자 알림 수신번호 (쉼표 구분) — 강사 본인 번호 등
+  price                    integer not null default 0,
+  capacity                 integer,
+  summary                  text,
+  description              text,
+  curriculum               jsonb,          -- string[]
+  target                   jsonb,          -- string[]
+  tags                     jsonb,          -- string[]
+  status                   text not null default 'upcoming'
+                           check (status in ('upcoming', 'open', 'closed', 'completed')),
+  created_at               timestamptz not null default now(),
+  updated_at               timestamptz not null default now()
+);
+
+create index if not exists seminars_status_idx on public.seminars (status);
+create index if not exists seminars_start_at_idx on public.seminars (start_at);
+create index if not exists seminars_instructor_id_idx on public.seminars (instructor_id);
+
+drop trigger if exists seminars_set_updated_at on public.seminars;
+create trigger seminars_set_updated_at
+  before update on public.seminars
+  for each row execute function public.set_updated_at();
+
+alter table public.seminars enable row level security;
+-- 읽기: 누구나 (세미나 공개 페이지용)
+drop policy if exists "seminars read" on public.seminars;
+create policy "seminars read" on public.seminars
+  for select to anon, authenticated using (true);
+-- 쓰기는 service_role 에서만 (API 라우트 통해 강사 권한 검증 후 조작)
