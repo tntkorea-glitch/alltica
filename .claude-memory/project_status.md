@@ -22,7 +22,7 @@ alltica = 통합 신청센터 + 세미나 신청 시스템. 도메인 `alltica.c
 **세미나 신청 시스템:**
 - `/seminars` 목록, `/seminars/[slug]` 상세, `/seminars/[slug]/apply` 신청 폼, `/apply/complete` 접수완료+계좌안내
 - 세미나 7개(postica 인스타 자동화, 4/27 월 + 4/28~30 오전/오후) + 제품교육 5/22 + B2B영업 6/5 + 디지털광고 6/19. 전부 대구 수성구 두산동 교육장 2층.
-- postica 세미나: 노태영 대표 / 10,000원 / 정원 10명 / 인스타 자동화 주제 (2026-04-23 20→10 축소)
+- postica 세미나: 노태영 대표 / 10,000원 / 정원 20명 / 인스타 자동화 주제
 - 명함 업로드 시 Claude Vision 으로 OCR → 이름/회사/직책/연락처/이메일/주소 자동 채움 + 검토/수정 가능
 - 연락처 자동 하이픈 포매터 (`src/lib/phone.ts`)
 - Supabase applications 저장, 명함 이미지 Storage 업로드 (서명 URL)
