@@ -50,3 +50,11 @@ credentials*.json
 
 .vercel
 .env*.local
+
+# prisma — generated client must not be committed
+/src/generated/
+# local sqlite (dev only)
+*.db
+*.db-journal
+# claude scheduler lock
+.claude/scheduled_tasks.lock
