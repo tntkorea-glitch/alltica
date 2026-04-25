@@ -69,12 +69,26 @@ alltica = 통합 신청센터 + 세미나 신청 시스템. 도메인 `alltica.c
 다른 PC에서 폴더 리네임 중 원본 폴더가 비워진 채로 auto-commit 훅이 발동 → 전체 파일 삭제 커밋(`8d4b337`)이 원격에 push됨. 이 PC에서 force-push로 복구(`845ba70`).
 **교훈:** 폴더 리네임/이동 시 auto-commit 훅이 빈 디렉토리를 푸시하지 않도록 주의.
 
-## Next up when resuming
+## Next up when resuming (2026-04-25~)
 
-**실제 운영 시작 전 테스트:**
-1. 프로덕션(`alltica.co.kr`)에서 세미나 신청 엔드투엔드 (명함 업로드 → OCR → 저장 → SMS 수신) 검증
-2. 카톡 OG 미리보기 — 카카오 디버거에서 `alltica.co.kr` 캐시 초기화
-3. 관리자 스킨 선택 UX 확인 (피치 블룸 추천)
+**우선 — 오늘 새로 만든 기능 실사용 테스트 (로컬):**
+1. `/teacher/seminars/new` 에서 테스트 세미나 등록 → 홈/목록 반영 확인 → 수정 → 삭제까지 엔드투엔드
+2. 세미나 신청자 생겼을 때 `/teacher/seminars/[id]/applicants` 에서 명단 조회 + 명함 미리보기
+3. 세미나별 발신/수신 번호 다르게 설정한 뒤 신청해서 해당 번호로 SMS 가는지
+4. 서브관리자 계정 시뮬레이션 (본인을 subadmin 으로 내려서 admin 승격 시도 → 403 확인)
+5. 기존 세미나 신청 플로우 회귀 (홈 → postica 신청 → OCR → 접수완료)
+
+**배포 전 작업 (내일 원격 배포하려면 필요):**
+- Vercel production env 동기화 — `vercel env ls` 결과 ADMIN_PASSWORD + AUTH_SECRET + AUTH_GOOGLE_ID/SECRET 외 **Supabase 3개, ANTHROPIC_API_KEY, SolAPI 3개, ADMIN_NOTIFY_PHONES, BANK 3개가 누락** 상태. 이대로 배포하면 OCR/SMS/계좌 안내 전부 실패
+- Google OAuth 승인된 리디렉션 URI 에 `alltica.co.kr`, `alltica.vercel.app` 둘 다 들어있는지 확인
+- **중요**: 오늘 6개 커밋 `git push` 완료 → Vercel 자동배포 트리거됨. env 누락으로 프로덕션 세미나 조회/신청이 500 뜰 수 있음 (로컬 DB 의존). 긴급하면 Vercel 대시보드에서 이전 배포로 롤백 후 env 세팅 먼저
+
+**Phase 2 기능 (우선순위 낮음):**
+- 카카오/네이버 소셜 로그인 실연동 (현재 버튼만, "준비 중" alert)
+- 토스페이먼츠 PG 연동 (즉시 카드/간편결제). 수동 계좌이체 UX 축소
+- 카카오 알림톡 전환 (`src/lib/sms.ts` type 분기 추가)
+- 일반 문의/제품/인재/파트너 폼 (`/api/submissions`) 파일 → Supabase 이관 — 현재 프로덕션 동작 안 함
+- 세미나 데이터 실제 내용으로 교체 (제품교육/B2B영업/디지털광고 3개는 플레이스홀더)
 
 **Phase 2 기능:**
 - 토스페이먼츠 PG 연동 (즉시 카드/간편결제). 수동 계좌이체 UX 축소
@@ -83,6 +97,46 @@ alltica = 통합 신청센터 + 세미나 신청 시스템. 도메인 `alltica.c
 - 세미나 데이터 실제 내용으로 교체 (postica 외 나머지 3개는 여전히 플레이스홀더)
 - 세미나별 명함 OCR 정확도 A/B 모니터링 (OCR 실패 건 별도 로그)
 - 카카오/네이버 로그인 실연동 (현재 버튼만 있고 "준비 중" alert)
+
+## 2026-04-24 작업 (로그인/관리자/강사 시스템)
+
+**역할 체계 (`users.role` enum):**
+`user` → `instructor` → `subadmin` → `admin` 의 4계층. DB 제약(`users_role_check`)에 명시. `src/lib/auth.ts` 의 `UserRole` 타입과 동기화.
+
+**권한 매트릭스:**
+| 역할 | `/admin` | `/teacher` | role 변경 |
+|---|---|---|---|
+| user | ❌ | ❌ | — |
+| instructor | ❌ | 본인 세미나만 CRUD + 신청자 조회 | — |
+| subadmin | ✅ | 전체 세미나 | user/instructor/subadmin 간 변경. admin 승격/강등 불가 |
+| admin | ✅ | 전체 세미나 | 전체 권한 |
+
+**세미나 Supabase 이관 완료:**
+- 하드코딩 `src/lib/seminars.ts` 배열 → `public.seminars` 테이블. 10개 시드 완료 (`scripts/seed-seminars.ts` 참고)
+- `src/lib/seminars.ts` 는 이제 async Supabase 조회. `getAllSeminars` / `getOpenSeminars` / `getSeminarBySlug` / `getSeminarsByInstructor` 제공
+- 기존 10개 consumer 파일 전부 async 대응. `generateStaticParams` 는 DB 쿼리, `dynamicParams = true` 로 새 세미나도 SSG 없이 접근 가능
+- admin 페이지는 `/api/seminars` 공개 엔드포인트로 조회 (서버 컴포넌트 아니라서)
+
+**세미나별 SMS 오버라이드:**
+`seminars.instructor_sender_phone` / `instructor_notify_phones` 값이 있으면 `SOLAPI_SENDER` / `ADMIN_NOTIFY_PHONES` 대신 사용. 강사가 자기 번호로 송수신 설정 가능.
+
+**/teacher 대시보드:**
+- `/teacher` 본인 세미나 목록 (admin/subadmin 은 전체)
+- `/teacher/seminars/new` 등록 폼 — 슬러그/일시/장소/가격/정원/커리큘럼/대상/태그/발신번호/수신번호 입력
+- `/teacher/seminars/[id]` 수정 + 삭제
+- `/teacher/seminars/[id]/applicants` 신청자 명단 + 명함 이미지 (서명 URL)
+- 서버 컴포넌트 role 가드. 로그아웃 상태면 `/login` 리다이렉트
+
+**관리자 사용자 탭 (`/admin` > 👥 사용자):**
+- Supabase `users` 전체 조회, role 드롭다운 + 연락처 인라인 편집
+- API: `GET /api/admin/users`, `PATCH /api/admin/users/[id]` (role/phone 변경)
+- subadmin 권한 제약: API 에서 `isFullAdmin()` 체크. admin 으로 승격이나 admin 계정 수정 시도 → 403
+
+**Header 강사 링크:**
+`session.user.role ∈ {instructor, subadmin, admin}` 이면 🎓 강사 링크 노출
+
+**인증 이중 게이트 (/admin):**
+`src/proxy.ts` 가 두 가지 허용 — (1) `admin_session` 쿠키 (password 로 로그인한 경우), (2) NextAuth 세션 role ∈ {admin, subadmin}. API 라우트들도 `isAdminRequest` 동일 로직.
 
 ## 로그인/관리자 인증 (2026-04-24 추가)
 
