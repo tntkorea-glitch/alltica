@@ -69,9 +69,17 @@ alltica = 통합 신청센터 + 세미나 신청 시스템. 도메인 `alltica.c
 다른 PC에서 폴더 리네임 중 원본 폴더가 비워진 채로 auto-commit 훅이 발동 → 전체 파일 삭제 커밋(`8d4b337`)이 원격에 push됨. 이 PC에서 force-push로 복구(`845ba70`).
 **교훈:** 폴더 리네임/이동 시 auto-commit 훅이 빈 디렉토리를 푸시하지 않도록 주의.
 
-## Next up when resuming (2026-04-25~)
+## Next up when resuming (2026-04-25 저녁~)
 
-**우선 — 오늘 새로 만든 기능 실사용 테스트 (로컬):**
+**🔥 우선 — Vercel 프로덕션 빌드 실패 원인 잡기:**
+- 2026-04-24 03:03(`acdb530`)부터 모든 배포가 **15초 만에 Error**. 마지막 정상 = `76f6c93` (2일 전). 즉 NextAuth + 관리자/강사 시스템 PR 통째가 빌드를 깨뜨림
+- 1차로 손 댄 것 (`8bb86f8` 푸시 완료): `src/generated/prisma/**`, `dev.db`, `.claude/scheduled_tasks.lock` 추적 제거 + .gitignore 추가. 이걸로도 여전히 Error.
+- **다음에 할 일**: Vercel deployments → 가장 최근 Error 배포 클릭 → "Building" 탭 빨간 줄 캡쳐. 그래야 정확한 원인 잡힘
+- 가장 의심: env 누락 (AUTH_SECRET / AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET / SUPABASE 3종 / ANTHROPIC_API_KEY / SOLAPI 3종 / ADMIN_NOTIFY_PHONES / BANK 3종). project_status.md 위쪽 "배포 전 작업" 섹션 참고
+- 2순위 의심: NextAuth v5 셋업(`src/lib/auth.ts`) 또는 `src/proxy.ts` import 깨짐
+- 자동 커밋 훅(`.claude/settings.json` Stop hook)은 그대로 둠 — `git add -A`이지만 .gitignore가 막아주니 안전
+
+**그 다음 — 오늘 새로 만든 기능 실사용 테스트 (로컬):**
 1. `/teacher/seminars/new` 에서 테스트 세미나 등록 → 홈/목록 반영 확인 → 수정 → 삭제까지 엔드투엔드
 2. 세미나 신청자 생겼을 때 `/teacher/seminars/[id]/applicants` 에서 명단 조회 + 명함 미리보기
 3. 세미나별 발신/수신 번호 다르게 설정한 뒤 신청해서 해당 번호로 SMS 가는지
