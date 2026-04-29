@@ -1,5 +1,6 @@
 import FormCard from "@/components/FormCard";
 import SeminarCard from "@/components/SeminarCard";
+import ServiceLineup from "@/components/ServiceLineup";
 import { formTemplates } from "@/lib/forms";
 import { getAllSeminars } from "@/lib/seminars";
 import Link from "next/link";
@@ -78,7 +79,7 @@ export default async function Home() {
 
         {/* Scroll indicator */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float">
-          <a href="#forms" className="flex flex-col items-center gap-2 text-white/40 hover:text-white/60 transition-colors">
+          <a href="#services" className="flex flex-col items-center gap-2 text-white/40 hover:text-white/60 transition-colors">
             <span className="text-xs font-medium">아래로 스크롤</span>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
@@ -86,6 +87,9 @@ export default async function Home() {
           </a>
         </div>
       </section>
+
+      {/* Service Lineup - Alltica ecosystem */}
+      <ServiceLineup />
 
       {/* Seminars section */}
       <section id="seminars-preview" className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
