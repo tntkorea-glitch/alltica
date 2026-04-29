@@ -1140,9 +1140,13 @@ function PhoneEditor({
   disabled: boolean;
   onSave: (v: string) => void;
 }) {
-  const [value, setValue] = useState(initial);
   const [editing, setEditing] = useState(false);
-  useEffect(() => setValue(initial), [initial]);
+  const [value, setValue] = useState(initial);
+  const [prevInitial, setPrevInitial] = useState(initial);
+  if (initial !== prevInitial) {
+    setPrevInitial(initial);
+    setValue(initial);
+  }
 
   if (!editing) {
     return (

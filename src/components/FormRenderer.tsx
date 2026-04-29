@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, FormEvent, useRef } from "react";
 import { FormTemplate } from "@/lib/types";
 
@@ -130,12 +131,12 @@ export default function FormRenderer({ form }: FormRendererProps) {
           접수된 내용을 확인 후 빠른 시일 내에 연락드리겠습니다.<br />
           감사합니다.
         </p>
-        <a
+        <Link
           href="/"
           className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-xl font-semibold hover:bg-brand-hover transition-colors"
         >
           홈으로 돌아가기
-        </a>
+        </Link>
       </div>
     );
   }

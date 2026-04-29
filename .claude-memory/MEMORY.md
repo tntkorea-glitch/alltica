@@ -2,3 +2,4 @@
 - [Project Init](project_init.md) — alltica 프로젝트 생성 정보 (원래 seminar-app)
 - [Project Status](project_status.md) — 현재 진행 상태 및 다음 작업
 - [Env 따옴표 함정](feedback_env_quotes.md) — .env 값에 따옴표 쓰면 Vercel runtime이 raw로 받아 prod에서만 인증 깨짐
+- [Service Lineup](project_lineup.md) — 알티카가 통합하는 9개 ~tica 자매 서비스 + 도메인/카테고리 매핑 (2026-04-29 확정)

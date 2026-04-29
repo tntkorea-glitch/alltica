@@ -69,42 +69,54 @@ alltica = 통합 신청센터 + 세미나 신청 시스템. 도메인 `alltica.c
 다른 PC에서 폴더 리네임 중 원본 폴더가 비워진 채로 auto-commit 훅이 발동 → 전체 파일 삭제 커밋(`8d4b337`)이 원격에 push됨. 이 PC에서 force-push로 복구(`845ba70`).
 **교훈:** 폴더 리네임/이동 시 auto-commit 훅이 빈 디렉토리를 푸시하지 않도록 주의.
 
-## Next up when resuming (2026-04-25 저녁~)
+## 2026-04-30 작업 — 알티카 ecosystem 정체성 정렬 (자율진행)
 
-**🔥 우선 — Vercel 프로덕션 빌드 실패 원인 잡기:**
-- 2026-04-24 03:03(`acdb530`)부터 모든 배포가 **15초 만에 Error**. 마지막 정상 = `76f6c93` (2일 전). 즉 NextAuth + 관리자/강사 시스템 PR 통째가 빌드를 깨뜨림
-- 1차로 손 댄 것 (`8bb86f8` 푸시 완료): `src/generated/prisma/**`, `dev.db`, `.claude/scheduled_tasks.lock` 추적 제거 + .gitignore 추가. 이걸로도 여전히 Error.
-- **다음에 할 일**: Vercel deployments → 가장 최근 Error 배포 클릭 → "Building" 탭 빨간 줄 캡쳐. 그래야 정확한 원인 잡힘
-- 가장 의심: env 누락 (AUTH_SECRET / AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET / SUPABASE 3종 / ANTHROPIC_API_KEY / SOLAPI 3종 / ADMIN_NOTIFY_PHONES / BANK 3종). project_status.md 위쪽 "배포 전 작업" 섹션 참고
-- 2순위 의심: NextAuth v5 셋업(`src/lib/auth.ts`) 또는 `src/proxy.ts` import 깨짐
-- 자동 커밋 훅(`.claude/settings.json` Stop hook)은 그대로 둠 — `git add -A`이지만 .gitignore가 막아주니 안전
+사용자가 "알티카는 9개 ~tica 서비스의 통합 허브" 라는 정체성을 메인페이지에 노출하라고 지시. 라인업 확정(`project_lineup.md` 참조) 후 자율진행으로 다음 작업 완료:
 
-**그 다음 — 오늘 새로 만든 기능 실사용 테스트 (로컬):**
-1. `/teacher/seminars/new` 에서 테스트 세미나 등록 → 홈/목록 반영 확인 → 수정 → 삭제까지 엔드투엔드
-2. 세미나 신청자 생겼을 때 `/teacher/seminars/[id]/applicants` 에서 명단 조회 + 명함 미리보기
-3. 세미나별 발신/수신 번호 다르게 설정한 뒤 신청해서 해당 번호로 SMS 가는지
-4. 서브관리자 계정 시뮬레이션 (본인을 subadmin 으로 내려서 admin 승격 시도 → 403 확인)
-5. 기존 세미나 신청 플로우 회귀 (홈 → postica 신청 → OCR → 접수완료)
+**신규/수정 파일:**
+- `src/lib/services.ts` — 9개 서비스 데이터 (브랜드/카테고리/URL/상태) + 카테고리별 스타일 토큰. ServiceLineup, Footer 등이 import해서 단일 소스로 사용.
+- `src/components/ServiceLineup.tsx` — 9개 카드 그리드 (4가지 카테고리 색상). 라이브 서비스는 `target=_blank` 이동, 준비 중은 비활성. id=`#services` 앵커.
+- `src/app/page.tsx` — Hero 바로 아래에 ServiceLineup 삽입. Hero 카피/CTA 갱신:
+  - 헤드라인: "모든 신청, 한 곳에서" → "모든 비즈니스, 한 플랫폼에서"
+  - 서브카피: 9개 ~tica 브랜드 나열
+  - 1차 CTA: "🚀 전체 서비스 둘러보기" → `#services` (신규 1차)
+  - 2차 CTA: "🎓 세미나 신청" → `/seminars`
+  - 스탯: "5+ 신청서 유형" → "9 통합 서비스"
+  - scroll indicator: `#forms` → `#services`
+- `src/components/Header.tsx` — 데스크톱/모바일 nav에 "서비스" → `/#services` 링크 추가 (홈 다음 위치)
+- `src/app/layout.tsx` — 메타데이터(title/description/keywords/OG) 전부 ecosystem 카피로 갱신. 푸터 4컬럼 그리드(Brand/Services/Apply/Contact)로 확장 — services 컬럼은 `services` 배열 직접 매핑.
+- `src/app/opengraph-image.tsx` — OG 이미지 카피 갱신: "모든 신청, 한 곳에서" → "통합 비즈니스 자동화 플랫폼" + 9개 브랜드 나열
 
-**배포 전 작업 (내일 원격 배포하려면 필요):**
-- Vercel production env 동기화 — `vercel env ls` 결과 ADMIN_PASSWORD + AUTH_SECRET + AUTH_GOOGLE_ID/SECRET 외 **Supabase 3개, ANTHROPIC_API_KEY, SolAPI 3개, ADMIN_NOTIFY_PHONES, BANK 3개가 누락** 상태. 이대로 배포하면 OCR/SMS/계좌 안내 전부 실패
-- Google OAuth 승인된 리디렉션 URI 에 `alltica.co.kr`, `alltica.vercel.app` 둘 다 들어있는지 확인
-- **중요**: 오늘 6개 커밋 `git push` 완료 → Vercel 자동배포 트리거됨. env 누락으로 프로덕션 세미나 조회/신청이 500 뜰 수 있음 (로컬 DB 의존). 긴급하면 Vercel 대시보드에서 이전 배포로 롤백 후 env 세팅 먼저
+**보너스: 기존 lint 오류 3건 정리 (Vercel build 견고성 ↑):**
+- `src/components/FormRenderer.tsx:133` — `<a href="/">` → `<Link>` 교체 (next/no-html-link-for-pages)
+- `public/inapp-guard.js:69` — `var btn = this` 패턴 제거 (no-this-alias)
+- `src/app/admin/page.tsx:1145` — useEffect-setState 동기 호출 → derived state pattern으로 전환 (react-hooks/set-state-in-effect)
+→ `npm run lint` 0 errors, `npm run build` Pass.
 
-**Phase 2 기능 (우선순위 낮음):**
-- 카카오/네이버 소셜 로그인 실연동 (현재 버튼만, "준비 중" alert)
-- 토스페이먼츠 PG 연동 (즉시 카드/간편결제). 수동 계좌이체 UX 축소
-- 카카오 알림톡 전환 (`src/lib/sms.ts` type 분기 추가)
-- 일반 문의/제품/인재/파트너 폼 (`/api/submissions`) 파일 → Supabase 이관 — 현재 프로덕션 동작 안 함
-- 세미나 데이터 실제 내용으로 교체 (제품교육/B2B영업/디지털광고 3개는 플레이스홀더)
+## ✅ Vercel 프로덕션 빌드 — 해결됨 (2026-04-30 확인)
 
-**Phase 2 기능:**
-- 토스페이먼츠 PG 연동 (즉시 카드/간편결제). 수동 계좌이체 UX 축소
+기존 메모에 있던 "빌드 15초 Error" 이슈는 **이미 복구됨**. `vercel ls` 기준 최근 3건 배포 모두 ● Ready (3일 전). 해결된 원인 = .env 따옴표(`feedback_env_quotes.md` 참조) + `8bb86f8` 추적 제거 콤보. 로컬 production build도 클린.
+
+**잔여 흠집 (배포에는 영향 없음):**
+- `.vercel/project.json` 의 `projectName`이 여전히 `seminar-app` (실제 Vercel은 `alltica`로 리네임 완료, projectId 바인딩이라 동작 OK). 신경 쓰이면 `vercel link` 다시 돌리면 됨. 안 돌려도 무방.
+
+## 🔔 사용자 결정 대기 항목 (자율진행 불가)
+
+1. **로컬 Hero/Lineup 시각 검토** — 새 카피/색상/카테고리 분류가 의도와 맞는지 사용자가 브라우저로 확인 필요. `npm run dev` → http://localhost:3008/ 진입해서 보는 게 빠름.
+2. **이모지 vs 정식 로고** — 현재 카드 아이콘은 이모지(📸▶️✍️❤️📊📇📤💇🏢) 임시 사용. 각 ~tica 별 진짜 로고/심볼이 있으면 교체 필요 (사용자가 자산 제공해야).
+3. **카테고리 분류 검토** — Beautica를 "비즈니스 운영"으로, Datica를 단독 "분석"으로 묶음. 컨셉상 다른 분류 원하면 `services.ts` `category` 값만 수정.
+4. **Onetica/Novtica 진행 시점** — 둘 다 "준비 중". Onetica는 폴더 존재(미배포), Novtica는 폴더 자체 없음. 언제 어떤 순서로 만들지 사용자 판단.
+5. **Phase 2 우선순위 (아래 목록 중 다음 무엇)**
+
+## Phase 2 백로그 (변경 없음)
+
+- 카카오/네이버 소셜 로그인 실연동 (현재 버튼만 있고 "준비 중" alert)
+- 토스페이먼츠 PG 연동 (즉시 카드/간편결제 → 수동 계좌이체 UX 축소)
 - 카카오 비즈니스 채널 신청 → 알림톡 템플릿 승인 → SolAPI SMS → 알림톡 전환 (`src/lib/sms.ts` 에 type 분기 추가)
-- 세미나 관리자 CRUD (하드코딩 `src/lib/seminars.ts` → Supabase `seminars` 테이블)
-- 세미나 데이터 실제 내용으로 교체 (postica 외 나머지 3개는 여전히 플레이스홀더)
+- 일반 문의/제품/인재/파트너 폼 (`/api/submissions`) 파일 → Supabase 이관 (현재 Vercel 서버리스에서 저장 안 됨)
+- 세미나 데이터 실제 내용으로 교체 (제품교육/B2B영업/디지털광고 3개 플레이스홀더)
 - 세미나별 명함 OCR 정확도 A/B 모니터링 (OCR 실패 건 별도 로그)
-- 카카오/네이버 로그인 실연동 (현재 버튼만 있고 "준비 중" alert)
+- 4/24에 만든 강사/관리자 시스템 로컬 E2E 테스트 (`/teacher/seminars/new` 등록→수정→삭제, 신청자 명단, 세미나별 SMS 오버라이드, subadmin 권한 제약)
 
 ## 2026-04-24 작업 (로그인/관리자/강사 시스템)
 

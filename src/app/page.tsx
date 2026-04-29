@@ -34,38 +34,38 @@ export default async function Home() {
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-tight mb-6 animate-fade-in-up delay-100">
-            모든 신청,{" "}
+            모든 비즈니스,{" "}
             <span className="bg-gradient-to-r from-blue-300 via-cyan-300 to-blue-400 bg-clip-text text-transparent">
-              한 곳에서
+              한 플랫폼에서
             </span>
           </h1>
 
           <p className="text-lg sm:text-xl text-blue-100/80 max-w-2xl mx-auto leading-relaxed mb-10 animate-fade-in-up delay-200">
-            세미나 교육, 제품 구매, 인재 모집, 파트너 신청까지
+            Postica · Yutica · Netica · Datica 등 9개 비즈니스 자동화 서비스를
             <br className="hidden sm:block" />
-            필요한 모든 신청을 빠르고 간편하게 접수하세요
+            Alltica 한 곳에서 통합 관리하세요
           </p>
 
           {/* CTA buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up delay-300">
-            <Link
-              href="/seminars"
+            <a
+              href="#services"
               className="w-full sm:w-auto px-8 py-4 bg-white text-brand font-bold rounded-2xl text-base hover:bg-blue-50 transition-all shadow-xl shadow-black/10 hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.98]"
             >
-              🎓 세미나 신청하기
-            </Link>
-            <a
-              href="#forms"
+              🚀 전체 서비스 둘러보기
+            </a>
+            <Link
+              href="/seminars"
               className="w-full sm:w-auto px-8 py-4 bg-white/10 text-white font-bold rounded-2xl text-base border border-white/20 hover:bg-white/20 transition-all backdrop-blur-sm hover:-translate-y-0.5 active:scale-[0.98]"
             >
-              전체 신청서 보기
-            </a>
+              🎓 세미나 신청
+            </Link>
           </div>
 
           {/* Stats */}
           <div className="flex items-center justify-center gap-8 sm:gap-16 mt-16 animate-fade-in-up delay-400">
             {[
-              { num: "5+", label: "신청서 유형" },
+              { num: "9", label: "통합 서비스" },
               { num: "24h", label: "빠른 응답" },
               { num: "100%", label: "안전한 관리" },
             ].map((stat) => (

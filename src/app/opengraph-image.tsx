@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Alltica — 모든 신청, 한 곳에서";
+export const alt = "Alltica — 통합 비즈니스 자동화 플랫폼";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -63,7 +63,7 @@ export default async function Image() {
           }}
         >
           <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#4ade80" }} />
-          신청 접수 중
+          9개 서비스 통합 운영 중
         </div>
 
         {/* Title */}
@@ -88,17 +88,17 @@ export default async function Image() {
             marginBottom: 8,
           }}
         >
-          모든 신청, 한 곳에서
+          통합 비즈니스 자동화 플랫폼
         </div>
 
         <div
           style={{
-            fontSize: 26,
+            fontSize: 24,
             color: "rgba(191,219,254,0.7)",
             marginTop: 16,
           }}
         >
-          세미나 · 제품 · 인재 · 파트너
+          Postica · Yutica · Netica · Datica · Liketica · Contica · Beautica
         </div>
       </div>
     ),

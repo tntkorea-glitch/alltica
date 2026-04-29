@@ -65,12 +65,12 @@
         + '</div>';
       document.body.appendChild(overlay);
 
-      document.getElementById('__inapp_copy__').onclick = function () {
-        var btn = this;
+      var copyBtn = document.getElementById('__inapp_copy__');
+      copyBtn.onclick = function () {
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(target).then(function () {
-            btn.textContent = '✓ 복사 완료! 브라우저에 붙여넣기 하세요';
-            btn.style.background = '#059669';
+            copyBtn.textContent = '✓ 복사 완료! 브라우저에 붙여넣기 하세요';
+            copyBtn.style.background = '#059669';
           }, function () {
             prompt('아래 링크를 복사해 외부 브라우저에서 열어주세요', target);
           });

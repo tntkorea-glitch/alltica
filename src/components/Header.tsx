@@ -37,6 +37,7 @@ export default function Header() {
         <nav className="hidden lg:flex items-center gap-1">
           {[
             { href: "/", label: "홈" },
+            { href: "/#services", label: "서비스" },
             { href: "/seminars", label: "세미나 신청" },
             { href: "/forms/product", label: "제품 문의" },
             { href: "/forms/recruit", label: "인재 모집" },
@@ -142,6 +143,7 @@ export default function Header() {
         <nav className="lg:hidden bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-lg px-4 py-3 flex flex-col gap-1 animate-in">
           {[
             { href: "/", label: "홈" },
+            { href: "/#services", label: "서비스" },
             { href: "/seminars", label: "세미나 신청" },
             { href: "/forms/product", label: "제품 문의" },
             { href: "/forms/recruit", label: "인재 모집" },
