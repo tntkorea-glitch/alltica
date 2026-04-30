@@ -81,7 +81,11 @@ const BUSINESS_CARD_TOOL = {
         description: "휴대전화번호 (010-XXXX-XXXX 형식 우선, 없으면 대표번호)",
       },
       email: { type: ["string", "null"], description: "이메일 주소" },
-      address: { type: ["string", "null"], description: "주소 (있으면 도로명/지번 포함 전체)" },
+      address: {
+        type: ["string", "null"],
+        description:
+          "주소 전체. 시/도, 시/군/구, 도로명 또는 지번, 건물명, 동/호수까지 명함에 적힌 그대로 포함하세요. 예: '서울특별시 강남구 테헤란로 123 5층 501호'. 줄바꿈은 공백으로 연결하고, '주소', 'ADDRESS' 같은 라벨 단어는 빼세요. 주소로 보이는 텍스트가 있으면 일부만이라도 반드시 추출하고, 정말 어떤 주소 정보도 없을 때만 null.",
+      },
     },
     required: ["name", "company", "position", "phone", "email", "address"],
   },
