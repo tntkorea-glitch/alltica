@@ -128,6 +128,33 @@ export default function SeminarApplyForm({ seminar }: Props) {
     }
   }
 
+  async function openPostcodeSearch() {
+    try {
+      await loadDaumPostcode();
+      const w = window as DaumPostcodeWindow;
+      if (!w.daum?.Postcode) return;
+      new w.daum.Postcode({
+        oncomplete: (data) => {
+          const baseAddress =
+            data.userSelectedType === "R"
+              ? data.roadAddress || data.address
+              : data.jibunAddress || data.address;
+          const withBuilding = data.buildingName
+            ? `${baseAddress} (${data.buildingName})`
+            : baseAddress;
+          setForm((prev) => ({
+            ...prev,
+            postalCode: data.zonecode,
+            address: withBuilding,
+          }));
+          if (errors.address) setErrors((prev) => ({ ...prev, address: undefined }));
+        },
+      }).open();
+    } catch {
+      alert("우편번호 검색을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+    }
+  }
+
   function removeCard() {
     setBusinessCard(null);
     if (preview) URL.revokeObjectURL(preview);
