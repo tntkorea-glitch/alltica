@@ -175,3 +175,32 @@ drop policy if exists "seminars read" on public.seminars;
 create policy "seminars read" on public.seminars
   for select to anon, authenticated using (true);
 -- 쓰기는 service_role 에서만 (API 라우트 통해 강사 권한 검증 후 조작)
+
+-- ============================================================
+-- submissions table (일반 문의/제품/인재/파트너 폼 등 — 세미나 외 전체)
+-- 이전에는 data/submissions.json + public/uploads/ 파일 기반이었으나
+-- Vercel 서버리스에서 영속 저장이 안 되어 Supabase 로 이관.
+-- ============================================================
+create table if not exists public.submissions (
+  id            uuid primary key default gen_random_uuid(),
+  form_slug     text not null,
+  form_title    text not null,
+  data          jsonb not null default '{}'::jsonb,
+  files         jsonb not null default '{}'::jsonb,  -- { fieldName: storagePath }
+  submitted_at  timestamptz not null default now()
+);
+
+create index if not exists submissions_form_slug_idx
+  on public.submissions (form_slug);
+create index if not exists submissions_submitted_at_idx
+  on public.submissions (submitted_at desc);
+
+alter table public.submissions enable row level security;
+-- 정책 없음 → service_role 만 접근 (API 라우트에서 admin 검증 후 조회)
+
+-- ============================================================
+-- Storage bucket: 일반 문의 폼에 첨부된 파일
+-- ============================================================
+insert into storage.buckets (id, name, public)
+values ('submission-files', 'submission-files', false)
+on conflict (id) do nothing;

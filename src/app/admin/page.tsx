@@ -211,6 +211,60 @@ export default function AdminPage() {
     XLSX.writeFile(wb, `alltica-세미나신청-${today}.xlsx`);
   }
 
+  function submissionsToSheet(rows: Submission[]) {
+    return rows.map((r) => {
+      const d = r.data as Record<string, string | string[]>;
+      const fileLinks = Object.values(r.files).join(" | ");
+      const knownKeys = new Set(["name", "phone", "email", "company", "position"]);
+      const extra = Object.entries(d)
+        .filter(([k]) => !knownKeys.has(k))
+        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+        .join(" / ");
+      return {
+        접수일시: formatKST(r.submittedAt),
+        유형: r.formTitle,
+        이름: (d.name as string) || "",
+        연락처: d.phone ? formatPhone(d.phone as string) : "",
+        이메일: (d.email as string) || "",
+        회사: (d.company as string) || "",
+        직책: (d.position as string) || "",
+        기타: extra,
+        파일: fileLinks,
+      };
+    });
+  }
+
+  function exportSubmissionsExcel() {
+    if (submissions.length === 0) {
+      alert("내보낼 문의 데이터가 없습니다.");
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(submissionsToSheet(submissions)),
+      "전체"
+    );
+
+    const bySlug = new Map<string, Submission[]>();
+    for (const s of submissions) {
+      const arr = bySlug.get(s.formSlug) || [];
+      arr.push(s);
+      bySlug.set(s.formSlug, arr);
+    }
+    for (const [slug, list] of bySlug.entries()) {
+      const title = list[0]?.formTitle || slug;
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(submissionsToSheet(list)),
+        sanitizeSheetName(title)
+      );
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `alltica-일반문의-${today}.xlsx`);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -280,6 +334,7 @@ export default function AdminPage() {
             filterSlug={formFilterSlug}
             setFilterSlug={setFormFilterSlug}
             onRefresh={fetchSubs}
+            onExport={exportSubmissionsExcel}
             onRowClick={setSelectedSub}
           />
         )}
@@ -725,6 +780,7 @@ function FormsTab({
   filterSlug,
   setFilterSlug,
   onRefresh,
+  onExport,
   onRowClick,
 }: {
   submissions: Submission[];
@@ -732,6 +788,7 @@ function FormsTab({
   filterSlug: string;
   setFilterSlug: (v: string) => void;
   onRefresh: () => void;
+  onExport: () => void;
   onRowClick: (s: Submission) => void;
 }) {
   return (
@@ -767,9 +824,17 @@ function FormsTab({
           <h2 className="font-bold text-gray-900 text-sm">
             문의 목록 <span className="text-gray-400 font-normal">({submissions.length})</span>
           </h2>
-          <button onClick={onRefresh} className="text-xs text-brand hover:underline">
-            새로고침
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onExport}
+              className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-md font-semibold transition-colors"
+            >
+              📥 엑셀
+            </button>
+            <button onClick={onRefresh} className="text-xs text-brand hover:underline">
+              새로고침
+            </button>
+          </div>
         </div>
 
         {loading ? (
