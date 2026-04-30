@@ -15,7 +15,9 @@ interface FormState {
   position: string;
   phone: string;
   email: string;
+  postalCode: string;
   address: string;
+  addressDetail: string;
   attendees: string;
   requests: string;
 }
@@ -26,10 +28,56 @@ const emptyForm: FormState = {
   position: "",
   phone: "",
   email: "",
+  postalCode: "",
   address: "",
+  addressDetail: "",
   attendees: "1",
   requests: "",
 };
+
+const DAUM_POSTCODE_SRC = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+
+interface DaumPostcodeData {
+  zonecode: string;
+  address: string;
+  roadAddress: string;
+  jibunAddress: string;
+  buildingName?: string;
+  bname?: string;
+  userSelectedType?: "R" | "J";
+}
+
+interface DaumPostcodeWindow extends Window {
+  daum?: {
+    Postcode: new (opts: { oncomplete: (data: DaumPostcodeData) => void }) => {
+      open: () => void;
+    };
+  };
+}
+
+function loadDaumPostcode(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const w = window as DaumPostcodeWindow;
+    if (w.daum?.Postcode) {
+      resolve();
+      return;
+    }
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${DAUM_POSTCODE_SRC}"]`,
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => reject(new Error("postcode load failed")));
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = DAUM_POSTCODE_SRC;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("postcode load failed"));
+    document.body.appendChild(script);
+  });
+}
 
 export default function SeminarApplyForm({ seminar }: Props) {
   const router = useRouter();
