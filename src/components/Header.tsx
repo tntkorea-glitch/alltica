@@ -104,15 +104,28 @@ export default function Header() {
               로그인
             </Link>
           )}
-          <Link
-            href="/admin"
-            className={`text-xs font-medium transition-colors ${
-              scrolled ? "text-gray-400 hover:text-brand" : "text-white/50 hover:text-white/80"
-            }`}
-            title="관리자"
-          >
-            관리자
-          </Link>
+          {status === "authenticated" && session?.user && (
+            session.user.role === "admin" || session.user.role === "subadmin" ? (
+              <Link
+                href="/admin"
+                className={`text-xs font-medium transition-colors ${
+                  scrolled ? "text-gray-400 hover:text-brand" : "text-white/50 hover:text-white/80"
+                }`}
+                title="관리자"
+              >
+                관리자
+              </Link>
+            ) : (
+              <Link
+                href="/mypage"
+                className={`text-xs font-medium transition-colors ${
+                  scrolled ? "text-gray-500 hover:text-brand" : "text-white/70 hover:text-white"
+                }`}
+              >
+                마이페이지
+              </Link>
+            )
+          )}
           <Link
             href="/forms/inquiry"
             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
