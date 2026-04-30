@@ -69,53 +69,6 @@ alltica = 통합 신청센터 + 세미나 신청 시스템. 도메인 `alltica.c
 다른 PC에서 폴더 리네임 중 원본 폴더가 비워진 채로 auto-commit 훅이 발동 → 전체 파일 삭제 커밋(`8d4b337`)이 원격에 push됨. 이 PC에서 force-push로 복구(`845ba70`).
 **교훈:** 폴더 리네임/이동 시 auto-commit 훅이 빈 디렉토리를 푸시하지 않도록 주의.
 
-## 2026-04-30 작업 (2차 세션) — 어드민/마이페이지/OCR/주소 검색 다듬기
-
-**UI 헤더 겹침 수정:**
-- `/admin`은 자체 헤더(Alltica 관리자 + 사이트로/로그아웃)를 가지므로 전역 `Header`가 위에 깔려 "문의하기" CTA가 "로그아웃"을 가렸음
-- `src/components/Header.tsx` 에 `usePathname`으로 분기 — `/admin`으로 시작하면 `return null`
-
-**일반 회원용 마이페이지 분기:**
-- 헤더에서 `관리자` 링크는 role∈{admin, subadmin}에게만 노출, 그 외 인증 사용자는 `마이페이지` 링크로 교체 (데스크톱/모바일 동일). 비로그인은 둘 다 비노출.
-- `src/app/mypage/page.tsx` 신설 — 로그인 필수, 프로필 카드(이름/이메일/연락처/권한/가입일/최근로그인) + 신청 세미나 목록(상태 배지 포함). DB 추가 변경 없음 (기존 `users`/`applications` 조회).
-
-**OCR `<UNKNOWN>` 정규화:**
-- Claude Haiku가 가끔 자리표시자 문자열(`<UNKNOWN>`, `n/a`, `없음` 등)을 반환해 폼에 그대로 들어가던 문제
-- `src/lib/ocr.ts` 에 `sanitizeFields`/`normalize` 추가 — `<...>` 패턴, NULLISH_VALUES set 매칭, 공백 등 모두 null로 변환. 도구 description + 사용자 prompt에 "자리표시자 금지, 못 찾으면 반드시 null" 명시.
-
-**우편번호 검색 (Daum Postcode):**
-- `src/components/SeminarApplyForm.tsx` 주소 영역을 3입력으로 분리:
-  - 우편번호(readonly) + `[우편번호 검색]` 버튼 (클릭 시 `postcode.v2.js` 동적 로드 후 팝업)
-  - 기본 주소(편집 가능) — 검색 결과 또는 OCR로 자동 채움
-  - 상세 주소(자유 입력)
-- 제출 시 `(우편번호) 기본주소 상세주소` 형태로 합쳐 기존 단일 `address` 필드로 전송 → DB 스키마 변경 없음
-- `FormState`에 `postalCode`, `addressDetail` 추가
-
-**OCR 주소 추출 강화:**
-- 사용자 보고: "명함의 주소 정보가 잘 안 들어옴"
-- `src/lib/ocr.ts` 에서 `address` schema description을 시/도→시/군/구→도로명/지번→건물명→층/호수까지 명시적으로 요구하고, 우편번호가 있으면 `(12345)` 형식으로 맨 앞에 포함하도록 가이드. 사용자 prompt도 항목별 불릿 가이드로 재구성
-- 폼 측에서 OCR이 반환한 `address` 문자열에 5~6자리 우편번호가 prefix로 있으면 정규식으로 떼어내 `postalCode`에 자동 분리
-
-## 다음 세션에 이어서 할 일 (Next up when resuming)
-
-1. **사용자 시각 검증 — 다음 PC에서 우선:**
-   - `npm run dev` → http://localhost:3008/admin 진입해서 헤더 겹침 사라졌는지
-   - 일반 회원 계정으로 우상단에 `마이페이지`만 뜨고 `관리자`는 안 뜨는지, `/mypage` 잘 열리는지
-   - 명함 OCR 시 주소가 있으면 채워지는지, 없을 때 빈칸으로 남는지(`<UNKNOWN>` 안 뜨는지)
-   - `[우편번호 검색]` 버튼 → Daum 팝업 → 선택 시 우편번호+기본주소 자동 채움 확인
-
-2. **OCR 주소 추출 정확도 — 실제 명함 샘플 검증:**
-   - 강화된 프롬프트로도 주소 누락이 빈번하면 모델을 Sonnet으로 잠시 올려서 비교하거나 prompt 추가 보강 필요
-   - 사용자가 실패 케이스 명함 이미지를 보여주면 prompt 튜닝
-
-3. **Phase 2 백로그 (기존 항목 그대로 잔존):**
-   - 카카오/네이버 소셜 로그인 실연동
-   - 토스페이먼츠 PG 연동
-   - 알림톡 전환 (SolAPI 단문 SMS → 카카오 알림톡)
-   - 일반 문의/제품/인재/파트너 폼 Supabase 이관
-   - 세미나 데이터 실제 내용 채우기 (3개 플레이스홀더)
-   - 강사/관리자 시스템 로컬 E2E 테스트
-
 ## 2026-04-30 작업 — 알티카 ecosystem 정체성 정렬 (자율진행)
 
 사용자가 "알티카는 9개 ~tica 서비스의 통합 허브" 라는 정체성을 메인페이지에 노출하라고 지시. 라인업 확정(`project_lineup.md` 참조) 후 자율진행으로 다음 작업 완료:

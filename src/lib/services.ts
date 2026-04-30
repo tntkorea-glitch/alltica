@@ -12,13 +12,13 @@ export type Service = {
 
 export const services: Service[] = [
   { brand: "Postica", title: "인스타 자동화", category: "sns", icon: "📸", url: "https://postica.co.kr", status: "live" },
-  { brand: "Yutica", title: "유튜브 자동화", category: "sns", icon: "▶️", url: "https://yutica.co.kr", status: "live" },
-  { brand: "Netica", title: "블로그 자동화", category: "sns", icon: "✍️", url: "https://netica.co.kr", status: "live" },
-  { brand: "Liketica", title: "인스타 자동 좋아요", category: "sns", icon: "❤️", url: "https://liketica.vercel.app", status: "live" },
-  { brand: "Datica", title: "데이터 분석", category: "analytics", icon: "📊", url: "https://datica.vercel.app", status: "live" },
-  { brand: "Contica", title: "연락처 동기화", category: "messaging", icon: "📇", url: "https://contica.vercel.app", status: "live" },
-  { brand: "Onetica", title: "원클릭 자동발송", category: "messaging", icon: "📤", url: "#", status: "coming-soon" },
   { brand: "Beautica", title: "뷰티샵 예약", category: "business", icon: "💇", url: "https://beautica.vercel.app", status: "live" },
+  { brand: "Netica", title: "블로그 자동화", category: "sns", icon: "✍️", url: "https://netica.co.kr", status: "live" },
+  { brand: "Yutica", title: "유튜브 자동화", category: "sns", icon: "▶️", url: "https://yutica.co.kr", status: "coming-soon" },
+  { brand: "Liketica", title: "인스타 자동 좋아요", category: "sns", icon: "❤️", url: "https://liketica.vercel.app", status: "coming-soon" },
+  { brand: "Datica", title: "데이터 분석", category: "analytics", icon: "📊", url: "https://datica.vercel.app", status: "coming-soon" },
+  { brand: "Contica", title: "연락처 동기화", category: "messaging", icon: "📇", url: "https://contica.vercel.app", status: "coming-soon" },
+  { brand: "Onetica", title: "원클릭 자동발송", category: "messaging", icon: "📤", url: "#", status: "coming-soon" },
   { brand: "Novtica", title: "사내 프로그램", category: "business", icon: "🏢", url: "#", status: "coming-soon" },
 ];
 

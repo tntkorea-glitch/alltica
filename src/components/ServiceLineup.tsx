@@ -1,6 +1,9 @@
 import { services, categoryStyle } from "@/lib/services";
+import { isAdminContext } from "@/lib/admin-context";
 
-export default function ServiceLineup() {
+export default async function ServiceLineup() {
+  const isAdmin = await isAdminContext();
+
   return (
     <section id="services" className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
       <div className="text-center mb-14">
@@ -20,12 +23,12 @@ export default function ServiceLineup() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
         {services.map((s) => {
           const cat = categoryStyle[s.category];
-          const isLive = s.status === "live";
+          const effectiveLive = s.status === "live" && isAdmin;
 
           const inner = (
             <div
               className={`relative h-full bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-300 ${
-                isLive
+                effectiveLive
                   ? "group-hover:shadow-xl group-hover:-translate-y-1 group-hover:border-gray-200"
                   : ""
               }`}
@@ -33,7 +36,7 @@ export default function ServiceLineup() {
               <div className="flex items-start justify-between mb-5">
                 <div
                   className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${cat.gradient} flex items-center justify-center text-2xl shadow-md transition-transform duration-300 ${
-                    isLive ? "group-hover:scale-110" : ""
+                    effectiveLive ? "group-hover:scale-110" : ""
                   }`}
                 >
                   {s.icon}
@@ -49,7 +52,7 @@ export default function ServiceLineup() {
               <p className="text-sm text-gray-500 mb-5">{s.title}</p>
 
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                {isLive ? (
+                {effectiveLive ? (
                   <>
                     <span className="text-sm font-semibold text-brand">방문하기</span>
                     <span className="text-brand transition-transform duration-300 group-hover:translate-x-1">
@@ -63,7 +66,7 @@ export default function ServiceLineup() {
             </div>
           );
 
-          if (!isLive) {
+          if (!effectiveLive) {
             return (
               <div
                 key={s.brand}

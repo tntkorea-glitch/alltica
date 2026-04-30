@@ -7,6 +7,7 @@ import FloatingContact from "@/components/FloatingContact";
 import AuthSessionProvider from "@/components/providers/SessionProvider";
 import { getCurrentTheme } from "@/lib/theme";
 import { services } from "@/lib/services";
+import { isAdminContext } from "@/lib/admin-context";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://alltica.co.kr";
 
@@ -59,6 +60,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const theme = await getCurrentTheme();
+  const isAdmin = await isAdminContext();
   return (
     <html
       lang="ko"
@@ -98,7 +100,7 @@ export default async function RootLayout({
                   </h4>
                   <ul className="space-y-2.5 text-sm">
                     {services.map((s) =>
-                      s.status === "live" ? (
+                      s.status === "live" && isAdmin ? (
                         <li key={s.brand}>
                           <a
                             href={s.url}
