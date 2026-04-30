@@ -212,13 +212,25 @@ export default function Header() {
                 로그인
               </Link>
             )}
-            <Link
-              href="/admin"
-              onClick={() => setMenuOpen(false)}
-              className="block py-2.5 px-3 rounded-lg text-xs font-medium text-gray-400 hover:text-brand hover:bg-gray-50 transition-colors"
-            >
-              관리자
-            </Link>
+            {status === "authenticated" && session?.user && (
+              session.user.role === "admin" || session.user.role === "subadmin" ? (
+                <Link
+                  href="/admin"
+                  onClick={() => setMenuOpen(false)}
+                  className="block py-2.5 px-3 rounded-lg text-xs font-medium text-gray-400 hover:text-brand hover:bg-gray-50 transition-colors"
+                >
+                  관리자
+                </Link>
+              ) : (
+                <Link
+                  href="/mypage"
+                  onClick={() => setMenuOpen(false)}
+                  className="block py-2.5 px-3 rounded-lg text-sm font-medium text-gray-700 hover:text-brand hover:bg-gray-50 transition-colors"
+                >
+                  마이페이지
+                </Link>
+              )
+            )}
           </div>
         </nav>
       )}
