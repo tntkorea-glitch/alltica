@@ -182,6 +182,15 @@ export default function SeminarApplyForm({ seminar }: Props) {
     e.preventDefault();
     if (!validate()) return;
 
+    const fullAddress = [
+      form.postalCode ? `(${form.postalCode})` : "",
+      form.address,
+      form.addressDetail,
+    ]
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(" ");
+
     setSubmitting(true);
     try {
       const fd = new FormData();
@@ -194,7 +203,7 @@ export default function SeminarApplyForm({ seminar }: Props) {
           position: form.position,
           phone: form.phone,
           email: form.email,
-          address: form.address,
+          address: fullAddress,
           attendees: Number(form.attendees) || 1,
           requests: form.requests,
         })
