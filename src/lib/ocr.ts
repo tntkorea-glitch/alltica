@@ -118,7 +118,7 @@ export async function extractBusinessCard(
           },
           {
             type: "text",
-            text: "이 명함 이미지에서 정보를 추출해주세요. 연락처는 휴대전화번호를 우선 선택하고, 없으면 대표번호를 사용하세요. 하이픈 포함 한국 전화번호 형식을 유지하세요.",
+            text: "이 명함 이미지에서 정보를 추출해주세요. 연락처는 휴대전화번호를 우선 선택하고, 없으면 대표번호를 사용하세요. 하이픈 포함 한국 전화번호 형식을 유지하세요. 명함에서 직접 보이지 않는 필드는 반드시 null 을 반환하고, 'UNKNOWN' 같은 자리표시자 문자열을 사용하지 마세요.",
           },
         ],
       },
@@ -130,6 +130,6 @@ export async function extractBusinessCard(
     throw new Error("[ocr] Claude 응답에서 tool_use 블록을 찾지 못했습니다.");
   }
 
-  const fields = toolUse.input as BusinessCardFields;
+  const fields = sanitizeFields(toolUse.input as BusinessCardFields);
   return { fields, raw: response };
 }
