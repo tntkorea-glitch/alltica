@@ -108,15 +108,57 @@ alltica = 통합 신청센터 + 세미나 신청 시스템. 도메인 `alltica.c
 4. **Onetica/Novtica 진행 시점** — 둘 다 "준비 중". Onetica는 폴더 존재(미배포), Novtica는 폴더 자체 없음. 언제 어떤 순서로 만들지 사용자 판단.
 5. **Phase 2 우선순위 (아래 목록 중 다음 무엇)**
 
-## Phase 2 백로그 (변경 없음)
+## Phase 2 백로그
 
 - 카카오/네이버 소셜 로그인 실연동 (현재 버튼만 있고 "준비 중" alert)
 - 토스페이먼츠 PG 연동 (즉시 카드/간편결제 → 수동 계좌이체 UX 축소)
 - 카카오 비즈니스 채널 신청 → 알림톡 템플릿 승인 → SolAPI SMS → 알림톡 전환 (`src/lib/sms.ts` 에 type 분기 추가)
-- 일반 문의/제품/인재/파트너 폼 (`/api/submissions`) 파일 → Supabase 이관 (현재 Vercel 서버리스에서 저장 안 됨)
+- ~~일반 문의/제품/인재/파트너 폼 Supabase 이관~~ ✅ 2026-05-01 완료 (아래 참조)
 - 세미나 데이터 실제 내용으로 교체 (제품교육/B2B영업/디지털광고 3개 플레이스홀더)
 - 세미나별 명함 OCR 정확도 A/B 모니터링 (OCR 실패 건 별도 로그)
 - 4/24에 만든 강사/관리자 시스템 로컬 E2E 테스트 (`/teacher/seminars/new` 등록→수정→삭제, 신청자 명단, 세미나별 SMS 오버라이드, subadmin 권한 제약)
+
+## 2026-05-01 자율 작업 (로컬, 미배포 — 사용자가 한꺼번에 배포 예정)
+
+**A. 서비스 라인업 admin 게이트:**
+- `src/lib/services.ts` 순서 재배열 — 1행: Postica/Beautica/Netica (live), 2~3행: Yutica/Liketica/Datica/Contica/Onetica/Novtica (모두 coming-soon)
+- `src/lib/admin-context.ts` 신규 — 서버 컴포넌트용 admin 판별 (`admin_session` 쿠키 OR NextAuth role∈{admin, subadmin})
+- `src/components/ServiceLineup.tsx` async 전환, `effectiveLive = status==="live" && isAdmin`. 일반 유저는 9개 모두 "준비 중", 관리자만 1행 3개 링크 활성
+- `src/app/layout.tsx` 푸터 SERVICES 컬럼 동일 게이트
+
+**B. 일반 문의 폼 Supabase 이관 (Vercel prod 영속화 버그 수정):**
+- 신규 `public.submissions` 테이블 + `submission-files` Storage 버킷 (schema.sql)
+- `src/app/api/submissions/route.ts` 전면 재작성 — POST는 Storage 업로드 + jsonb 인서트, GET은 서명 URL 발급(1시간 TTL)해서 Submission[] (camelCase) 반환. 기존 admin/FormRenderer 응답 시그니처 그대로 유지
+- `src/lib/storage.ts` 삭제 (consumer 0개 확인 후) + `data/submissions.json` 삭제
+- `src/lib/supabase.ts` 에 `SUBMISSION_FILES_BUCKET` 상수 추가
+
+**C. 어드민 일반문의 탭 엑셀 다운로드 추가:**
+- `src/app/admin/page.tsx` 에 `exportSubmissionsExcel` + `submissionsToSheet` 함수 — 전체 시트 + formSlug 별 시트. 알려진 키(name/phone/email/company/position) 외 추가 응답은 "기타" 컬럼으로 합쳐 출력
+- 파일명: `alltica-일반문의-YYYY-MM-DD.xlsx`
+
+**검증 상태:**
+- `npx tsc --noEmit` 0 에러 / `npm run lint` 0 에러 / `npm run build` 52 페이지 모두 컴파일 통과
+- 브라우저 시각 검증은 사용자 몫 (아래 "이어서 할 일" 1번)
+- **배포 안 함, 커밋 안 함** — 사용자가 `/test` 또는 `/bye` 호출 시점에 일괄 처리 예정
+
+## 🚨 배포 전 사용자가 직접 해야 하는 일 (자율 불가)
+
+1. **Supabase SQL Editor 에서 `supabase/schema.sql` 재실행** — `submissions` 테이블과 `submission-files` 버킷이 prod Supabase 에 생기지 않으면 일반 문의 폼이 500으로 깨짐. CREATE IF NOT EXISTS / on conflict do nothing 이라 재실행 안전.
+2. 로컬 dev 시각 검증 4종 (위 A·B·C 가시 효과 확인)
+
+## 다음 세션에 이어서 할 일 (Next up when resuming)
+
+1. **사용자 시각 검증 — 다음 PC에서 우선:**
+   - `npm run dev` → http://localhost:3008/ 진입, 9개 카드 일반 유저(시크릿 창)에 모두 "준비 중" / `/admin/login` 후 새로고침 시 1행 3개만 활성
+   - `/admin` 헤더 겹침 사라졌는지
+   - 일반 회원 계정으로 우상단에 `마이페이지`만 뜨고 `관리자`는 안 뜨는지, `/mypage` 잘 열리는지
+   - 명함 OCR 시 주소가 있으면 채워지는지, 없을 때 빈칸으로 남는지(`<UNKNOWN>` 안 뜨는지)
+   - `[우편번호 검색]` 버튼 → Daum 팝업 → 선택 시 우편번호+기본주소 자동 채움 확인
+   - 일반 문의 폼 제출 → `/admin` 📝 일반 문의 탭에서 보이는지 + 엑셀 다운로드 동작
+
+2. **OCR 주소 추출 정확도 — 실제 명함 샘플 검증:**
+   - 강화된 프롬프트로도 주소 누락이 빈번하면 모델을 Sonnet으로 잠시 올려서 비교하거나 prompt 추가 보강 필요
+   - 사용자가 실패 케이스 명함 이미지를 보여주면 prompt 튜닝
 
 ## 2026-04-24 작업 (로그인/관리자/강사 시스템)
 
