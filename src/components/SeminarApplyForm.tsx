@@ -371,9 +371,9 @@ export default function SeminarApplyForm({ seminar }: Props) {
             <input
               type="text"
               value={form.address}
-              readOnly
-              placeholder="기본 주소 (우편번호 검색)"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 placeholder:text-gray-400"
+              onChange={(e) => updateField("address", e.target.value)}
+              placeholder="기본 주소 (우편번호 검색 또는 명함 자동 입력)"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm"
             />
             <input
               type="text"
