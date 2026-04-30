@@ -111,6 +111,16 @@ export default function SeminarApplyForm({ seminar }: Props) {
         throw new Error(error);
       }
       const { fields } = await res.json();
+      // OCR 주소에 우편번호가 포함되어 있으면 분리 (예: "(06234) 서울시 ..." 또는 "06234 서울시 ...")
+      let ocrPostal = "";
+      let ocrAddress: string = fields.address || "";
+      if (ocrAddress) {
+        const m = ocrAddress.match(/^[\s(\[]*([0-9]{5,6})[\s)\]\-:]+(.+)$/);
+        if (m) {
+          ocrPostal = m[1];
+          ocrAddress = m[2].trim();
+        }
+      }
       setForm((prev) => ({
         ...prev,
         name: fields.name || prev.name,
@@ -118,7 +128,8 @@ export default function SeminarApplyForm({ seminar }: Props) {
         position: fields.position || prev.position,
         phone: fields.phone ? formatPhone(fields.phone) : prev.phone,
         email: fields.email || prev.email,
-        address: fields.address || prev.address,
+        postalCode: ocrPostal || prev.postalCode,
+        address: ocrAddress || prev.address,
       }));
       setOcrState("done");
     } catch (err) {
