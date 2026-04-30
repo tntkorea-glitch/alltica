@@ -339,13 +339,39 @@ export default function SeminarApplyForm({ seminar }: Props) {
             type="email"
             className="sm:col-span-2"
           />
-          <TextField
-            label="주소"
-            value={form.address}
-            onChange={(v) => updateField("address", v)}
-            placeholder="사업장 또는 자택 주소"
-            className="sm:col-span-2"
-          />
+          <div className="sm:col-span-2 space-y-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">주소</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={form.postalCode}
+                readOnly
+                placeholder="우편번호"
+                className="w-32 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 placeholder:text-gray-400"
+              />
+              <button
+                type="button"
+                onClick={openPostcodeSearch}
+                className="px-4 py-3 rounded-xl border border-brand/30 bg-brand/5 text-brand text-sm font-semibold hover:bg-brand/10 transition-colors"
+              >
+                우편번호 검색
+              </button>
+            </div>
+            <input
+              type="text"
+              value={form.address}
+              readOnly
+              placeholder="기본 주소 (우편번호 검색)"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 placeholder:text-gray-400"
+            />
+            <input
+              type="text"
+              value={form.addressDetail}
+              onChange={(e) => updateField("addressDetail", e.target.value)}
+              placeholder="상세 주소 (예: 101동 1203호)"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm"
+            />
+          </div>
           <TextField
             label="참석 인원"
             value={form.attendees}
