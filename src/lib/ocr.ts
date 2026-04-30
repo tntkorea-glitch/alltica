@@ -25,9 +25,51 @@ export interface BusinessCardFields {
   address: string | null;
 }
 
+// OCR이 정보를 찾지 못했을 때 모델이 placeholder 문자열("<UNKNOWN>", "n/a" 등)을
+// 반환하는 경우가 있어 null로 정규화한다.
+const NULLISH_VALUES = new Set([
+  "",
+  "-",
+  "—",
+  "n/a",
+  "na",
+  "none",
+  "null",
+  "unknown",
+  "<unknown>",
+  "<n/a>",
+  "<none>",
+  "<null>",
+  "없음",
+  "정보없음",
+  "확인불가",
+]);
+
+function normalize(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  // <ANYTHING> 형태 (홑꺽쇠 안에 영문/한글) 도 placeholder 로 간주
+  if (/^<[^>]+>$/.test(trimmed)) return null;
+  if (NULLISH_VALUES.has(trimmed.toLowerCase())) return null;
+  return trimmed;
+}
+
+function sanitizeFields(fields: BusinessCardFields): BusinessCardFields {
+  return {
+    name: normalize(fields.name),
+    company: normalize(fields.company),
+    position: normalize(fields.position),
+    phone: normalize(fields.phone),
+    email: normalize(fields.email),
+    address: normalize(fields.address),
+  };
+}
+
 const BUSINESS_CARD_TOOL = {
   name: "extract_business_card",
-  description: "명함 이미지에서 연락처 정보를 추출합니다. 찾지 못한 필드는 null 로 반환합니다.",
+  description:
+    "명함 이미지에서 연락처 정보를 추출합니다. 명함에서 직접 읽을 수 없는 필드는 반드시 JSON null 로 반환하고, 'UNKNOWN', '<UNKNOWN>', 'n/a', '없음' 같은 자리표시자 문자열은 절대 사용하지 마세요.",
   input_schema: {
     type: "object" as const,
     properties: {
