@@ -1059,6 +1059,7 @@ interface AdminUser {
   solapi_api_key: string | null;
   solapi_api_secret: string | null;
   solapi_sender: string | null;
+  solapi_pf_id: string | null;
 }
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -1259,6 +1260,7 @@ function SolapiModal({
   const [apiKey, setApiKey] = useState(user.solapi_api_key ?? "");
   const [apiSecret, setApiSecret] = useState(user.solapi_api_secret ?? "");
   const [sender, setSender] = useState(user.solapi_sender ?? "");
+  const [pfId, setPfId] = useState(user.solapi_pf_id ?? "");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -1274,6 +1276,7 @@ function SolapiModal({
           solapi_api_key: apiKey,
           solapi_api_secret: apiSecret,
           solapi_sender: sender,
+          solapi_pf_id: pfId,
         }),
       });
       if (!res.ok) {
@@ -1286,6 +1289,7 @@ function SolapiModal({
         solapi_api_key: apiKey || null,
         solapi_api_secret: apiSecret || null,
         solapi_sender: sender || null,
+        solapi_pf_id: pfId || null,
       });
       setMsg("저장되었습니다.");
     } catch (err) {
@@ -1363,6 +1367,19 @@ function SolapiModal({
                 onChange={(e) => setSender(e.target.value)}
                 placeholder="01012345678"
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                카카오 채널 pfId
+                <span className="ml-1 font-normal text-gray-400">(알림톡용)</span>
+              </label>
+              <input
+                type="text"
+                value={pfId}
+                onChange={(e) => setPfId(e.target.value)}
+                placeholder="KA01PF..."
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand font-mono"
               />
             </div>
           </div>

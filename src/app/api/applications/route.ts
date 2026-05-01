@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, BUSINESS_CARD_BUCKET } from "@/lib/supabase";
 import { sendSmsSafe, byteLength, SMS_MAX_BYTES } from "@/lib/sms";
+import { sendAlimtalkApplicant, sendAlimtalkAdmin, type AlimtalkOptions } from "@/lib/alimtalk";
 import { getSeminarBySlug, formatPrice } from "@/lib/seminars";
 import { isAdminRequest } from "@/lib/admin-session";
 
@@ -138,10 +139,11 @@ export async function POST(request: NextRequest) {
 
     // 강사 자체 Solapi 설정 조회
     let smsCreds: import("@/lib/sms").SolApiCredentials | undefined;
+    let instructorPfId: string | undefined;
     if (seminar.instructorId) {
       const { data: instructor } = await supabase
         .from("users")
-        .select("use_own_solapi, solapi_api_key, solapi_api_secret, solapi_sender")
+        .select("use_own_solapi, solapi_api_key, solapi_api_secret, solapi_sender, solapi_pf_id")
         .eq("id", seminar.instructorId)
         .maybeSingle();
       if (
@@ -156,13 +158,33 @@ export async function POST(request: NextRequest) {
           sender: instructor.solapi_sender,
         };
       }
+      if (instructor?.solapi_pf_id) {
+        instructorPfId = instructor.solapi_pf_id;
+      }
     }
 
     // 발신번호: 강사 자체 sender → 세미나 설정 강사번호 → 전역 SOLAPI_SENDER 순
     const senderPhone = smsCreds?.sender || seminar.instructorSenderPhone || undefined;
+    const alimtalkOpts: AlimtalkOptions = { smsCreds, pfId: instructorPfId };
 
-    console.log(`[sms] 신청자 메시지 ${byteLength(applicantText)}B (단문 한도 ${SMS_MAX_BYTES}B) creds=${smsCreds ? "강사" : "공용"}`);
-    await sendSmsSafe({ to: payload.phone, text: applicantText, from: senderPhone, forceShort: true, creds: smsCreds });
+    // 신청자 알림: 알림톡 우선, 실패 시 SMS 폴백
+    const atApplicant = await sendAlimtalkApplicant({
+      to: payload.phone,
+      from: senderPhone,
+      name: payload.name,
+      dateLabel,
+      price: formatPrice(seminar.price),
+      bankName: bankName,
+      bankAccount: bankAccount,
+      opts: alimtalkOpts,
+    });
+    if (!atApplicant.ok) {
+      console.log(`[alimtalk] 신청자 실패(${atApplicant.error}) → SMS 폴백`);
+      console.log(`[sms] 신청자 메시지 ${byteLength(applicantText)}B (단문 한도 ${SMS_MAX_BYTES}B)`);
+      await sendSmsSafe({ to: payload.phone, text: applicantText, from: senderPhone, forceShort: true, creds: smsCreds });
+    } else {
+      console.log(`[alimtalk] 신청자 발송 완료`);
+    }
 
     // 관리자 수신번호: 세미나 강사 번호 우선, 없으면 전역 ADMIN_NOTIFY_PHONES
     const notifyPhonesRaw = seminar.instructorNotifyPhones || process.env.ADMIN_NOTIFY_PHONES || "";
@@ -176,11 +198,23 @@ export async function POST(request: NextRequest) {
       `${payload.name} ${payload.phone}\n` +
       `${dateLabel} 세미나`;
 
-    console.log(`[sms] 관리자 메시지 ${byteLength(adminText)}B → ${adminPhones.length}명`);
+    // 관리자 알림: 알림톡 우선, 실패 시 SMS 폴백
+    console.log(`[notify] 관리자 ${adminPhones.length}명`);
     await Promise.all(
-      adminPhones.map((phone) =>
-        sendSmsSafe({ to: phone, text: adminText, from: senderPhone, forceShort: true, creds: smsCreds }),
-      ),
+      adminPhones.map(async (phone) => {
+        const atAdmin = await sendAlimtalkAdmin({
+          to: phone,
+          from: senderPhone,
+          name: payload.name,
+          phone: payload.phone,
+          dateLabel,
+          opts: alimtalkOpts,
+        });
+        if (!atAdmin.ok) {
+          console.log(`[alimtalk] 관리자(${phone}) 실패(${atAdmin.error}) → SMS 폴백`);
+          await sendSmsSafe({ to: phone, text: adminText, from: senderPhone, forceShort: true, creds: smsCreds });
+        }
+      }),
     );
 
     return NextResponse.json({ id: row.id, success: true }, { status: 201 });

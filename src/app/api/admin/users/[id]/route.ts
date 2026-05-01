@@ -35,6 +35,7 @@ export async function PATCH(
     solapi_api_key?: string;
     solapi_api_secret?: string;
     solapi_sender?: string;
+    solapi_pf_id?: string;
   };
 
   const patch: {
@@ -44,6 +45,7 @@ export async function PATCH(
     solapi_api_key?: string | null;
     solapi_api_secret?: string | null;
     solapi_sender?: string | null;
+    solapi_pf_id?: string | null;
   } = {};
   if (body.role !== undefined) {
     if (!ROLES.includes(body.role as Role)) {
@@ -58,6 +60,7 @@ export async function PATCH(
   if (body.solapi_api_key !== undefined) patch.solapi_api_key = body.solapi_api_key?.trim() || null;
   if (body.solapi_api_secret !== undefined) patch.solapi_api_secret = body.solapi_api_secret?.trim() || null;
   if (body.solapi_sender !== undefined) patch.solapi_sender = body.solapi_sender?.trim() || null;
+  if (body.solapi_pf_id !== undefined) patch.solapi_pf_id = body.solapi_pf_id?.trim() || null;
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "변경할 값이 없습니다." }, { status: 400 });
   }
