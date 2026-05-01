@@ -1,9 +1,6 @@
 import { services, categoryStyle } from "@/lib/services";
-import { isAdminContext } from "@/lib/admin-context";
 
-export default async function ServiceLineup() {
-  const isAdmin = await isAdminContext();
-
+export default function ServiceLineup() {
   return (
     <section id="services" className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
       <div className="text-center mb-14">
@@ -11,7 +8,7 @@ export default async function ServiceLineup() {
           ECOSYSTEM
         </span>
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
-          알티카 서비스 라인업
+          올티카 서비스 라인업
         </h2>
         <p className="text-gray-500 max-w-xl mx-auto">
           하나의 통합 플랫폼, 9개의 전문 서비스.
@@ -23,7 +20,7 @@ export default async function ServiceLineup() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
         {services.map((s) => {
           const cat = categoryStyle[s.category];
-          const effectiveLive = s.status === "live" && isAdmin;
+          const effectiveLive = s.status === "live";
 
           const inner = (
             <div
