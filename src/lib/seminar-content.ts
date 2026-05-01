@@ -44,7 +44,7 @@ const SERVICES: Record<string, ServiceContent> = {
       { icon: "🤖", title: "자동화 시나리오 설계", desc: "나에게 맞는 워크플로우를 직접 설계하고 실습" },
       { icon: "💰", title: "마케팅 ROI 측정", desc: "팔로워·좋아요를 매출로 연결하는 지표 세팅법" },
     ],
-    promoVideoUrl: "/videos/postica-promo-vertical.mp4",
+    promoVideoUrl: "/videos/postica-vertical-yannom.mp4",
   },
   yutica: {
     key: "yutica",
