@@ -348,15 +348,14 @@ function PromoVideoSection({ service }: { service: ServiceContent }) {
       <SectionHeader eyebrow="PROMO VIDEO" title={`${service.name} 소개 영상`} />
       <div className="flex justify-center">
         {isLocal ? (
-          /* 로컬 MP4 — 세로(9:16) 숏츠 스타일 */
+          /* 로컬 MP4 — 세로 숏츠 스타일 (자연 비율) */
           <div className="relative w-full max-w-xs rounded-2xl overflow-hidden shadow-xl bg-black">
             <video
               src={service.promoVideoUrl}
               controls
               playsInline
               preload="metadata"
-              className="w-full"
-              style={{ aspectRatio: "9/16", objectFit: "contain" }}
+              className="w-full h-auto"
             />
           </div>
         ) : isYoutube ? (
