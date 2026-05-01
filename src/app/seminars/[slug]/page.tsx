@@ -340,15 +340,27 @@ function ServiceIntroSection({ service }: { service: ServiceContent }) {
 }
 
 function PromoVideoSection({ service }: { service: ServiceContent }) {
+  const isLocal = service.promoVideoUrl?.startsWith("/");
+  const isYoutube = service.promoVideoUrl && !isLocal;
+
   return (
     <section>
-      <SectionHeader
-        eyebrow="PROMO VIDEO"
-        title={`${service.name} 소개 영상`}
-      />
+      <SectionHeader eyebrow="PROMO VIDEO" title={`${service.name} 소개 영상`} />
       <div className="flex justify-center">
-        {service.promoVideoUrl ? (
-          /* 9:16 shorts embed */
+        {isLocal ? (
+          /* 로컬 MP4 — 세로(9:16) 숏츠 스타일 */
+          <div className="relative w-full max-w-xs rounded-2xl overflow-hidden shadow-xl bg-black">
+            <video
+              src={service.promoVideoUrl}
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full"
+              style={{ aspectRatio: "9/16", objectFit: "contain" }}
+            />
+          </div>
+        ) : isYoutube ? (
+          /* YouTube embed */
           <div className="relative w-full max-w-xs aspect-[9/16] rounded-2xl overflow-hidden shadow-xl">
             <iframe
               src={service.promoVideoUrl}
@@ -359,7 +371,7 @@ function PromoVideoSection({ service }: { service: ServiceContent }) {
             />
           </div>
         ) : (
-          /* Placeholder */
+          /* 준비 중 플레이스홀더 */
           <div className="relative w-full max-w-xs aspect-[9/16] bg-gradient-to-b from-gray-100 to-gray-200 rounded-2xl overflow-hidden flex flex-col items-center justify-center gap-4 border-2 border-dashed border-gray-200">
             <div className="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center">
               <svg className="w-8 h-8 text-brand" fill="currentColor" viewBox="0 0 24 24">

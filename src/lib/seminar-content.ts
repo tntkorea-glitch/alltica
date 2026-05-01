@@ -44,9 +44,7 @@ const SERVICES: Record<string, ServiceContent> = {
       { icon: "🤖", title: "자동화 시나리오 설계", desc: "나에게 맞는 워크플로우를 직접 설계하고 실습" },
       { icon: "💰", title: "마케팅 ROI 측정", desc: "팔로워·좋아요를 매출로 연결하는 지표 세팅법" },
     ],
-    // YouTube Shorts embed URL — 영상 확보 후 아래에 입력하세요
-    // 예: "https://www.youtube.com/embed/VIDEO_ID"
-    promoVideoUrl: undefined,
+    promoVideoUrl: "/videos/postica-promo-vertical.mp4",
   },
   yutica: {
     key: "yutica",
