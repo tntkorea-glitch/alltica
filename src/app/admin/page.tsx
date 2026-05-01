@@ -69,7 +69,7 @@ function sanitizeSheetName(name: string): string {
 }
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<"seminars" | "forms" | "users" | "settings">("seminars");
+  const [tab, setTab] = useState<"seminars" | "seminar-mgmt" | "forms" | "users" | "settings">("seminars");
 
   // Seminar applications
   const [apps, setApps] = useState<Application[]>([]);
@@ -91,6 +91,11 @@ export default function AdminPage() {
       .then((r) => r.json())
       .then(setAllSeminars)
       .catch(() => {});
+  }, []);
+
+  const fetchSeminars = useCallback(async () => {
+    const res = await fetch("/api/seminars");
+    if (res.ok) setAllSeminars(await res.json());
   }, []);
 
   const fetchApps = useCallback(async () => {
@@ -132,8 +137,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (tab === "seminars") fetchApps();
-    else fetchSubs();
-  }, [tab, fetchApps, fetchSubs]);
+    else if (tab === "seminar-mgmt") fetchSeminars();
+    else if (tab === "forms") fetchSubs();
+  }, [tab, fetchApps, fetchSubs, fetchSeminars]);
 
   async function handleLogout() {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -290,13 +296,19 @@ export default function AdminPage() {
         {/* Tabs */}
         <div className="max-w-7xl mx-auto mt-4 flex gap-1 border-b border-gray-100 -mb-4">
           <TabButton active={tab === "seminars"} onClick={() => setTab("seminars")}>
-            🎓 세미나 신청{" "}
+            📋 신청 관리{" "}
             <span className="ml-1 text-xs bg-brand/10 text-brand px-1.5 py-0.5 rounded">
               {apps.length}
             </span>
           </TabButton>
+          <TabButton active={tab === "seminar-mgmt"} onClick={() => setTab("seminar-mgmt")}>
+            🎓 세미나 관리{" "}
+            <span className="ml-1 text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+              {allSeminars.length}
+            </span>
+          </TabButton>
           <TabButton active={tab === "forms"} onClick={() => setTab("forms")}>
-            📝 일반 문의{" "}
+            📝 문의 관리{" "}
             <span className="ml-1 text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
               {submissions.length}
             </span>
@@ -311,6 +323,9 @@ export default function AdminPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {tab === "seminar-mgmt" && (
+          <SeminarMgmtTab seminars={allSeminars} onRefresh={fetchSeminars} />
+        )}
         {tab === "seminars" && (
           <SeminarsTab
             apps={apps}
@@ -1252,6 +1267,161 @@ function PhoneEditor({
       >
         취소
       </button>
+    </div>
+  );
+}
+
+// ============================================================
+// SeminarMgmtTab
+// ============================================================
+const SEMINAR_STATUS_LABEL: Record<string, string> = {
+  upcoming: "예정",
+  open: "모집중",
+  closed: "마감",
+  completed: "완료",
+};
+const SEMINAR_STATUS_TONE: Record<string, string> = {
+  upcoming: "bg-blue-50 text-blue-700 border-blue-200",
+  open: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  closed: "bg-amber-50 text-amber-700 border-amber-200",
+  completed: "bg-gray-100 text-gray-500 border-gray-200",
+};
+
+function SeminarMgmtTab({
+  seminars,
+  onRefresh,
+}: {
+  seminars: Seminar[];
+  onRefresh: () => void;
+}) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [statusSaving, setStatusSaving] = useState<string | null>(null);
+
+  async function handleDelete(id: string, title: string) {
+    if (!confirm(`"${title}" 세미나를 삭제하시겠습니까?\n신청자 데이터는 유지됩니다.`)) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/seminars/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json();
+        alert(d.error ?? "삭제 실패");
+      } else {
+        onRefresh();
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function handleStatusChange(id: string, status: string) {
+    setStatusSaving(id);
+    try {
+      const res = await fetch(`/api/admin/seminars/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        alert(d.error ?? "상태 변경 실패");
+      } else {
+        onRefresh();
+      }
+    } finally {
+      setStatusSaving(null);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">세미나 관리</h2>
+          <p className="text-xs text-gray-500 mt-0.5">총 {seminars.length}개</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onRefresh}
+            className="text-sm text-gray-500 hover:text-brand border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            새로고침
+          </button>
+          <a
+            href="/teacher/seminars/new"
+            className="bg-brand text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-brand-hover shadow-md shadow-brand/20 transition-colors"
+          >
+            + 새 세미나
+          </a>
+        </div>
+      </div>
+
+      {seminars.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+          <p className="text-sm text-gray-500">등록된 세미나가 없습니다.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/50">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">세미나</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">일정</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">상태</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">관리</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {seminars.map((s) => (
+                <tr key={s.id} className="hover:bg-gray-50/50">
+                  <td className="px-4 py-3">
+                    <div className="font-semibold text-gray-900 truncate max-w-xs">{s.title}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{s.location}</div>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-600 hidden md:table-cell whitespace-nowrap">
+                    {s.dateDisplay}
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={s.status}
+                      disabled={statusSaving === s.id}
+                      onChange={(e) => handleStatusChange(s.id, e.target.value)}
+                      className={`text-xs font-semibold px-2 py-1 rounded-full border focus:outline-none focus:ring-2 focus:ring-brand/20 ${
+                        SEMINAR_STATUS_TONE[s.status] ?? "bg-gray-100 text-gray-500 border-gray-200"
+                      }`}
+                    >
+                      {(["upcoming", "open", "closed", "completed"] as const).map((v) => (
+                        <option key={v} value={v}>{SEMINAR_STATUS_LABEL[v]}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <a
+                      href={`/teacher/seminars/${s.id}`}
+                      className="text-xs font-semibold text-brand hover:underline mr-3"
+                    >
+                      수정
+                    </a>
+                    <a
+                      href={`/seminars/${s.slug}`}
+                      target="_blank"
+                      className="text-xs text-gray-400 hover:text-gray-700 mr-3"
+                    >
+                      보기
+                    </a>
+                    <button
+                      onClick={() => handleDelete(s.id, s.title)}
+                      disabled={deletingId === s.id}
+                      className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40"
+                    >
+                      {deletingId === s.id ? "삭제중…" : "삭제"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
