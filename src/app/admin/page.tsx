@@ -1055,6 +1055,10 @@ interface AdminUser {
   provider: string | null;
   last_login_at: string | null;
   created_at: string;
+  use_own_solapi: boolean | null;
+  solapi_api_key: string | null;
+  solapi_api_secret: string | null;
+  solapi_sender: string | null;
 }
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -1074,6 +1078,7 @@ function UsersTab() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [solapiTarget, setSolapiTarget] = useState<AdminUser | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1131,6 +1136,11 @@ function UsersTab() {
     }
   }
 
+  function handleSolapiSaved(updated: Partial<AdminUser> & { id: string }) {
+    setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
+    setSolapiTarget((prev) => (prev ? { ...prev, ...updated } : null));
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -1163,6 +1173,7 @@ function UsersTab() {
                 <Th>이름</Th>
                 <Th>연락처</Th>
                 <Th>권한</Th>
+                <Th>솔라피</Th>
                 <Th>가입일</Th>
                 <Th>최근 로그인</Th>
               </tr>
@@ -1195,6 +1206,22 @@ function UsersTab() {
                       ))}
                     </select>
                   </Td>
+                  <Td>
+                    {u.role === "instructor" ? (
+                      <button
+                        onClick={() => setSolapiTarget(u)}
+                        className={`text-xs px-2 py-1 rounded-full border font-semibold transition-colors ${
+                          u.use_own_solapi
+                            ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                            : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        {u.use_own_solapi ? "자체 API ✓" : "공용 API"}
+                      </button>
+                    ) : (
+                      <span className="text-gray-300 text-xs">-</span>
+                    )}
+                  </Td>
                   <Td className="text-xs text-gray-500 whitespace-nowrap">
                     {formatKST(u.created_at)}
                   </Td>
@@ -1207,6 +1234,162 @@ function UsersTab() {
           </table>
         </div>
       )}
+
+      {solapiTarget && (
+        <SolapiModal
+          user={solapiTarget}
+          onClose={() => setSolapiTarget(null)}
+          onSaved={handleSolapiSaved}
+        />
+      )}
+    </div>
+  );
+}
+
+function SolapiModal({
+  user,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onSaved: (updated: Partial<AdminUser> & { id: string }) => void;
+}) {
+  const [useOwn, setUseOwn] = useState(user.use_own_solapi ?? false);
+  const [apiKey, setApiKey] = useState(user.solapi_api_key ?? "");
+  const [apiSecret, setApiSecret] = useState(user.solapi_api_secret ?? "");
+  const [sender, setSender] = useState(user.solapi_sender ?? "");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function save() {
+    setSaving(true);
+    setMsg("");
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          use_own_solapi: useOwn,
+          solapi_api_key: apiKey,
+          solapi_api_secret: apiSecret,
+          solapi_sender: sender,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? "저장 실패");
+      }
+      onSaved({
+        id: user.id,
+        use_own_solapi: useOwn,
+        solapi_api_key: apiKey || null,
+        solapi_api_secret: apiSecret || null,
+        solapi_sender: sender || null,
+      });
+      setMsg("저장되었습니다.");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "저장 실패");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-gray-900">솔라피 설정</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{user.name || user.email}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+            &times;
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Toggle */}
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+            <div>
+              <p className="text-sm font-semibold text-gray-800">API 선택</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {useOwn ? "강사 자체 Solapi 사용" : "회사 공용 Solapi 사용"}
+              </p>
+            </div>
+            <button
+              onClick={() => setUseOwn((v) => !v)}
+              className={`relative w-12 h-6 rounded-full transition-colors ${useOwn ? "bg-brand" : "bg-gray-300"}`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${useOwn ? "translate-x-6" : "translate-x-0"}`}
+              />
+            </button>
+          </div>
+
+          {/* Fields */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">API Key</label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Solapi API Key"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">API Secret</label>
+              <input
+                type="password"
+                value={apiSecret}
+                onChange={(e) => setApiSecret(e.target.value)}
+                placeholder="Solapi API Secret"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">발신번호</label>
+              <input
+                type="text"
+                value={sender}
+                onChange={(e) => setSender(e.target.value)}
+                placeholder="01012345678"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
+              />
+            </div>
+          </div>
+
+          {msg && (
+            <p className={`text-xs font-semibold ${msg === "저장되었습니다." ? "text-emerald-600" : "text-red-500"}`}>
+              {msg}
+            </p>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={save}
+              disabled={saving}
+              className="flex-1 bg-brand text-white text-sm font-bold py-2.5 rounded-xl hover:bg-brand-hover transition-colors disabled:opacity-50"
+            >
+              {saving ? "저장 중…" : "저장"}
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 border border-gray-200 text-gray-600 text-sm py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

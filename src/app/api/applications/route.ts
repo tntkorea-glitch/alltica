@@ -136,11 +136,33 @@ export async function POST(request: NextRequest) {
       `${bankName} ${bankAccount}\n` +
       `입금 후 확정`;
 
-    // 발신번호: 세미나에 설정된 강사 번호 우선, 없으면 전역 SOLAPI_SENDER
-    const senderPhone = seminar.instructorSenderPhone || undefined;
+    // 강사 자체 Solapi 설정 조회
+    let smsCreds: import("@/lib/sms").SolApiCredentials | undefined;
+    if (seminar.instructorId) {
+      const { data: instructor } = await supabase
+        .from("users")
+        .select("use_own_solapi, solapi_api_key, solapi_api_secret, solapi_sender")
+        .eq("id", seminar.instructorId)
+        .maybeSingle();
+      if (
+        instructor?.use_own_solapi &&
+        instructor.solapi_api_key &&
+        instructor.solapi_api_secret &&
+        instructor.solapi_sender
+      ) {
+        smsCreds = {
+          apiKey: instructor.solapi_api_key,
+          apiSecret: instructor.solapi_api_secret,
+          sender: instructor.solapi_sender,
+        };
+      }
+    }
 
-    console.log(`[sms] 신청자 메시지 ${byteLength(applicantText)}B (단문 한도 ${SMS_MAX_BYTES}B)`);
-    await sendSmsSafe({ to: payload.phone, text: applicantText, from: senderPhone, forceShort: true });
+    // 발신번호: 강사 자체 sender → 세미나 설정 강사번호 → 전역 SOLAPI_SENDER 순
+    const senderPhone = smsCreds?.sender || seminar.instructorSenderPhone || undefined;
+
+    console.log(`[sms] 신청자 메시지 ${byteLength(applicantText)}B (단문 한도 ${SMS_MAX_BYTES}B) creds=${smsCreds ? "강사" : "공용"}`);
+    await sendSmsSafe({ to: payload.phone, text: applicantText, from: senderPhone, forceShort: true, creds: smsCreds });
 
     // 관리자 수신번호: 세미나 강사 번호 우선, 없으면 전역 ADMIN_NOTIFY_PHONES
     const notifyPhonesRaw = seminar.instructorNotifyPhones || process.env.ADMIN_NOTIFY_PHONES || "";
@@ -157,7 +179,7 @@ export async function POST(request: NextRequest) {
     console.log(`[sms] 관리자 메시지 ${byteLength(adminText)}B → ${adminPhones.length}명`);
     await Promise.all(
       adminPhones.map((phone) =>
-        sendSmsSafe({ to: phone, text: adminText, from: senderPhone, forceShort: true }),
+        sendSmsSafe({ to: phone, text: adminText, from: senderPhone, forceShort: true, creds: smsCreds }),
       ),
     );
 

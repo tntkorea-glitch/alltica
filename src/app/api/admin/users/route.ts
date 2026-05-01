@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("users")
-    .select("id, email, name, phone, role, provider, last_login_at, created_at")
+    .select("id, email, name, phone, role, provider, last_login_at, created_at, use_own_solapi, solapi_api_key, solapi_api_secret, solapi_sender")
     .order("created_at", { ascending: false });
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

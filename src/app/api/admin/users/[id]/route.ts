@@ -28,9 +28,23 @@ export async function PATCH(
   const fullAdmin = await isFullAdmin(request);
 
   const { id } = await params;
-  const body = (await request.json()) as { role?: string; phone?: string };
+  const body = (await request.json()) as {
+    role?: string;
+    phone?: string;
+    use_own_solapi?: boolean;
+    solapi_api_key?: string;
+    solapi_api_secret?: string;
+    solapi_sender?: string;
+  };
 
-  const patch: { role?: Role; phone?: string | null } = {};
+  const patch: {
+    role?: Role;
+    phone?: string | null;
+    use_own_solapi?: boolean;
+    solapi_api_key?: string | null;
+    solapi_api_secret?: string | null;
+    solapi_sender?: string | null;
+  } = {};
   if (body.role !== undefined) {
     if (!ROLES.includes(body.role as Role)) {
       return NextResponse.json({ error: "잘못된 role" }, { status: 400 });
@@ -40,6 +54,10 @@ export async function PATCH(
   if (body.phone !== undefined) {
     patch.phone = body.phone?.trim() || null;
   }
+  if (body.use_own_solapi !== undefined) patch.use_own_solapi = body.use_own_solapi;
+  if (body.solapi_api_key !== undefined) patch.solapi_api_key = body.solapi_api_key?.trim() || null;
+  if (body.solapi_api_secret !== undefined) patch.solapi_api_secret = body.solapi_api_secret?.trim() || null;
+  if (body.solapi_sender !== undefined) patch.solapi_sender = body.solapi_sender?.trim() || null;
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "변경할 값이 없습니다." }, { status: 400 });
   }

@@ -8,18 +8,27 @@ const SENDER = process.env.SOLAPI_SENDER;
 export const SMS_MAX_BYTES = 90;
 export const LMS_MAX_BYTES = 2000;
 
-let messageService: SolapiMessageService | null = null;
+let globalService: SolapiMessageService | null = null;
 
-function getService(): SolapiMessageService {
+export interface SolApiCredentials {
+  apiKey: string;
+  apiSecret: string;
+  sender: string;
+}
+
+function getService(creds?: SolApiCredentials): SolapiMessageService {
+  if (creds) {
+    return new SolapiMessageService(creds.apiKey, creds.apiSecret);
+  }
   if (!API_KEY || !API_SECRET) {
     throw new Error(
       "[sms] SOLAPI_API_KEY / SOLAPI_API_SECRET 가 .env.local 에 설정되지 않았습니다."
     );
   }
-  if (!messageService) {
-    messageService = new SolapiMessageService(API_KEY, API_SECRET);
+  if (!globalService) {
+    globalService = new SolapiMessageService(API_KEY, API_SECRET);
   }
-  return messageService;
+  return globalService;
 }
 
 function normalizePhone(phone: string): string {
@@ -55,10 +64,12 @@ export interface SendSmsOptions {
   from?: string;
   /** 강제 단문 전송. 기본 true — 90바이트 초과 시 자동 자름. false 로 주면 LMS 로 자동 전환(과금 상승). */
   forceShort?: boolean;
+  /** 강사 자체 Solapi 자격증명. 지정 시 회사 공용 API 대신 사용. */
+  creds?: SolApiCredentials;
 }
 
-export async function sendSms({ to, text, from, forceShort = true }: SendSmsOptions): Promise<void> {
-  const sender = from || SENDER;
+export async function sendSms({ to, text, from, forceShort = true, creds }: SendSmsOptions): Promise<void> {
+  const sender = from || creds?.sender || SENDER;
   if (!sender) {
     throw new Error(
       "[sms] 발신번호가 지정되지 않았습니다. SOLAPI_SENDER 환경변수를 설정하거나 from 인자로 넘기세요."
@@ -67,10 +78,9 @@ export async function sendSms({ to, text, from, forceShort = true }: SendSmsOpti
 
   const body = forceShort ? truncateToBytes(text, SMS_MAX_BYTES) : text;
   const bytes = byteLength(body);
-  // 단문: <=90, 장문(LMS): <=2000
   const type: "SMS" | "LMS" = bytes <= SMS_MAX_BYTES ? "SMS" : "LMS";
 
-  await getService().send({
+  await getService(creds).send({
     to: normalizePhone(to),
     from: normalizePhone(sender),
     text: body,
