@@ -65,11 +65,37 @@ originSessionId: 748b6203-c04d-455a-8603-299ed4a2a4cb
 
 - 카카오/네이버 소셜 로그인 실연동 (현재 "준비 중" alert)
 - 토스페이먼츠 PG 연동 (수동 계좌이체 → 즉시 결제)
-- 카카오 알림톡 전환 (`src/lib/sms.ts` 분기) — 비즈니스 채널 신청부터
+- ~~카카오 알림톡 전환~~ **코드 완료, 비즈니스 심사 대기 중** → 심사 완료 후 아래 "알림톡 활성화 절차" 진행
 - 세미나 데이터 실제 내용 교체 (제품교육 5/22, B2B영업 6/5, 디지털광고 6/19 — 3개 플레이스홀더)
 - 세미나별 명함 OCR A/B 모니터링 (실패 건 별도 로그)
 - 강사/관리자 시스템 로컬 E2E 테스트 (`/teacher/seminars/new` 등록→수정→삭제, 신청자 명단, SMS 오버라이드, subadmin 권한 제약)
 - OCR 주소 정확도 — 실제 명함 샘플로 검증, 부족하면 prompt 보강 또는 Sonnet 비교
+
+## 🔔 알림톡 활성화 절차 (비즈니스 심사 완료 후)
+
+코드는 모두 완료됨. 심사 통과 후 아래 3단계만 하면 바로 작동.
+
+1. **Supabase SQL** 실행 (solapi_pf_id 컬럼 추가):
+   ```sql
+   ALTER TABLE users ADD COLUMN IF NOT EXISTS solapi_pf_id text;
+   ```
+
+2. **`.env.local`** 값 채우기 (이미 키는 추가됨, 값만 비어있음):
+   ```
+   SOLAPI_PF_ID=KA01PF...                        # 솔라피 > 카카오채널 관리 > pfId
+   SOLAPI_ALIMTALK_TEMPLATE_APPLICANT=KA01TP...  # 신청자용 템플릿 ID
+   SOLAPI_ALIMTALK_TEMPLATE_ADMIN=KA01TP...      # 관리자 알림용 템플릿 ID
+   ```
+
+3. **솔라피 알림톡 템플릿 2개 등록** (변수명 정확히 맞춰야 함):
+   - 신청자용 변수: `#{이름}` `#{날짜}` `#{금액}` `#{은행}` `#{계좌번호}`
+   - 관리자용 변수: `#{이름}` `#{연락처}` `#{날짜}`
+
+**완료된 코드**:
+- `src/lib/alimtalk.ts` — 신청자/관리자 알림톡 발송 함수 (SMS 폴백 내장)
+- `src/app/api/applications/route.ts` — 알림톡 우선 발송, 실패 시 SMS 자동 전환
+- `src/app/api/admin/users/route.ts` · `[id]/route.ts` — `solapi_pf_id` 필드 지원
+- `src/app/admin/page.tsx` UsersTab SolapiModal — 강사별 pfId 설정 UI 추가
 
 ## 사용자 결정 대기 (자율진행 불가)
 
