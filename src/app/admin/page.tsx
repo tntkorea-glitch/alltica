@@ -1602,6 +1602,12 @@ function SeminarMgmtTab({
                       수정
                     </a>
                     <a
+                      href={`/teacher/seminars/new?from=${s.id}`}
+                      className="text-xs text-violet-500 hover:text-violet-700 mr-3"
+                    >
+                      복제
+                    </a>
+                    <a
                       href={`/seminars/${s.slug}`}
                       target="_blank"
                       className="text-xs text-gray-400 hover:text-gray-700 mr-3"

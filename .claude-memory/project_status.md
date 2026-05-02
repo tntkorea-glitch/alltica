@@ -28,7 +28,10 @@ originSessionId: 748b6203-c04d-455a-8603-299ed4a2a4cb
 
 **2026-04-21 원격 전체 삭제**: 폴더 리네임 중 빈 디렉토리에서 auto-commit 훅 발동 → 전체 삭제 커밋(`8d4b337`). force-push로 복구(`845ba70`). **교훈**: 폴더 리네임/이동 시 auto-commit 훅 일시 비활성 또는 신중.
 
-## 🟡 로컬 미배포 (다음 `/test` 또는 `/bye`에서 일괄 배포)
+## 배포 전략 (2026-05-02 결정)
+Phase 2 작업 전부 완료 후 한꺼번에 `/bye` 로 1회 배포. 중간 배포 없음.
+
+## 🟡 로컬 미배포 (Phase 2 완료 후 `/bye`에서 일괄 배포)
 
 ### A. 서비스 라인업 admin 게이트 (2026-04-30)
 - `src/lib/services.ts` 재배열: 1행 Postica/Beautica/Netica live, 2~3행 Yutica/Liketica/Datica/Contica/Onetica/Novtica coming-soon
