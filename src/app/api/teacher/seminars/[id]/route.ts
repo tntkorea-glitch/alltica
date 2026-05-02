@@ -56,6 +56,7 @@ export async function PUT(
   if (body.curriculum !== undefined) patch.curriculum = body.curriculum;
   if (body.target !== undefined) patch.target = body.target;
   if (body.tags !== undefined) patch.tags = body.tags;
+  if (body.imageUrl !== undefined) patch.image_url = body.imageUrl;
   if (body.status !== undefined) {
     if (!STATUSES.includes(body.status as Status)) {
       return NextResponse.json({ error: "잘못된 상태값" }, { status: 400 });

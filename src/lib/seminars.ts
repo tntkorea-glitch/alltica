@@ -23,6 +23,7 @@ export interface Seminar {
   target: string[];
   tags: string[];
   status: SeminarStatus;
+  imageUrl?: string | null;
 }
 
 interface SeminarRow {
@@ -46,6 +47,7 @@ interface SeminarRow {
   target: unknown;
   tags: unknown;
   status: SeminarStatus;
+  image_url: string | null;
 }
 
 function asStringArray(v: unknown): string[] {
@@ -75,6 +77,7 @@ function mapRow(row: SeminarRow): Seminar {
     target: asStringArray(row.target),
     tags: asStringArray(row.tags),
     status: row.status,
+    imageUrl: row.image_url ?? null,
   };
 }
 

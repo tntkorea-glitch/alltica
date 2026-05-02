@@ -130,6 +130,17 @@ export default async function SeminarDetailPage({ params }: PageProps) {
       {/* ── BODY ─────────────────────────────────────────────────── */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-8 pb-36">
 
+        {/* FEATURED IMAGE */}
+        {seminar.imageUrl && (
+          <section className="rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+            <img
+              src={seminar.imageUrl}
+              alt={seminar.title}
+              className="w-full h-52 sm:h-72 object-cover"
+            />
+          </section>
+        )}
+
         {/* WHAT YOU'LL LEARN */}
         {service && (
           <section>

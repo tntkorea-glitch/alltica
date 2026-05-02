@@ -156,6 +156,7 @@ create table if not exists public.seminars (
   tags                     jsonb,          -- string[]
   status                   text not null default 'upcoming'
                            check (status in ('upcoming', 'open', 'closed', 'completed')),
+  image_url                text,
   created_at               timestamptz not null default now(),
   updated_at               timestamptz not null default now()
 );

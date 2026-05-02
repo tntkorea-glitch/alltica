@@ -25,6 +25,7 @@ export interface TeacherSeminarFormValues {
   target: string;
   tags: string;
   status: Status;
+  imageUrl: string;
 }
 
 const EMPTY: TeacherSeminarFormValues = {
@@ -46,6 +47,7 @@ const EMPTY: TeacherSeminarFormValues = {
   target: "",
   tags: "",
   status: "upcoming",
+  imageUrl: "",
 };
 
 export default function TeacherSeminarForm({
@@ -99,6 +101,7 @@ export default function TeacherSeminarForm({
         target: splitLines(v.target),
         tags: splitCommas(v.tags),
         status: v.status,
+        imageUrl: v.imageUrl.trim() || null,
       };
 
       const url =
@@ -291,6 +294,23 @@ export default function TeacherSeminarForm({
             rows={5}
             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl"
           />
+        </Field>
+      </Section>
+
+      <Section title="이미지">
+        <Field label="대표 이미지 URL" hint="Unsplash 등 외부 이미지 URL — 세미나 상세 페이지 상단에 표시됩니다">
+          <input
+            type="url"
+            value={v.imageUrl}
+            onChange={(e) => set("imageUrl", e.target.value)}
+            placeholder="https://images.unsplash.com/photo-..."
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl font-mono text-sm"
+          />
+          {v.imageUrl && (
+            <div className="mt-2 rounded-xl overflow-hidden border border-gray-200 h-32">
+              <img src={v.imageUrl} alt="미리보기" className="w-full h-full object-cover" />
+            </div>
+          )}
         </Field>
       </Section>
 

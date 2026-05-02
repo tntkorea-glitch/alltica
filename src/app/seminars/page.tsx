@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getAllSeminars } from "@/lib/seminars";
-import SeminarCard from "@/components/SeminarCard";
+import SeminarsView from "@/components/SeminarsView";
 
 export const metadata = {
   title: "세미나/교육 신청 | Alltica",
@@ -9,12 +9,6 @@ export const metadata = {
 
 export default async function SeminarsPage() {
   const seminars = await getAllSeminars();
-  const openOrUpcoming = seminars.filter(
-    (s) => s.status === "open" || s.status === "upcoming"
-  );
-  const closed = seminars.filter(
-    (s) => s.status === "closed" || s.status === "completed"
-  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -46,31 +40,7 @@ export default async function SeminarsPage() {
         </div>
       </div>
 
-      {/* Open seminars */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-4 pb-16">
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-10">
-          {openOrUpcoming.length === 0 ? (
-            <p className="text-center text-gray-500 py-12">현재 모집 중인 세미나가 없습니다.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {openOrUpcoming.map((s) => (
-                <SeminarCard key={s.slug} seminar={s} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {closed.length > 0 && (
-          <div className="mt-10">
-            <h2 className="text-sm font-bold text-gray-500 mb-4 px-1">지난 세미나</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 opacity-60">
-              {closed.map((s) => (
-                <SeminarCard key={s.slug} seminar={s} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <SeminarsView seminars={seminars} />
     </div>
   );
 }

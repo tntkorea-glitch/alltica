@@ -74,6 +74,7 @@ export default async function EditSeminarPage({
             target: Array.isArray(row.target) ? row.target.join("\n") : "",
             tags: Array.isArray(row.tags) ? row.tags.join(",") : "",
             status: row.status,
+            imageUrl: row.image_url ?? "",
           }}
         />
       </div>

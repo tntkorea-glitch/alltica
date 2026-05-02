@@ -26,6 +26,7 @@ interface SeminarInput {
   target?: string[];
   tags?: string[];
   status?: Status;
+  imageUrl?: string | null;
 }
 
 function validate(body: SeminarInput): string | null {
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
       target: body.target ?? [],
       tags: body.tags ?? [],
       status: body.status ?? "upcoming",
+      image_url: body.imageUrl ?? null,
     })
     .select()
     .maybeSingle();
