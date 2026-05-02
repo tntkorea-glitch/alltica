@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 type Status = "upcoming" | "open" | "closed" | "completed";
@@ -68,6 +68,29 @@ export default function TeacherSeminarForm({
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImageFile(file: File) {
+    setUploadError("");
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/teacher/seminars/upload-image", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "업로드 실패");
+      set("imageUrl", data.url);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "업로드 실패");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function set<K extends keyof TeacherSeminarFormValues>(
     key: K,
@@ -297,21 +320,102 @@ export default function TeacherSeminarForm({
         </Field>
       </Section>
 
-      <Section title="이미지">
-        <Field label="대표 이미지 URL" hint="Unsplash 등 외부 이미지 URL — 세미나 상세 페이지 상단에 표시됩니다">
+      <Section title="대표 이미지">
+        {/* 파일 업로드 영역 */}
+        <div
+          className={`relative border-2 border-dashed rounded-xl transition-colors cursor-pointer ${
+            uploading
+              ? "border-brand/40 bg-brand/5"
+              : "border-gray-200 hover:border-brand/40 hover:bg-brand/5"
+          }`}
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file) handleImageFile(file);
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImageFile(file);
+              e.target.value = "";
+            }}
+          />
+
+          {v.imageUrl ? (
+            /* 미리보기 */
+            <div className="relative">
+              <img
+                src={v.imageUrl}
+                alt="대표 이미지"
+                className="w-full h-48 object-cover rounded-xl"
+              />
+              <div className="absolute inset-0 bg-black/0 hover:bg-black/30 rounded-xl transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                <span className="text-white text-sm font-semibold bg-black/50 px-3 py-1.5 rounded-lg">
+                  클릭하거나 드래그해서 교체
+                </span>
+              </div>
+              {uploading && (
+                <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
+                  <span className="text-white text-sm font-semibold">업로드 중…</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* 빈 상태 */
+            <div className="flex flex-col items-center justify-center py-10 gap-3 text-gray-400">
+              {uploading ? (
+                <>
+                  <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm text-brand font-medium">업로드 중…</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-500">클릭하거나 이미지를 드래그하세요</p>
+                    <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP, GIF · 최대 10MB</p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {uploadError && (
+          <p className="text-xs text-red-500 mt-1">{uploadError}</p>
+        )}
+
+        {/* URL 직접 입력 (대안) */}
+        <div className="mt-3">
+          <p className="text-xs text-gray-400 mb-1.5">또는 외부 이미지 URL 직접 입력</p>
           <input
             type="url"
             value={v.imageUrl}
             onChange={(e) => set("imageUrl", e.target.value)}
             placeholder="https://images.unsplash.com/photo-..."
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl font-mono text-sm"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl font-mono text-sm text-gray-600 placeholder:text-gray-300"
           />
-          {v.imageUrl && (
-            <div className="mt-2 rounded-xl overflow-hidden border border-gray-200 h-32">
-              <img src={v.imageUrl} alt="미리보기" className="w-full h-full object-cover" />
-            </div>
-          )}
-        </Field>
+        </div>
+
+        {v.imageUrl && (
+          <button
+            type="button"
+            onClick={() => set("imageUrl", "")}
+            className="text-xs text-red-400 hover:text-red-600 mt-1"
+          >
+            이미지 제거
+          </button>
+        )}
       </Section>
 
       <Section title="커리큘럼 · 대상 · 태그">
