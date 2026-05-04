@@ -1,10 +1,10 @@
 ---
-name: 알티카 서비스 라인업 (확정 2026-04-29)
-description: 알티카가 통합하는 9개 자매 서비스 + 알티카 본체 = 총 10개 ~tica 브랜드. 도메인/Vercel URL/카테고리 매핑.
+name: 알티카 서비스 라인업 (2026-05-04 업데이트)
+description: 알티카가 통합하는 11개 자매 서비스 + 알티카 본체 = 총 12개 ~tica 브랜드. 도메인/Vercel URL/카테고리 매핑.
 type: project
 originSessionId: 92f80b41-22c6-4efe-8abc-45ded2c6f253
 ---
-알티카 = 9개 ~tica 자매 서비스를 통합하는 허브. 메인페이지 Hero 바로 아래 `ECOSYSTEM` 섹션(`src/components/ServiceLineup.tsx`)에서 9개 카드로 노출.
+알티카 = 11개 ~tica 자매 서비스를 통합하는 허브. 메인페이지 Hero 바로 아래 `ECOSYSTEM` 섹션(`src/components/ServiceLineup.tsx`)에서 11개 카드로 노출.
 
 ## 카테고리 4종
 
@@ -26,12 +26,14 @@ originSessionId: 92f80b41-22c6-4efe-8abc-45ded2c6f253
 | **Onetica** | 원클릭 자동발송 | (배포 전) | 준비 중 | `D:\dev\Onetica` (폴더만, .vercel 없음) |
 | **Beautica** | 뷰티샵 예약 | https://beautica.vercel.app | live | `D:\dev\beautica` |
 | **Novtica** | 사내 프로그램 | (배포/폴더 모두 없음) | 준비 중 | — |
+| **Infotica** | 정보 서비스 | https://infotica.co.kr | live | — |
+| **Maketica** | 콘텐츠 제작 | https://maketica.co.kr | live | — |
 | **Alltica** | 통합 플랫폼 | https://alltica.co.kr | live (허브 본인) | `D:\dev\alltica` |
 
 ## 도메인 정책
 
-- 현재 커스텀 도메인 보유: postica.co.kr, yutica.co.kr, netica.co.kr, alltica.co.kr (4개)
-- 나머지 5개(Liketica/Datica/Contica/Beautica + 향후 Onetica)는 우선 `*.vercel.app` 사용 → 도메인 획득되면 ServiceLineup.tsx의 `services` 배열 url 만 갱신
+- 현재 커스텀 도메인 보유: postica.co.kr, yutica.co.kr, netica.co.kr, alltica.co.kr, infotica.co.kr, maketica.co.kr (6개)
+- 나머지(Liketica/Datica/Contica/Beautica + 향후 Onetica)는 우선 `*.vercel.app` 사용 → 도메인 획득되면 `src/lib/services.ts`의 `services` 배열 url 만 갱신
 - 카드 클릭 시 `target="_blank"` 새창으로 열림 (사용자가 알티카로 돌아오기 쉽게)
 
 ## 페이지 구조 (2026-04-29 변경)
