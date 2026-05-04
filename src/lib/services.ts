@@ -20,6 +20,8 @@ export const services: Service[] = [
   { brand: "Contica", title: "연락처 동기화", category: "messaging", icon: "📇", url: "https://contica.vercel.app", status: "coming-soon" },
   { brand: "Onetica", title: "원클릭 자동발송", category: "messaging", icon: "📤", url: "#", status: "coming-soon" },
   { brand: "Novtica", title: "사내 프로그램", category: "business", icon: "🏢", url: "#", status: "coming-soon" },
+  { brand: "Infotica", title: "정보 서비스", category: "analytics", icon: "📰", url: "https://infotica.co.kr", status: "live" },
+  { brand: "Maketica", title: "콘텐츠 제작", category: "business", icon: "🛠️", url: "https://maketica.co.kr", status: "live" },
 ];
 
 export const categoryStyle: Record<

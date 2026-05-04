@@ -11,7 +11,7 @@ export default function ServiceLineup() {
           올티카 서비스 라인업
         </h2>
         <p className="text-gray-500 max-w-xl mx-auto">
-          하나의 통합 플랫폼, 9개의 전문 서비스.
+          하나의 통합 플랫폼, 11개의 전문 서비스.
           <br className="hidden sm:block" />
           필요한 솔루션을 클릭해 바로 시작하세요.
         </p>
