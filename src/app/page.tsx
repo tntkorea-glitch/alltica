@@ -41,7 +41,7 @@ export default async function Home() {
           </h1>
 
           <p className="text-lg sm:text-xl text-blue-100/80 max-w-2xl mx-auto leading-relaxed mb-10 animate-fade-in-up delay-200">
-            Postica · Yutica · Netica · Datica 등 9개 비즈니스 자동화 서비스를
+            Postica · Netica · Maketica · Infotica 등 11개 비즈니스 서비스를
             <br className="hidden sm:block" />
             Alltica 한 곳에서 통합 관리하세요
           </p>
@@ -65,7 +65,7 @@ export default async function Home() {
           {/* Stats */}
           <div className="flex items-center justify-center gap-8 sm:gap-16 mt-16 animate-fade-in-up delay-400">
             {[
-              { num: "9", label: "통합 서비스" },
+              { num: "11", label: "통합 서비스" },
               { num: "24h", label: "빠른 응답" },
               { num: "100%", label: "안전한 관리" },
             ].map((stat) => (

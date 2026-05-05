@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     template: "%s | Alltica",
   },
   description:
-    "Postica · Yutica · Netica · Datica · Liketica · Contica · Onetica · Beautica · Novtica — 9개 ~tica 비즈니스 자동화 솔루션을 Alltica 한 곳에서 통합 관리.",
+    "Postica · Netica · Maketica · Infotica · Yutica · Datica 등 11개 ~tica 비즈니스 서비스를 Alltica 한 곳에서 통합 관리.",
   keywords: [
     "Alltica",
     "알티카",
@@ -31,17 +31,21 @@ export const metadata: Metadata = {
     "Onetica",
     "Beautica",
     "Novtica",
+    "Infotica",
+    "Maketica",
     "인스타 자동화",
     "유튜브 자동화",
     "블로그 자동화",
     "데이터 분석",
+    "콘텐츠 제작",
+    "정보 서비스",
     "비즈니스 자동화",
     "세미나 신청",
   ],
   openGraph: {
     title: "Alltica | 통합 비즈니스 자동화 플랫폼",
     description:
-      "9개 ~tica 비즈니스 솔루션을 Alltica 한 곳에서. SNS 자동화 · 데이터 분석 · 메시징 · 비즈니스 운영.",
+      "11개 ~tica 비즈니스 서비스를 Alltica 한 곳에서. SNS 자동화 · 콘텐츠 제작 · 데이터 분석 · 비즈니스 운영.",
     url: SITE_URL,
     siteName: "Alltica",
     locale: "ko_KR",
@@ -50,7 +54,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Alltica | 통합 비즈니스 자동화 플랫폼",
-    description: "9개 ~tica 비즈니스 솔루션을 Alltica 한 곳에서.",
+    description: "11개 ~tica 비즈니스 서비스를 Alltica 한 곳에서.",
   },
 };
 
