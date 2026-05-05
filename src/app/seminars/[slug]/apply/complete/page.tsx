@@ -4,6 +4,7 @@ import { getSeminarBySlug, getAllSeminars, formatPrice } from "@/lib/seminars";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ id?: string; paid?: string }>;
 }
 
 export async function generateStaticParams() {
@@ -17,11 +18,13 @@ export const metadata = {
   title: "신청이 완료되었습니다 | Alltica",
 };
 
-export default async function ApplyCompletePage({ params }: PageProps) {
+export default async function ApplyCompletePage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const { paid } = await searchParams;
   const seminar = await getSeminarBySlug(slug);
   if (!seminar) notFound();
 
+  const isPaid = paid === "1";
   const bankName = process.env.BANK_NAME || "은행";
   const bankAccount = process.env.BANK_ACCOUNT_NUMBER || "(관리자에게 확인)";
   const bankHolder = process.env.BANK_ACCOUNT_NAME || "Alltica";
@@ -58,25 +61,48 @@ export default async function ApplyCompletePage({ params }: PageProps) {
             </div>
           </section>
 
-          {/* Bank info */}
-          <section>
-            <h2 className="text-sm font-bold text-gray-500 mb-3">입금 안내</h2>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-              <div className="text-sm text-amber-900 mb-3 leading-relaxed">
-                아래 계좌로 <b>{formatPrice(seminar.price)}</b>을 입금해주시면 참가가 확정됩니다.
+          {/* Payment info */}
+          {isPaid ? (
+            <section>
+              <h2 className="text-sm font-bold text-gray-500 mb-3">결제 완료</h2>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-2xl">✅</span>
+                  <span className="text-emerald-800 font-bold text-sm">
+                    {formatPrice(seminar.price)} 결제가 완료되었습니다
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-700 leading-relaxed">
+                  카드 결제가 확인되었습니다. 참가가 확정되었으며 안내 문자를 발송해드립니다.
+                </p>
               </div>
-              <div className="bg-white rounded-lg p-4 space-y-1.5 text-sm">
-                <Row label="은행" value={bankName} />
-                <Row label="계좌번호" value={bankAccount} copyable />
-                <Row label="예금주" value={bankHolder} />
+            </section>
+          ) : seminar.price > 0 ? (
+            <section>
+              <h2 className="text-sm font-bold text-gray-500 mb-3">입금 안내</h2>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+                <div className="text-sm text-amber-900 mb-3 leading-relaxed">
+                  아래 계좌로 <b>{formatPrice(seminar.price)}</b>을 입금해주시면 참가가 확정됩니다.
+                </div>
+                <div className="bg-white rounded-lg p-4 space-y-1.5 text-sm">
+                  <Row label="은행" value={bankName} />
+                  <Row label="계좌번호" value={bankAccount} copyable />
+                  <Row label="예금주" value={bankHolder} />
+                </div>
+                <p className="text-xs text-amber-800 mt-3 leading-relaxed">
+                  · 입금자명은 <b>신청자 이름</b>과 동일하게 해주세요.
+                  <br />
+                  · 입금 확인 후 참가 확정 안내 문자를 발송해드립니다.
+                </p>
               </div>
-              <p className="text-xs text-amber-800 mt-3 leading-relaxed">
-                · 입금자명은 <b>신청자 이름</b>과 동일하게 해주세요.
-                <br />
-                · 입금 확인 후 참가 확정 안내 문자를 발송해드립니다.
-              </p>
-            </div>
-          </section>
+            </section>
+          ) : (
+            <section>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
+                <p className="text-emerald-800 font-semibold text-sm">무료 강좌입니다. 참가가 확정되었습니다.</p>
+              </div>
+            </section>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Link

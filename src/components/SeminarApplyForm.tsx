@@ -227,7 +227,11 @@ export default function SeminarApplyForm({ seminar }: Props) {
         throw new Error(error || "신청에 실패했습니다.");
       }
       const { id } = await res.json();
-      router.push(`/seminars/${seminar.slug}/apply/complete?id=${id}`);
+      if (seminar.price > 0) {
+        router.push(`/seminars/${seminar.slug}/apply/payment?id=${id}`);
+      } else {
+        router.push(`/seminars/${seminar.slug}/apply/complete?id=${id}`);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "신청 처리에 실패했습니다.";
       alert(msg);
