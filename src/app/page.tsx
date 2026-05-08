@@ -60,6 +60,12 @@ export default async function Home() {
             >
               🎓 세미나 신청
             </Link>
+            <Link
+              href="/contests"
+              className="w-full sm:w-auto px-8 py-4 bg-white/10 text-white font-bold rounded-2xl text-base border border-white/20 hover:bg-white/20 transition-all backdrop-blur-sm hover:-translate-y-0.5 active:scale-[0.98]"
+            >
+              🏆 대회 신청
+            </Link>
           </div>
 
           {/* Stats */}
