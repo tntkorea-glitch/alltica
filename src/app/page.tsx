@@ -3,6 +3,7 @@ import SeminarCard from "@/components/SeminarCard";
 import ServiceLineup from "@/components/ServiceLineup";
 import { formTemplates } from "@/lib/forms";
 import { getAllSeminars } from "@/lib/seminars";
+import { CONTESTS } from "@/lib/contests";
 import Link from "next/link";
 
 export default async function Home() {
@@ -129,11 +130,81 @@ export default async function Home() {
         </div>
 
         <div className="text-center mt-8 sm:hidden">
-          <Link
-            href="/seminars"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-brand"
-          >
+          <Link href="/seminars" className="inline-flex items-center gap-1 text-sm font-semibold text-brand">
             전체 세미나 보기 →
+          </Link>
+        </div>
+      </section>
+
+      {/* Contests section */}
+      <section id="contests-preview" className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <span className="inline-block text-sm font-bold text-brand bg-blue-50 px-4 py-1.5 rounded-full mb-4">
+              CONTEST
+            </span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">
+              진행 중인 대회 · 공모전
+            </h2>
+            <p className="text-gray-500 text-sm sm:text-base">
+              뷰티 기술 경연대회와 창업 공모전에 참가하세요
+            </p>
+          </div>
+          <Link
+            href="/contests"
+            className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline"
+          >
+            전체 보기 →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {CONTESTS
+            .filter((c) => c.status === "모집중" || c.status === "마감임박")
+            .slice(0, 3)
+            .map((c) => (
+              <Link
+                key={c.id}
+                href="/contests"
+                className="group block bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+                    모집 중
+                  </span>
+                  <div className="flex gap-1">
+                    {c.tags.slice(0, 2).map((tag) => (
+                      <span key={tag} className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded">#{tag}</span>
+                    ))}
+                  </div>
+                </div>
+                <h3 className="text-base font-bold text-gray-900 mb-1 leading-snug group-hover:text-brand transition-colors line-clamp-2">
+                  {c.title}
+                </h3>
+                <p className="text-sm text-gray-500 mb-4 line-clamp-1">{c.subtitle}</p>
+                <div className="space-y-1 text-sm border-t border-gray-100 pt-4">
+                  <div className="flex gap-2">
+                    <span className="text-gray-400 w-14 shrink-0">대회일시</span>
+                    <span className="text-gray-700">{c.dateDisplay}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-gray-400 w-14 shrink-0">접수마감</span>
+                    <span className="text-gray-700 font-medium">{c.applicationDeadline}</span>
+                  </div>
+                </div>
+                <div className="flex items-end justify-between mt-5 pt-4 border-t border-gray-100">
+                  <div className="text-sm font-bold text-brand">{c.prize.split(" · ")[0]}</div>
+                  <span className="text-sm font-semibold text-brand group-hover:translate-x-1 transition-transform">
+                    신청하기 →
+                  </span>
+                </div>
+              </Link>
+            ))}
+        </div>
+
+        <div className="text-center mt-8 sm:hidden">
+          <Link href="/contests" className="inline-flex items-center gap-1 text-sm font-semibold text-brand">
+            전체 대회 보기 →
           </Link>
         </div>
       </section>
