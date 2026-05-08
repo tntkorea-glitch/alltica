@@ -1,10 +1,11 @@
+import { ReactNode } from "react";
 import Link from "next/link";
 
 export const metadata = {
   title: "Solapi 알림톡 연동 설정 가이드 | Alltica",
 };
 
-function Step({ num, title, children }: { num: string; title: string; children: React.ReactNode }) {
+function Step({ num, title, children }: { num: string; title: string; children: ReactNode }) {
   return (
     <div className="flex gap-5">
       <div className="shrink-0 w-8 h-8 rounded-full bg-brand text-white text-sm font-bold flex items-center justify-center mt-0.5">
@@ -18,13 +19,13 @@ function Step({ num, title, children }: { num: string; title: string; children: 
   );
 }
 
-function Code({ children }: { children: React.ReactNode }) {
+function Code({ children }: { children: ReactNode }) {
   return (
     <code className="bg-gray-100 text-brand px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
   );
 }
 
-function InfoBox({ children }: { children: React.ReactNode }) {
+function InfoBox({ children }: { children: ReactNode }) {
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 leading-relaxed">
       {children}
@@ -32,7 +33,7 @@ function InfoBox({ children }: { children: React.ReactNode }) {
   );
 }
 
-function WarnBox({ children }: { children: React.ReactNode }) {
+function WarnBox({ children }: { children: ReactNode }) {
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 leading-relaxed">
       {children}
