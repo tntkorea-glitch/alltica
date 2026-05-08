@@ -56,6 +56,10 @@ function asStringArray(v: unknown): string[] {
 }
 
 function mapRow(row: SeminarRow): Seminar {
+  const now = new Date();
+  const endTime = row.end_at ? new Date(row.end_at) : new Date(row.start_at);
+  const isExpired = (row.status === "open" || row.status === "upcoming") && endTime < now;
+
   return {
     id: row.id,
     slug: row.slug,
@@ -76,7 +80,7 @@ function mapRow(row: SeminarRow): Seminar {
     curriculum: asStringArray(row.curriculum),
     target: asStringArray(row.target),
     tags: asStringArray(row.tags),
-    status: row.status,
+    status: isExpired ? "completed" : row.status,
     imageUrl: row.image_url ?? null,
   };
 }

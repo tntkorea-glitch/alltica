@@ -5,7 +5,7 @@ const statusStyle: Record<Seminar["status"], { label: string; tone: string }> = 
   open: { label: "모집 중", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   upcoming: { label: "오픈 예정", tone: "bg-amber-50 text-amber-700 border-amber-200" },
   closed: { label: "마감", tone: "bg-gray-100 text-gray-500 border-gray-200" },
-  completed: { label: "종료", tone: "bg-gray-100 text-gray-500 border-gray-200" },
+  completed: { label: "일정종료", tone: "bg-gray-100 text-gray-500 border-gray-200" },
 };
 
 export default function SeminarCard({ seminar }: { seminar: Seminar }) {

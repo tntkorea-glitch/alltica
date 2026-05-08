@@ -14,40 +14,53 @@ originSessionId: 748b6203-c04d-455a-8603-299ed4a2a4cb
 - 인증: NextAuth v5 (Google만 활성, 카카오/네이버 placeholder) + admin_session HMAC 쿠키
 - OCR: Claude Haiku 4.5 Vision tool_use
 - SMS: SolAPI 단문 90B (postica와 크레덴셜 공유)
-- 결제: 수동 계좌이체 (`BANK_*` env)
+- 결제: 토스페이먼츠 PG (`@tosspayments/tosspayments-sdk`) — 카드결제. TOSSPAYMENTS_SECRET_KEY / NEXT_PUBLIC_TOSSPAYMENTS_CLIENT_KEY 환경변수 필요
 - 도메인: alltica.co.kr (호스팅케이알 DNS) + alltica.vercel.app
 - 자동화: Stop 훅 auto-commit (push 안 함) + gitleaks pre-commit + SessionStart git pull
 
 ## 배포 상태
 
-**2026-05-03 배포 완료** — alltica.co.kr
-커밋: `496f7af` (이미지 업로드 기능)
+**2026-05-06 배포 완료** — alltica.co.kr  
+커밋: `10b5916` (Hero 텍스트 Maketica/Infotica 11개 반영)
 
-## 이번 세션 완료 작업 (2026-05-02~03)
+## 이번 세션 완료 작업 (2026-05-06)
 
-- postica 5/6(수), 5/7(목) 오전/오후 4개 신규 세션 추가
-- KBA 서태리 이사장 문화센터 강좌 5개 생성 (슈가링왁싱/LED속눈썹연장/아로마/속눈썹펌/이온화에너지케어)
-- 세미나 복제 기능 (어드민 → `/teacher/seminars/new?from=ID`)
-- 캘린더 뷰 추가 (`/seminars` — 목록/캘린더 토글, 월별 이동)
-- 이미지 지원: `image_url` DB 컬럼, 세미나 상세 이미지 표시
-- **이미지 직접 업로드**: `seminar-images` Storage 버킷, `/api/teacher/seminars/upload-image`, TeacherSeminarForm 드래그&드롭 UI
-- 더미 강좌 3개 삭제 (제품교육/B2B영업/디지털광고)
-- KBA 강좌: 가격 3만원 통일, "총 4강" 제거, 1회차 OT 커리큘럼으로 교체
-- A~C 미배포 항목 (서비스 라인업 admin 게이트, Supabase 일반문의 이관, 엑셀 다운로드) 포함 일괄 배포
+- **토스페이먼츠 PG 연동** 전체 구현:
+  - `TossPaymentWidget.tsx` — 카드 결제 버튼 (loadTossPayments + ANONYMOUS)
+  - `PaymentSuccessClient.tsx` — 결제 확인 스피너 → 완료 리다이렉트
+  - `/apply/payment/page.tsx` — 결제 페이지 (DB에서 금액 확인)
+  - `/apply/payment/success/page.tsx` — 토스 콜백 처리
+  - `/apply/payment/fail/page.tsx` — 실패 페이지 + 재시도
+  - `/api/payments/confirm/route.ts` — 금액 검증 + 토스 승인 + DB 업데이트
+  - `SeminarApplyForm.tsx` — price > 0이면 결제 페이지로 분기
+  - `complete/page.tsx` — `?paid=1` 결제완료 / 무료 / 계좌이체 3분기 처리
+  - Supabase `applications` 테이블에 `toss_payment_key` 컬럼 추가 (사용자 실행 완료)
+- **Hero 첫 화면 서비스 업데이트**: 9개→11개, Maketica/Infotica 텍스트 반영
+- `layout.tsx` 메타데이터/OG/Twitter 설명 11개로 업데이트, keywords에 Infotica·Maketica 추가
 
 ## Phase 2 남은 백로그
 
+- **토스 key 등록** — `.env.local`에 `NEXT_PUBLIC_TOSSPAYMENTS_CLIENT_KEY`, `TOSSPAYMENTS_SECRET_KEY` 추가 필요 (Vercel 환경변수도)
 - 카카오/네이버 소셜 로그인 실연동 (현재 "준비 중" alert)
-- 토스페이먼츠 PG 연동 (수동 계좌이체 → 즉시 결제)
 - ~~카카오 알림톡 전환~~ **코드 완료, 비즈니스 심사 대기 중**
 - 강사/관리자 시스템 로컬 E2E 테스트
 - OCR 주소 정확도 실제 명함 검증
 
 ## 사용자 결정 대기
 
+- **토스페이먼츠 API 키** 발급 후 Vercel 환경변수 등록 (test_ck_ / test_sk_)
 - 9개 서비스 카드 정식 로고 자산
 - KBA 강좌 2회차~ 일정 확정 후 복제 기능으로 추가
-- Phase 2 다음 우선순위
+
+## 🔔 토스 결제 활성화 절차 (키 발급 후)
+
+1. `.env.local` 추가:
+   ```
+   NEXT_PUBLIC_TOSSPAYMENTS_CLIENT_KEY=test_ck_...
+   TOSSPAYMENTS_SECRET_KEY=test_sk_...
+   ```
+2. Vercel 대시보드 → Settings → Environment Variables 동일하게 추가
+3. Redeploy
 
 ## 🔔 알림톡 활성화 절차 (비즈니스 심사 완료 후)
 
@@ -59,7 +72,7 @@ originSessionId: 748b6203-c04d-455a-8603-299ed4a2a4cb
 
 ```sql
 ALTER TABLE public.seminars ADD COLUMN IF NOT EXISTS image_url text;
--- KBA 이미지 URL UPDATE (5개)
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS toss_payment_key text;
 INSERT INTO storage.buckets (id, name, public) VALUES ('seminar-images', 'seminar-images', true) ON CONFLICT (id) DO NOTHING;
 CREATE POLICY "Public read seminar images" ON storage.objects FOR SELECT USING (bucket_id = 'seminar-images');
 ```

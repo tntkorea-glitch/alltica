@@ -39,9 +39,9 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
 export default function SeminarsView({ seminars }: { seminars: Seminar[] }) {
   const [view, setView] = useState<View>("list");
 
-  const openOrUpcoming = seminars.filter(
-    (s) => s.status === "open" || s.status === "upcoming",
-  );
+  const openOrUpcoming = seminars
+    .filter((s) => s.status === "open" || s.status === "upcoming")
+    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
   const closed = seminars.filter(
     (s) => s.status === "closed" || s.status === "completed",
   );
@@ -76,10 +76,12 @@ export default function SeminarsView({ seminars }: { seminars: Seminar[] }) {
         </div>
       </div>
 
-      {/* 지난 세미나 (목록 뷰에서만) */}
+      {/* 일정종료 (목록 뷰에서만) */}
       {view === "list" && closed.length > 0 && (
         <div className="mt-10">
-          <h2 className="text-sm font-bold text-gray-500 mb-4 px-1">지난 세미나</h2>
+          <h2 className="text-sm font-bold text-gray-500 mb-4 px-1">
+            일정종료 {closed.length}개
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 opacity-60">
             {closed.map((s) => (
               <SeminarCard key={s.slug} seminar={s} />
