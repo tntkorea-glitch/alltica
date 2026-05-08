@@ -1328,9 +1328,19 @@ function SolapiModal({
             <h3 className="font-bold text-gray-900">솔라피 설정</h3>
             <p className="text-xs text-gray-500 mt-0.5">{user.name || user.email}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">
-            &times;
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href="/docs/solapi-setup"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-brand hover:underline font-semibold"
+            >
+              📖 설정 매뉴얼
+            </a>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+              &times;
+            </button>
+          </div>
         </div>
 
         <div className="px-6 py-5 space-y-4">
