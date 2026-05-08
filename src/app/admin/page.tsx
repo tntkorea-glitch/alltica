@@ -8,6 +8,7 @@ import { formatPrice, type Seminar } from "@/lib/seminars";
 import { Submission } from "@/lib/types";
 import { formTemplates } from "@/lib/forms";
 import { THEMES, ThemeId } from "@/lib/theme";
+import { CONTESTS, Contest, ContestStatus } from "@/lib/contests";
 
 type ApplicationStatus = "pending" | "confirmed" | "cancelled";
 type PaymentStatus = "unpaid" | "paid" | "refunded";
@@ -69,7 +70,7 @@ function sanitizeSheetName(name: string): string {
 }
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<"seminars" | "seminar-mgmt" | "forms" | "users" | "settings">("seminars");
+  const [tab, setTab] = useState<"seminars" | "contests" | "seminar-mgmt" | "contest-mgmt" | "forms" | "users" | "settings">("seminars");
 
   // Seminar applications
   const [apps, setApps] = useState<Application[]>([]);
@@ -140,6 +141,8 @@ export default function AdminPage() {
     else if (tab === "seminar-mgmt") fetchSeminars();
     else if (tab === "forms") fetchSubs();
   }, [tab, fetchApps, fetchSubs, fetchSeminars]);
+
+  // contest applications — 추후 API 연동 시 여기에 fetch 추가
 
   async function handleLogout() {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -296,15 +299,25 @@ export default function AdminPage() {
         {/* Tabs */}
         <div className="max-w-7xl mx-auto mt-4 flex gap-1 border-b border-gray-100 -mb-4">
           <TabButton active={tab === "seminars"} onClick={() => setTab("seminars")}>
-            📋 신청 관리{" "}
+            📋 세미나 신청{" "}
             <span className="ml-1 text-xs bg-brand/10 text-brand px-1.5 py-0.5 rounded">
               {apps.length}
             </span>
+          </TabButton>
+          <TabButton active={tab === "contests"} onClick={() => setTab("contests")}>
+            🏆 대회 신청{" "}
+            <span className="ml-1 text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">0</span>
           </TabButton>
           <TabButton active={tab === "seminar-mgmt"} onClick={() => setTab("seminar-mgmt")}>
             🎓 세미나 관리{" "}
             <span className="ml-1 text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
               {allSeminars.length}
+            </span>
+          </TabButton>
+          <TabButton active={tab === "contest-mgmt"} onClick={() => setTab("contest-mgmt")}>
+            🏆 대회 관리{" "}
+            <span className="ml-1 text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+              {CONTESTS.length}
             </span>
           </TabButton>
           <TabButton active={tab === "forms"} onClick={() => setTab("forms")}>
@@ -326,6 +339,8 @@ export default function AdminPage() {
         {tab === "seminar-mgmt" && (
           <SeminarMgmtTab seminars={allSeminars} onRefresh={fetchSeminars} />
         )}
+        {tab === "contest-mgmt" && <ContestMgmtTab />}
+        {tab === "contests" && <ContestsApplyTab />}
         {tab === "seminars" && (
           <SeminarsTab
             apps={apps}
@@ -1628,6 +1643,122 @@ function SeminarMgmtTab({
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// ContestMgmtTab — lib/contests.ts 정적 데이터 관리
+// ============================================================
+const CONTEST_STATUS_LABEL: Record<ContestStatus, string> = {
+  모집중: "모집중",
+  마감임박: "마감임박",
+  마감: "마감",
+  예정: "예정",
+};
+const CONTEST_STATUS_TONE: Record<ContestStatus, string> = {
+  모집중: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  마감임박: "bg-red-50 text-red-600 border-red-200",
+  예정: "bg-amber-50 text-amber-700 border-amber-200",
+  마감: "bg-gray-100 text-gray-500 border-gray-200",
+};
+
+function ContestMgmtTab() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">대회 관리</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            총 {CONTESTS.length}개 · 데이터 수정: <code className="text-brand">src/lib/contests.ts</code>
+          </p>
+        </div>
+        <a
+          href="/contests"
+          target="_blank"
+          className="text-sm text-gray-500 hover:text-brand border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+        >
+          대회 페이지 보기
+        </a>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 bg-gray-50/50">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">대회명</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">일정</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">접수마감</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">상태</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">시상</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {CONTESTS.map((c) => (
+              <tr key={c.id} className="hover:bg-gray-50/50">
+                <td className="px-4 py-3">
+                  <div className="font-semibold text-gray-900 truncate max-w-xs">{c.title}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{c.organizer}</div>
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-600 hidden md:table-cell whitespace-nowrap">
+                  {c.dateDisplay}
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-600 hidden md:table-cell whitespace-nowrap">
+                  {c.applicationDeadline}
+                </td>
+                <td className="px-4 py-3">
+                  <Badge tone={CONTEST_STATUS_TONE[c.status]}>
+                    {CONTEST_STATUS_LABEL[c.status]}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-600 hidden lg:table-cell">
+                  {c.prize.split(" · ")[0]}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+        대회 추가·수정은 <code className="font-mono">src/lib/contests.ts</code>의 <code className="font-mono">CONTESTS</code> 배열을 직접 편집하세요.
+        대회 신청 폼 연동 후 이 탭에서 신청자 관리도 가능합니다.
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ContestsApplyTab — 대회 신청자 관리 (신청 폼 연동 후 활성화)
+// ============================================================
+function ContestsApplyTab() {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-bold text-gray-900">대회 신청 관리</h2>
+        <p className="text-xs text-gray-500 mt-0.5">대회별 신청자 현황</p>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="bg-white rounded-xl p-4 border border-gray-100 text-left">
+          <p className="text-2xl font-bold text-brand">0</p>
+          <p className="text-xs text-gray-500 mt-0.5">전체 신청</p>
+        </div>
+        {CONTESTS.filter((c) => c.status === "모집중" || c.status === "마감임박").map((c) => (
+          <div key={c.id} className="bg-white rounded-xl p-4 border border-gray-100 text-left">
+            <p className="text-2xl font-bold text-gray-900">0</p>
+            <p className="text-xs text-gray-500 mt-0.5 truncate" title={c.title}>{c.title}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
+        <div className="text-4xl mb-3">🏆</div>
+        <p className="text-sm font-semibold text-gray-700 mb-1">대회 신청 폼 준비 중</p>
+        <p className="text-xs text-gray-400">
+          <code className="text-brand">/contests/[id]/apply</code> 신청 폼 구현 후 여기서 신청자를 관리할 수 있습니다.
+        </p>
+      </div>
     </div>
   );
 }
