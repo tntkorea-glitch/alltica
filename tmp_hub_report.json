@@ -1,0 +1,11 @@
+{
+  "project_slug": "alltica",
+  "project_name": "Alltica",
+  "project_description": "9개 ~tica 서비스 통합 허브 (세미나/대회/알림톡)",
+  "status": "active",
+  "progress_percent": 62,
+  "today_work": "- vercel.json UTF-8 BOM 제거, Redeploy 파싱 에러 수정 (7f96958)\n- tnt-mall lib/alimtalk-shipping.ts 분석, alltica 필요 Solapi 환경변수 목록 정리\n- SOLAPI_PF_ID, SOLAPI_ALIMTALK_TEMPLATE_SIGNUP은 tnt-mall과 공유 가능 확인\n- alltica/tnt-mall Vercel 환경변수 페이지 동시 오픈, 입력 안내",
+  "remaining_work": "- SOLAPI_ALIMTALK_TEMPLATE_PREPARING / _SHIPPING / BANK_SMS_WEBHOOK_TOKEN 입력 (솔라피 템플릿 생성 후)\n- 토스페이먼츠 API 키 발급 및 Vercel 환경변수 등록\n- 대회 신청 폼 (/contests/[id]/apply) 실구현\n- 대회 실데이터 교체 (src/lib/contests.ts)\n- 카카오/네이버 소셜 로그인 실연동\n- 강사/관리자 시스템 E2E 테스트",
+  "next_work": "- 솔라피 알림톡 템플릿 2개(PREPARING, SHIPPING) 생성 후 Vercel 환경변수 입력 완료\n- 토스페이먼츠 키 발급 및 Vercel 등록",
+  "raw_markdown": "## alltica 세션 종료 보고 (2026-05-09 5차)\n\n### 완료 작업\n- vercel.json UTF-8 BOM 제거, Redeploy 파싱 에러 수정\n- tnt-mall Solapi 구조 분석, alltica 환경변수 목록 확정\n- Vercel alltica 환경변수 페이지 오픈, 입력 안내\n\n### 커밋\n- 7f96958 (BOM 수정 포함)\n\n### 배포\n- 솔라피 템플릿 생성 후 Vercel 환경변수 입력 완료 시 Redeploy 예정\n\n### 진행률: 62%\n- 주요 기능(세미나/대회/OCR/결제 UI) 완료, 알림톡 실연동·결제 키 등록 남음\n\n### 다음 세션\n1. 솔라피 알림톡 템플릿(PREPARING, SHIPPING) 생성 후 Vercel 환경변수 입력\n2. 토스페이먼츠 키 발급 및 Vercel 등록"
+}
