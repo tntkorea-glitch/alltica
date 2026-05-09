@@ -38,6 +38,11 @@ alltica.co.kr
 - **Solapi 설정 매뉴얼**: `/docs/solapi-setup` 6단계 가이드 페이지 생성
 - **SolapiModal 링크**: 모달 우상단 "📖 설정 매뉴얼" 버튼 추가
 
+## 추가 완료 (2026-05-09 4차)
+
+- **빌드 에러 수정**: `src/app/docs/solapi-setup/page.tsx`에서 `React.ReactNode` → `ReactNode` import 추가 (Vercel ❌ 해결)
+- **배포**: `b3cbef8` push → Vercel 자동빌드 트리거
+
 ## Phase 2 남은 백로그
 
 - **토스 key 등록** — `.env.local`에 `NEXT_PUBLIC_TOSSPAYMENTS_CLIENT_KEY`, `TOSSPAYMENTS_SECRET_KEY` 추가 필요 (Vercel 환경변수도)
