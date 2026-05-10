@@ -1132,6 +1132,7 @@ function UsersTab() {
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [solapiTarget, setSolapiTarget] = useState<AdminUser | null>(null);
+  const [pending, setPending] = useState<Record<string, { role?: SysRole; kba_grade?: KbaGrade | null }>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1140,6 +1141,7 @@ function UsersTab() {
       if (!res.ok) throw new Error("조회 실패");
       const data: AdminUser[] = await res.json();
       setUsers(data);
+      setPending({});
     } catch (err) {
       console.error(err);
     } finally {
@@ -1147,41 +1149,45 @@ function UsersTab() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  async function changeSysRole(userId: string, role: SysRole) {
-    setSavingId(userId);
-    try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role }),
-      });
-      if (!res.ok) throw new Error("저장 실패");
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
-    } catch (err) {
-      console.error(err);
-      alert("저장 실패");
-    } finally {
-      setSavingId(null);
-    }
+  function setPendingRole(userId: string, role: SysRole) {
+    setPending((prev) => ({ ...prev, [userId]: { ...prev[userId], role } }));
+  }
+  function setPendingKba(userId: string, grade: KbaGrade | null) {
+    setPending((prev) => ({ ...prev, [userId]: { ...prev[userId], kba_grade: grade } }));
+  }
+  function hasPending(userId: string) {
+    const p = pending[userId];
+    return !!p && Object.keys(p).length > 0;
+  }
+  function getRole(u: AdminUser): SysRole {
+    return pending[u.id]?.role ?? u.role;
+  }
+  function getKba(u: AdminUser): KbaGrade | null {
+    const p = pending[u.id];
+    return p && "kba_grade" in p ? (p.kba_grade ?? null) : u.kba_grade;
   }
 
-  async function changeKbaGrade(userId: string, grade: KbaGrade | null) {
+  async function saveUser(userId: string) {
+    const changes = pending[userId];
+    if (!changes || !hasPending(userId)) return;
     setSavingId(userId);
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kba_grade: grade }),
+        body: JSON.stringify(changes),
       });
-      if (!res.ok) throw new Error("저장 실패");
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, kba_grade: grade } : u)));
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? "저장 실패");
+      }
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, ...changes } : u));
+      setPending((prev) => { const next = { ...prev }; delete next[userId]; return next; });
     } catch (err) {
       console.error(err);
-      alert("저장 실패");
+      alert(err instanceof Error ? err.message : "저장 실패");
     } finally {
       setSavingId(null);
     }
@@ -1245,6 +1251,7 @@ function UsersTab() {
                 <Th>연락처</Th>
                 <Th>시스템 권한</Th>
                 <Th>KBA 등급</Th>
+                <Th>{""}</Th>
                 <Th>솔라피</Th>
                 <Th>가입일</Th>
                 <Th>최근 로그인</Th>
@@ -1264,32 +1271,54 @@ function UsersTab() {
                       onSave={(v) => changePhone(u.id, v)}
                     />
                   </Td>
-                  {/* 시스템 권한 — 독립 동작 */}
+                  {/* 시스템 권한 — pending */}
                   <Td>
                     <select
-                      value={u.role}
+                      value={getRole(u)}
                       disabled={savingId === u.id}
-                      onChange={(e) => changeSysRole(u.id, e.target.value as SysRole)}
-                      className={`text-xs font-semibold px-2 py-1 rounded-full border ${SYS_ROLE_TONE[u.role]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
+                      onChange={(e) => setPendingRole(u.id, e.target.value as SysRole)}
+                      className={`text-xs font-semibold px-2 py-1 rounded-full border ${SYS_ROLE_TONE[getRole(u)]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
                     >
                       {(["user", "instructor", "subadmin", "admin"] as const).map((r) => (
                         <option key={r} value={r}>{SYS_ROLE_LABEL[r]}</option>
                       ))}
                     </select>
                   </Td>
-                  {/* KBA 등급 — 독립 동작 */}
+                  {/* KBA 등급 — pending */}
                   <Td>
                     <select
-                      value={u.kba_grade ?? ""}
+                      value={getKba(u) ?? ""}
                       disabled={savingId === u.id}
-                      onChange={(e) => changeKbaGrade(u.id, (e.target.value as KbaGrade) || null)}
-                      className={`text-xs font-semibold px-2 py-1 rounded-full border ${KBA_GRADE_TONE[u.kba_grade ?? ""]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
+                      onChange={(e) => setPendingKba(u.id, (e.target.value as KbaGrade) || null)}
+                      className={`text-xs font-semibold px-2 py-1 rounded-full border ${KBA_GRADE_TONE[getKba(u) ?? ""]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
                     >
                       <option value="">없음</option>
                       {(["KBA정회원", "KBA지부장", "KBA지회장", "KBA이사"] as const).map((r) => (
                         <option key={r} value={r}>{r}</option>
                       ))}
                     </select>
+                  </Td>
+                  {/* 저장 버튼 */}
+                  <Td>
+                    {hasPending(u.id) ? (
+                      <button
+                        onClick={() => saveUser(u.id)}
+                        disabled={savingId === u.id}
+                        className="text-xs px-3 py-1 rounded-full border font-semibold bg-brand text-white border-brand hover:bg-brand-hover disabled:opacity-50 transition-colors whitespace-nowrap"
+                      >
+                        {savingId === u.id ? (
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            저장 중
+                          </span>
+                        ) : "저장"}
+                      </button>
+                    ) : (
+                      <span className="text-gray-200 text-xs">—</span>
+                    )}
                   </Td>
                   <Td>
                     {u.role === "instructor" ? (
