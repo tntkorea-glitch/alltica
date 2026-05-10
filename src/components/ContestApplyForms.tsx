@@ -28,6 +28,40 @@ const QUALIFICATION_OPTIONS = [
   "기타",
 ];
 
+const ATHLETE_GRADES = ["학생부", "프로전문가부"] as const;
+type AthleteGrade = typeof ATHLETE_GRADES[number];
+
+const ATHLETE_EVENT_CATEGORIES = [
+  { category: "헤어", items: ["헤어아트"] },
+  { category: "메이크업", items: ["메이크업"] },
+  { category: "퍼머넌트메이크업", items: ["퍼머넌트메이크업", "두피마이크로피그먼트"] },
+  { category: "네일", items: ["네일아트"] },
+  { category: "속눈썹", items: ["속눈썹연장", "LED속눈썹연장", "속눈썹펌"] },
+  { category: "왁싱", items: ["왁싱", "슈가링왁싱"] },
+];
+
+function buildEventCategories(tags: string[]) {
+  const result = ATHLETE_EVENT_CATEGORIES
+    .map(cat => ({ category: cat.category, items: cat.items.filter(i => tags.includes(i)) }))
+    .filter(cat => cat.items.length > 0);
+  const covered = result.flatMap(c => c.items);
+  const uncovered = tags.filter(t => !covered.includes(t));
+  if (uncovered.length > 0) result.push({ category: "기타", items: uncovered });
+  return result;
+}
+
+function calcAthleteFee(grade: string, count: number): string {
+  if (!grade || count === 0) return "";
+  if (grade === "학생부") {
+    if (count === 1) return "40,000원";
+    if (count === 2) return "70,000원";
+    return "100,000원";
+  }
+  if (count === 1) return "100,000원";
+  if (count === 2) return "180,000원";
+  return "260,000원";
+}
+
 const DAUM_POSTCODE_SRC =
   "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
 
@@ -154,6 +188,114 @@ function CheckboxGroup({
         ))}
       </div>
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function EventCategorySelector({
+  categories, selected, onChange, error,
+}: {
+  categories: { category: string; items: string[] }[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+  error?: string;
+}) {
+  const [openCat, setOpenCat] = useState<string | null>(null);
+
+  function toggleItem(item: string) {
+    onChange(selected.includes(item) ? selected.filter(s => s !== item) : [...selected, item]);
+  }
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {categories.map(({ category, items }) => {
+          const selCount = items.filter(i => selected.includes(i)).length;
+          const isSingle = items.length === 1;
+          const isActive = selCount > 0;
+          const isOpen = openCat === category;
+
+          return (
+            <div key={category} className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isSingle) toggleItem(items[0]);
+                  else setOpenCat(isOpen && !isActive ? null : category);
+                }}
+                className={`py-3 px-3 rounded-xl border-2 text-sm font-bold transition-all flex items-center justify-between ${
+                  isActive
+                    ? "border-brand bg-brand text-white"
+                    : isOpen
+                    ? "border-brand/40 bg-brand/5 text-brand"
+                    : "border-gray-200 bg-white text-gray-600 hover:border-brand/30"
+                }`}
+              >
+                <span className="truncate">{category}</span>
+                {isActive ? (
+                  <span className="ml-1 shrink-0 text-xs bg-white/25 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold">{selCount}</span>
+                ) : !isSingle ? (
+                  <svg className={`w-3.5 h-3.5 shrink-0 ml-1 transition-transform ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                  </svg>
+                ) : null}
+              </button>
+              {!isSingle && (isOpen || selCount > 0) && (
+                <div className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-2 border border-gray-100">
+                  <p className="text-[10px] text-gray-400 font-semibold tracking-wide">세부종목 선택</p>
+                  {items.map(item => (
+                    <label key={item} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(item)}
+                        onChange={() => toggleItem(item)}
+                        className="w-4 h-4 accent-brand shrink-0"
+                      />
+                      <span className={`text-sm ${selected.includes(item) ? "text-brand font-semibold" : "text-gray-600"}`}>
+                        {item}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {selected.length > 0 && (
+        <div className="mt-3 bg-brand/5 border border-brand/15 rounded-xl px-4 py-3">
+          <p className="text-xs font-bold text-brand mb-1.5">선택된 종목 ({selected.length}종목)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {selected.map(item => (
+              <span key={item} className="inline-flex items-center gap-1 text-xs bg-white border border-brand/30 text-brand px-2.5 py-0.5 rounded-full font-medium">
+                {item}
+                <button type="button" onClick={() => toggleItem(item)} className="text-brand/50 hover:text-red-500 transition-colors leading-none ml-0.5">×</button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function AthleteFeeDisplay({ grade, count }: { grade: string; count: number }) {
+  if (!grade || count === 0) return null;
+  const fee = calcAthleteFee(grade, count);
+  return (
+    <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+      <div className="space-y-0.5">
+        <p className="text-sm font-bold text-emerald-800">{grade} · {count}종목</p>
+        {count >= 3 && (
+          <p className="text-xs text-amber-600 font-semibold">🏆 3종목 이상 특별상(추가수여) 대상</p>
+        )}
+        <p className="text-[11px] text-emerald-600">입금: 기업은행 010-9293-5659 · 뷰티스트총연합회(KBA)</p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-xl font-extrabold text-emerald-700">{fee}</p>
+        <p className="text-[10px] text-emerald-500">신청비</p>
+      </div>
     </div>
   );
 }
@@ -858,13 +1000,17 @@ function JudgeForm({
 
 interface AthleteState {
   name: string; birthdate: string; phone: string; email: string;
-  affiliation: string; career: string; divisions: string[];
+  affiliation: string; career: string;
+  grade: "" | AthleteGrade;
+  divisions: string[];
   certificates: string; requests: string;
 }
 
 const emptyAthlete: AthleteState = {
   name: "", birthdate: "", phone: "", email: "",
-  affiliation: "", career: "", divisions: [], certificates: "", requests: "",
+  affiliation: "", career: "",
+  grade: "",
+  divisions: [], certificates: "", requests: "",
 };
 
 function AthleteForm({
@@ -902,7 +1048,8 @@ function AthleteForm({
       next.phone = "올바른 연락처 형식을 입력해주세요. (예: 010-0000-0000)";
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       next.email = "올바른 이메일 형식을 입력해주세요.";
-    if (form.divisions.length === 0) next.divisions = "신청 부문을 하나 이상 선택해주세요.";
+    if (!form.grade) next.grade = "접수 부문(학생부/프로전문가부)을 선택해주세요.";
+    if (form.divisions.length === 0) next.divisions = "신청 종목을 하나 이상 선택해주세요.";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -940,12 +1087,78 @@ function AthleteForm({
         </div>
       </section>
 
-      <section className="space-y-4">
+      <section className="space-y-5">
         <SectionHeader icon="🏅" title="신청 정보" />
-        <CheckboxGroup
-          label="신청 부문" options={contest.tags} selected={form.divisions}
-          onChange={(v) => update("divisions", v)} required error={errors.divisions}
-        />
+
+        {/* 접수 부문 선택 */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            접수 부문<span className="text-red-500 ml-1">*</span>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            {ATHLETE_GRADES.map((g) => (
+              <button
+                key={g} type="button"
+                onClick={() => update("grade", g)}
+                className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all text-center ${
+                  form.grade === g
+                    ? "border-brand bg-brand text-white"
+                    : "border-gray-200 bg-white text-gray-600 hover:border-brand/30"
+                }`}
+              >
+                {g === "학생부" ? "🎓 학생부" : "💼 프로전문가부"}
+                <p className="text-[10px] font-normal mt-0.5 opacity-70">
+                  {g === "학생부" ? "중·고등부·대학부" : "현직 전문가"}
+                </p>
+              </button>
+            ))}
+          </div>
+          {errors.grade && <p className="text-red-500 text-xs mt-1">{errors.grade}</p>}
+        </div>
+
+        {/* 신청 종목 선택 */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            신청 종목<span className="text-red-500 ml-1">*</span>
+          </label>
+          <p className="text-xs text-gray-400 mb-3">
+            대종목 클릭 → 세부종목 선택 · 복수 선택(2종목 이상) 가능
+          </p>
+          <EventCategorySelector
+            categories={buildEventCategories(contest.tags)}
+            selected={form.divisions}
+            onChange={(v) => update("divisions", v)}
+            error={errors.divisions}
+          />
+        </div>
+
+        {/* 신청 금액 안내 */}
+        <AthleteFeeDisplay grade={form.grade} count={form.divisions.length} />
+
+        {/* 금액 테이블 안내 */}
+        {form.grade && (
+          <div className="text-xs text-gray-500 bg-gray-50 rounded-xl p-3 space-y-1">
+            <p className="font-semibold text-gray-600 mb-1.5">참가비 안내 (작품 1점 기준)</p>
+            <div className="grid grid-cols-4 gap-1 text-center">
+              <div className="font-semibold text-gray-500">구분</div>
+              <div className="font-semibold">1종목</div>
+              <div className="font-semibold">2종목</div>
+              <div className="font-semibold">3종목</div>
+              {(["학생부", "프로전문가부"] as const).map(g => (
+                <>
+                  <div key={g + "label"} className={`text-left font-medium ${form.grade === g ? "text-brand" : "text-gray-400"}`}>{g}</div>
+                  {["40,000", "70,000", "100,000"].map((fee, i) => (
+                    <div key={i} className={form.grade === g ? "text-gray-800 font-semibold" : "text-gray-300"}>
+                      {g === "프로전문가부" ? ["100,000", "180,000", "260,000"][i] : fee}원
+                    </div>
+                  ))}
+                </>
+              ))}
+            </div>
+            <p className="text-gray-400 pt-1">3종목 이상 참가 시 특별상(추가수여) 대상</p>
+          </div>
+        )}
+
         <TextareaField label="자격증 보유 현황" value={form.certificates} onChange={(v) => update("certificates", v)} placeholder="보유 자격증 (없으면 생략)" rows={3} />
         <TextareaField label="요청사항" value={form.requests} onChange={(v) => update("requests", v)} placeholder="기타 요청사항" rows={3} />
       </section>
