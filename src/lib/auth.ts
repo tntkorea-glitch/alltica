@@ -65,21 +65,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user, trigger }) {
-      if (user?.email || (trigger === "signIn" && token.email)) {
-        const email = user?.email ?? token.email;
-        if (email) {
-          const supabase = getSupabaseAdmin();
-          const { data } = await supabase
-            .from("users")
-            .select("id, role, kba_grade")
-            .eq("email", email)
-            .maybeSingle();
-          if (data) {
-            token.id = data.id;
-            token.role = (data.role as UserRole | undefined) ?? "user";
-            token.kbaGrade = data.kba_grade as KbaGrade | undefined ?? undefined;
-          }
+    async jwt({ token, user }) {
+      const email = user?.email ?? token.email;
+      if (email) {
+        const supabase = getSupabaseAdmin();
+        const { data } = await supabase
+          .from("users")
+          .select("id, role, kba_grade")
+          .eq("email", email)
+          .maybeSingle();
+        if (data) {
+          token.id = data.id;
+          token.role = (data.role as UserRole | undefined) ?? "user";
+          token.kbaGrade = (data.kba_grade as KbaGrade | undefined) ?? undefined;
         }
       }
       return token;

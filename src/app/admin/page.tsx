@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import { formatPhone } from "@/lib/phone";
@@ -1128,6 +1129,7 @@ const KBA_GRADE_TONE: Record<KbaGrade | "", string> = {
 };
 
 function UsersTab() {
+  const { update: updateSession } = useSession();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -1185,6 +1187,7 @@ function UsersTab() {
       }
       setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, ...changes } : u));
       setPending((prev) => { const next = { ...prev }; delete next[userId]; return next; });
+      await updateSession();
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "저장 실패");
