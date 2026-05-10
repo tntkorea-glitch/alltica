@@ -3,6 +3,7 @@ export type ContestStatus = "모집중" | "마감임박" | "마감" | "예정";
 export interface Contest {
   id: string;
   title: string;
+  titleEn?: string;
   subtitle: string;
   category: string;
   tags: string[];
@@ -13,9 +14,29 @@ export interface Contest {
   prize: string;
   status: ContestStatus;
   applyUrl: string;
+  image?: string;
 }
 
 export const CONTESTS: Contest[] = [
+  {
+    id: "contest-ibc-12th-2026-07",
+    title: "제 12회 IBC 국제뷰티스트챔피언쉽",
+    titleEn: "2026 THE 12TH INTERNATIONAL BEAUTIST CHAMPIONSHIP",
+    subtitle: "헤어아트·메이크업·네일·속눈썹·왁싱 등 10개 부문 국제 기술 경연",
+    category: "국제 기술 경연",
+    tags: [
+      "헤어아트", "메이크업", "퍼머넌트메이크업", "두피마이크로피그먼트",
+      "네일아트", "속눈썹연장", "LED속눈썹연장", "속눈썹펌", "왁싱", "슈가링왁싱",
+    ],
+    dateDisplay: "2026년 7월 15일 (수) 대구 중앙컨벤션센터",
+    applicationDeadline: "2026년 6월 30일까지",
+    location: "대구 중앙컨벤션센터",
+    organizer: "KBA뷰티스트총연합회 · Alltica",
+    prize: "대상 · 금상 · 은상 · 동상 · 특별상",
+    status: "모집중",
+    applyUrl: "/contests/contest-ibc-12th-2026-07/apply",
+    image: "/contests/ibc-12th-2026.png",
+  },
   {
     id: "contest-beauty-2026-06",
     title: "제1회 Alltica 전국 뷰티 기술 경연대회",
@@ -49,7 +70,7 @@ export const CONTESTS: Contest[] = [
     title: "K-속눈썹 연장 기술 대회",
     subtitle: "클래식·볼륨·LED 광경화 3개 부문",
     category: "기술 경연",
-    tags: ["속눈썹연장", "LED", "뷰티"],
+    tags: ["속눈썹연장", "LED속눈썹연장", "속눈썹펌"],
     dateDisplay: "2026년 7월 12일 (일) 10:00 – 16:00",
     applicationDeadline: "2026년 6월 28일까지",
     location: "대구 EXCO 제2전시장",

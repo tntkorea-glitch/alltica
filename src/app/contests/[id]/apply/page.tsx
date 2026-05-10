@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CONTESTS } from "@/lib/contests";
@@ -32,33 +33,50 @@ export default async function ContestApplyPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* 헤더 배너 */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-deep via-brand to-brand-light" />
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-20 -right-20 w-60 h-60 bg-purple-400/10 rounded-full blur-3xl" />
           <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-blue-400/10 rounded-full blur-3xl" />
         </div>
-        <div className="relative z-10 max-w-2xl mx-auto pt-28 pb-14 px-4 sm:px-6">
+        <div className="relative z-10 max-w-2xl mx-auto pt-24 pb-10 px-4 sm:px-6">
           <Link
             href="/contests"
-            className="inline-flex items-center gap-1.5 text-sm text-blue-200/70 hover:text-white transition-colors mb-6 group"
+            className="inline-flex items-center gap-1.5 text-sm text-blue-200/70 hover:text-white transition-colors mb-5 group"
           >
             <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             대회 목록으로
           </Link>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">🏆</span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">대회 참가 신청</h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-snug">{contest.title}</h1>
+          {contest.titleEn && (
+            <p className="text-blue-200/60 text-xs mt-1 font-medium tracking-wide">{contest.titleEn}</p>
+          )}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-blue-100/70 text-xs">
+            <span>📅 {contest.dateDisplay}</span>
+            <span>📍 {contest.location}</span>
           </div>
-          <p className="text-blue-100/70 text-sm mt-1">
-            신청 유형을 선택하고 양식을 작성해주세요.
-          </p>
+          <p className="text-blue-100/50 text-xs mt-1">주최 {contest.organizer}</p>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 -mt-4 pb-16">
+        {/* 포스터 이미지 */}
+        {contest.image && (
+          <div className="mb-5 rounded-2xl overflow-hidden shadow-xl border border-white/20">
+            <Image
+              src={contest.image}
+              alt={contest.title}
+              width={800}
+              height={1100}
+              className="w-full h-auto object-contain"
+              priority
+            />
+          </div>
+        )}
+
         {isActive ? (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-10">
             <ContestApplyForms contest={contest} />
