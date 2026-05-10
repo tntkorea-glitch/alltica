@@ -1387,7 +1387,7 @@ interface CommitteeState {
   postalCode: string; address: string; addressDetail: string;
   shippingPostalCode: string; shippingAddress: string; shippingAddressDetail: string;
   sameShippingAddress: boolean;
-  sns: string; position: string;
+  sns: string; position: string[];
   desiredCategory: string;
   bannerApply: boolean | null;
   bannerHorizontalApply: boolean | null;
@@ -1395,13 +1395,15 @@ interface CommitteeState {
   agreePrivacy: boolean;
 }
 
+const KBA_POSITIONS = ["KBA이사진", "KBA지회장", "KBA지부장", "KBA정회원"] as const;
+
 const emptyCommittee: CommitteeState = {
   nameKo: "", nameEn: "", company: "", birthdate: "",
   phone: "", email: "",
   postalCode: "", address: "", addressDetail: "",
   shippingPostalCode: "", shippingAddress: "", shippingAddressDetail: "",
   sameShippingAddress: false,
-  sns: "", position: "",
+  sns: "", position: [],
   desiredCategory: "",
   bannerApply: null,
   bannerHorizontalApply: null,
@@ -1429,12 +1431,11 @@ function CommitteeForm({
     if (errors[key]) setErrors((p) => ({ ...p, [key]: undefined }));
   }
 
-  function handleOcrResult(fields: { name?: string; company?: string; position?: string; phone?: string; email?: string }, postal: string, addr: string) {
+  function handleOcrResult(fields: { name?: string; company?: string; phone?: string; email?: string }, postal: string, addr: string) {
     setForm((p) => ({
       ...p,
       nameKo: fields.name || p.nameKo,
       company: fields.company || p.company,
-      position: fields.position || p.position,
       phone: fields.phone ? formatPhone(fields.phone) : p.phone,
       email: fields.email || p.email,
       postalCode: postal || p.postalCode,
@@ -1581,10 +1582,32 @@ function CommitteeForm({
       {/* ③ 조직위 정보 */}
       <section className="space-y-4">
         <SectionHeader icon="📋" title="조직위 정보" />
-        <TextField
-          label="직책 / 직위" value={form.position} onChange={(v) => set("position", v)}
-          placeholder="예: 원장, 강사, 교수 등"
-        />
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">직책 / 직위</label>
+          <div className="grid grid-cols-2 gap-2">
+            {KBA_POSITIONS.map((pos) => {
+              const checked = form.position.includes(pos);
+              return (
+                <label key={pos} className="flex items-center gap-2.5 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      const next = e.target.checked
+                        ? [...form.position, pos]
+                        : form.position.filter((p) => p !== pos);
+                      set("position", next);
+                    }}
+                    className="w-4 h-4 rounded border-gray-300 accent-brand shrink-0"
+                  />
+                  <span className={`text-sm transition-colors ${checked ? "text-gray-900 font-semibold" : "text-gray-600"}`}>
+                    {pos}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
 
         {/* 참가 희망 종목 */}
         <div>
@@ -1624,7 +1647,7 @@ function CommitteeForm({
         <SectionHeader
           icon="🎌"
           title="배너 / 현수막 신청 (선택)"
-          sub="신청수량한정 · 선착순마감 · X배너 40,000원 / 현수막 60,000원"
+          sub="신청수량한정 · 선착순마감 · 각 40,000원"
         />
 
         {/* 조직위 X배너 */}
@@ -1684,7 +1707,7 @@ function CommitteeForm({
           <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center justify-between">
             <div>
               <span className="text-sm font-bold text-gray-800">현수막</span>
-              <span className="ml-2 text-xs text-brand font-semibold">60,000원</span>
+              <span className="ml-2 text-xs text-brand font-semibold">40,000원</span>
             </div>
             <span className="text-[10px] text-gray-400">신청수량한정 · 선착순</span>
           </div>
