@@ -136,13 +136,33 @@ export default function AdminPage() {
     }
   }, [formFilterSlug]);
 
+  const [contestSubs, setContestSubs] = useState<Submission[]>([]);
+  const [contestSubsLoading, setContestSubsLoading] = useState(false);
+
+  const fetchContestSubs = useCallback(async () => {
+    setContestSubsLoading(true);
+    try {
+      const res = await fetch("/api/submissions?formSlugPrefix=contest-");
+      if (res.status === 401) {
+        window.location.href = "/admin/login?next=/admin";
+        return;
+      }
+      if (!res.ok) throw new Error("조회 실패");
+      const data: Submission[] = await res.json();
+      setContestSubs(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setContestSubsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (tab === "seminars") fetchApps();
     else if (tab === "seminar-mgmt") fetchSeminars();
     else if (tab === "forms") fetchSubs();
-  }, [tab, fetchApps, fetchSubs, fetchSeminars]);
-
-  // contest applications — 추후 API 연동 시 여기에 fetch 추가
+    else if (tab === "contests") fetchContestSubs();
+  }, [tab, fetchApps, fetchSubs, fetchSeminars, fetchContestSubs]);
 
   async function handleLogout() {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -306,7 +326,9 @@ export default function AdminPage() {
           </TabButton>
           <TabButton active={tab === "contests"} onClick={() => setTab("contests")}>
             🏆 대회 신청{" "}
-            <span className="ml-1 text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">0</span>
+            <span className="ml-1 text-xs bg-brand/10 text-brand px-1.5 py-0.5 rounded">
+              {contestSubs.length}
+            </span>
           </TabButton>
           <TabButton active={tab === "seminar-mgmt"} onClick={() => setTab("seminar-mgmt")}>
             🎓 세미나 관리{" "}
@@ -340,7 +362,13 @@ export default function AdminPage() {
           <SeminarMgmtTab seminars={allSeminars} onRefresh={fetchSeminars} />
         )}
         {tab === "contest-mgmt" && <ContestMgmtTab />}
-        {tab === "contests" && <ContestsApplyTab />}
+        {tab === "contests" && (
+          <ContestsApplyTab
+            submissions={contestSubs}
+            loading={contestSubsLoading}
+            onRefresh={fetchContestSubs}
+          />
+        )}
         {tab === "seminars" && (
           <SeminarsTab
             apps={apps}
@@ -1739,36 +1767,164 @@ function ContestMgmtTab() {
 }
 
 // ============================================================
-// ContestsApplyTab — 대회 신청자 관리 (신청 폼 연동 후 활성화)
+// ContestsApplyTab — 대회 신청자 관리
 // ============================================================
-function ContestsApplyTab() {
+const CONTEST_TYPE_LABEL: Record<string, string> = {
+  athlete: "🏅 선수",
+  judge: "⚖️ 심사위원",
+  committee: "📋 조직위",
+};
+
+function parseContestSlug(formSlug: string): { contestId: string; type: string } {
+  for (const type of ["athlete", "judge", "committee"]) {
+    const suffix = `-${type}`;
+    if (formSlug.endsWith(suffix)) {
+      return {
+        contestId: formSlug.slice("contest-".length, -suffix.length),
+        type,
+      };
+    }
+  }
+  return { contestId: formSlug.slice("contest-".length), type: "unknown" };
+}
+
+function ContestsApplyTab({
+  submissions,
+  loading,
+  onRefresh,
+}: {
+  submissions: Submission[];
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>("");
+
+  const filtered = typeFilter
+    ? submissions.filter((s) => s.formSlug.endsWith(`-${typeFilter}`))
+    : submissions;
+
+  const countByType = (type: string) =>
+    submissions.filter((s) => s.formSlug.endsWith(`-${type}`)).length;
+
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-base font-bold text-gray-900">대회 신청 관리</h2>
-        <p className="text-xs text-gray-500 mt-0.5">대회별 신청자 현황</p>
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">대회 신청 관리</h2>
+          <p className="text-xs text-gray-500 mt-0.5">대회별 신청자 현황</p>
+        </div>
+        <button onClick={onRefresh} className="text-sm text-gray-500 hover:text-brand transition-colors px-3 py-1.5 rounded-lg border border-gray-200">
+          새로고침
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl p-4 border border-gray-100 text-left">
-          <p className="text-2xl font-bold text-brand">0</p>
+      {/* 유형별 집계 카드 */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white rounded-xl p-4 border border-gray-100">
+          <p className="text-2xl font-bold text-brand">{submissions.length}</p>
           <p className="text-xs text-gray-500 mt-0.5">전체 신청</p>
         </div>
-        {CONTESTS.filter((c) => c.status === "모집중" || c.status === "마감임박").map((c) => (
-          <div key={c.id} className="bg-white rounded-xl p-4 border border-gray-100 text-left">
-            <p className="text-2xl font-bold text-gray-900">0</p>
-            <p className="text-xs text-gray-500 mt-0.5 truncate" title={c.title}>{c.title}</p>
+        {(["athlete", "judge", "committee"] as const).map((type) => (
+          <div key={type} className="bg-white rounded-xl p-4 border border-gray-100">
+            <p className="text-2xl font-bold text-gray-900">{countByType(type)}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{CONTEST_TYPE_LABEL[type]}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
-        <div className="text-4xl mb-3">🏆</div>
-        <p className="text-sm font-semibold text-gray-700 mb-1">대회 신청 폼 준비 중</p>
-        <p className="text-xs text-gray-400">
-          <code className="text-brand">/contests/[id]/apply</code> 신청 폼 구현 후 여기서 신청자를 관리할 수 있습니다.
-        </p>
+      {/* 유형 필터 */}
+      <div className="flex gap-2">
+        {[{ val: "", label: "전체" }, { val: "athlete", label: "🏅 선수" }, { val: "judge", label: "⚖️ 심사위원" }, { val: "committee", label: "📋 조직위" }].map(({ val, label }) => (
+          <button
+            key={val}
+            onClick={() => setTypeFilter(val)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              typeFilter === val ? "bg-brand text-white border-brand" : "bg-white text-gray-600 border-gray-200 hover:border-brand/40"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+
+      {/* 신청 목록 */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        {loading ? (
+          <div className="p-16 text-center text-gray-400 text-sm">불러오는 중...</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-16 text-center">
+            <div className="text-3xl mb-3">🏆</div>
+            <p className="text-sm text-gray-500">신청 내역이 없습니다.</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">접수일시</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">유형</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">이름</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">연락처</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 hidden md:table-cell">대회</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 hidden lg:table-cell">세부내용</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtered.map((sub) => {
+                const d = sub.data as Record<string, unknown>;
+                const { contestId, type } = parseContestSlug(sub.formSlug);
+                const contest = CONTESTS.find((c) => c.id === contestId);
+                const divisions = Array.isArray(d.divisions) ? (d.divisions as string[]).join(", ") : "";
+                const specialties = Array.isArray(d.specialties) ? (d.specialties as string[]).join(", ") : "";
+                const detail = divisions || specialties || (d.desiredRole as string) || "";
+                return (
+                  <tr
+                    key={sub.id}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => setSelectedSub(sub)}
+                  >
+                    <td className="px-4 py-3 text-xs text-gray-500">{formatKST(sub.submittedAt)}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-semibold">{CONTEST_TYPE_LABEL[type] ?? type}</span>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{(d.name as string) || ""}</td>
+                    <td className="px-4 py-3 text-gray-600">{d.phone ? formatPhone(d.phone as string) : ""}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell max-w-[160px] truncate">
+                      {contest?.title ?? contestId}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500 hidden lg:table-cell max-w-[200px] truncate">{detail}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* 상세 모달 */}
+      {selectedSub && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setSelectedSub(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <div className="font-bold text-gray-900">{selectedSub.formTitle}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{formatKST(selectedSub.submittedAt)}</div>
+              </div>
+              <button onClick={() => setSelectedSub(null)} className="text-gray-400 hover:text-gray-700 text-xl font-bold">×</button>
+            </div>
+            <div className="p-6 space-y-3">
+              {Object.entries(selectedSub.data as Record<string, unknown>).map(([key, val]) => (
+                <div key={key} className="flex gap-3 text-sm">
+                  <span className="text-gray-400 w-28 shrink-0">{key}</span>
+                  <span className="text-gray-800 break-all">
+                    {Array.isArray(val) ? val.join(", ") : String(val ?? "")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

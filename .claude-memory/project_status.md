@@ -43,6 +43,13 @@ alltica.co.kr
 - **빌드 에러 수정**: `src/app/docs/solapi-setup/page.tsx`에서 `React.ReactNode` → `ReactNode` import 추가 (Vercel ❌ 해결)
 - **배포**: `b3cbef8` push → Vercel 자동빌드 트리거
 
+## 추가 완료 (2026-05-09 5차)
+
+- **vercel.json BOM 제거**: UTF-8 BOM(`\xef\xbb\xbf`) 으로 인한 Redeploy 파싱 에러 수정 (`7f96958`)
+- **Solapi 알림톡 환경변수 확인**: tnt-mall 코드(`lib/alimtalk-shipping.ts`) 분석하여 alltica에 필요한 변수 목록 정리
+  - 공통: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER`, `SOLAPI_PF_ID`(KA01PF26050906364994371YqrVj4doS), `SOLAPI_ALIMTALK_TEMPLATE_SIGNUP`(6fbJkroW1P)
+  - alltica 전용: `SOLAPI_ALIMTALK_TEMPLATE_PREPARING`, `SOLAPI_ALIMTALK_TEMPLATE_SHIPPING`, `BANK_SMS_WEBHOOK_TOKEN` (템플릿 미생성 상태)
+
 ## Phase 2 남은 백로그
 
 - **토스 key 등록** — `.env.local`에 `NEXT_PUBLIC_TOSSPAYMENTS_CLIENT_KEY`, `TOSSPAYMENTS_SECRET_KEY` 추가 필요 (Vercel 환경변수도)

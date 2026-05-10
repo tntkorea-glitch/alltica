@@ -28,7 +28,7 @@ export const CONTESTS: Contest[] = [
     organizer: "Alltica 조직위원회",
     prize: "대상 300만원 · 금상 100만원 · 은상 50만원",
     status: "모집중",
-    applyUrl: "#",
+    applyUrl: "/contests/contest-beauty-2026-06/apply",
   },
   {
     id: "contest-sugaring-2026-06",
@@ -42,7 +42,7 @@ export const CONTESTS: Contest[] = [
     organizer: "KBA · Alltica",
     prize: "우승 150만원 · 준우승 70만원",
     status: "모집중",
-    applyUrl: "#",
+    applyUrl: "/contests/contest-sugaring-2026-06/apply",
   },
   {
     id: "contest-lash-2026-07",
@@ -56,7 +56,7 @@ export const CONTESTS: Contest[] = [
     organizer: "Alltica · 루멘비",
     prize: "대상 200만원 · 부문별 최우수상 80만원",
     status: "예정",
-    applyUrl: "#",
+    applyUrl: "/contests/contest-lash-2026-07/apply",
   },
   {
     id: "contest-idea-2026-07",
@@ -70,7 +70,7 @@ export const CONTESTS: Contest[] = [
     organizer: "Alltica",
     prize: "대상 500만원 · 최우수상 200만원 · 우수상 100만원",
     status: "예정",
-    applyUrl: "#",
+    applyUrl: "/contests/contest-idea-2026-07/apply",
   },
 ];
 

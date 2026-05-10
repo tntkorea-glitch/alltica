@@ -60,9 +60,9 @@ function ContestCard({ contest }: { contest: Contest }) {
           <div className="text-sm font-bold text-brand">{contest.prize}</div>
         </div>
         {isActive ? (
-          <a href={contest.applyUrl} className="text-sm font-semibold text-brand hover:translate-x-1 transition-transform inline-block">
+          <Link href={contest.applyUrl} className="text-sm font-semibold text-brand hover:translate-x-1 transition-transform inline-block">
             신청하기 →
-          </a>
+          </Link>
         ) : (
           <span className="text-sm font-semibold text-gray-400">오픈 예정</span>
         )}

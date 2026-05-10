@@ -83,12 +83,14 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const formSlug = searchParams.get("formSlug");
+    const formSlugPrefix = searchParams.get("formSlugPrefix");
 
     let query = supabase
       .from("submissions")
       .select("*")
       .order("submitted_at", { ascending: false });
     if (formSlug) query = query.eq("form_slug", formSlug);
+    else if (formSlugPrefix) query = query.like("form_slug", `${formSlugPrefix}%`);
 
     const { data: rows, error } = await query;
     if (error) {
