@@ -1832,16 +1832,13 @@ function CommitteeForm({
 
 // ── 메인 래퍼 ────────────────────────────────────────────────
 
-const KBA_COMMITTEE_ROLES = ["KBA이사", "KBA지회장", "KBA지부장", "KBA정회원"];
-
 export default function ContestApplyForms({ contest, defaultType = "judge" }: { contest: Contest; defaultType?: ApplyType }) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [activeType, setActiveType] = useState<ApplyType>(defaultType);
   const [showCommitteeModal, setShowCommitteeModal] = useState(false);
 
-  const userRole = session?.user?.role ?? "user";
-  const canAccessCommittee = KBA_COMMITTEE_ROLES.includes(userRole);
+  const canAccessCommittee = !!session?.user?.kbaGrade;
 
   function handleTabClick(type: ApplyType) {
     if (type === "committee" && !canAccessCommittee) {

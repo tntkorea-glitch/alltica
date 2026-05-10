@@ -3,7 +3,6 @@ import { Submission } from "@/lib/types";
 import { isAdminRequest } from "@/lib/admin-session";
 import { getSupabaseAdmin, SUBMISSION_FILES_BUCKET } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
-import { KBA_ROLES } from "@/lib/roles";
 
 const SIGNED_URL_EXPIRY = 60 * 60; // 1시간
 
@@ -35,7 +34,7 @@ export async function POST(request: NextRequest) {
       }
       // 조직위 신청은 KBA 등급 필수
       if (formSlug.endsWith("-committee")) {
-        if (!(KBA_ROLES as readonly string[]).includes(session.user.role)) {
+        if (!session.user.kbaGrade) {
           return NextResponse.json({ error: "조직위 신청 권한이 없습니다." }, { status: 403 });
         }
       }

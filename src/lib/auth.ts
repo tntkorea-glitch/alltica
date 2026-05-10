@@ -1,17 +1,19 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Google from "next-auth/providers/google";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import type { UserRole } from "@/lib/roles";
+import type { UserRole, KbaGrade } from "@/lib/roles";
 
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
       role: UserRole;
+      kbaGrade?: KbaGrade;
     } & DefaultSession["user"];
   }
   interface User {
     role?: UserRole;
+    kbaGrade?: KbaGrade;
   }
 }
 
@@ -19,6 +21,7 @@ declare module "@auth/core/jwt" {
   interface JWT {
     id?: string;
     role?: UserRole;
+    kbaGrade?: KbaGrade;
   }
 }
 
@@ -69,12 +72,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const supabase = getSupabaseAdmin();
           const { data } = await supabase
             .from("users")
-            .select("id, role")
+            .select("id, role, kba_grade")
             .eq("email", email)
             .maybeSingle();
           if (data) {
             token.id = data.id;
             token.role = (data.role as UserRole | undefined) ?? "user";
+            token.kbaGrade = data.kba_grade as KbaGrade | undefined ?? undefined;
           }
         }
       }
@@ -84,6 +88,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         if (token.id) session.user.id = token.id;
         session.user.role = token.role ?? "user";
+        if (token.kbaGrade) session.user.kbaGrade = token.kbaGrade;
       }
       return session;
     },
