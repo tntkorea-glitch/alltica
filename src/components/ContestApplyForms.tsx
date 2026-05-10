@@ -21,6 +21,12 @@ const TYPE_TITLE: Record<ApplyType, string> = {
 
 const CAREER_OPTIONS = ["1년 미만", "1–3년", "3–5년", "5–10년", "10년 이상"];
 const COMMITTEE_ROLES = ["현장진행", "심판보조", "접수/안내", "홍보/마케팅", "촬영/기록", "기타"];
+const QUALIFICATION_OPTIONS = [
+  "미용대회 수상경력 2회 이상",
+  "미용업종 경력 2년 이상",
+  "미용학과/관련학과 졸업자 및 학위 보유자",
+  "기타",
+];
 
 const DAUM_POSTCODE_SRC =
   "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
@@ -424,7 +430,10 @@ interface JudgeState {
   phone: string; email: string;
   postalCode: string; address: string; addressDetail: string;
   sns: string; position: string;
-  specialties: string[]; qualifications: string;
+  specialties: string[];
+  qualificationItems: string[];
+  qualificationOtherText: string;
+  qualificationNotes: string;
   agreePrivacy: boolean;
 }
 
@@ -433,7 +442,10 @@ const emptyJudge: JudgeState = {
   phone: "", email: "",
   postalCode: "", address: "", addressDetail: "",
   sns: "", position: "",
-  specialties: [], qualifications: "",
+  specialties: [],
+  qualificationItems: [],
+  qualificationOtherText: "",
+  qualificationNotes: "",
   agreePrivacy: false,
 };
 
@@ -505,7 +517,12 @@ function JudgeForm({
       SNS아이디: form.sns,
       직책: form.position,
       심사종목: form.specialties,
-      자격요건경력사항: form.qualifications,
+      자격요건: form.qualificationItems.map((item) =>
+        item === "기타" && form.qualificationOtherText
+          ? `기타: ${form.qualificationOtherText}`
+          : item
+      ),
+      경력사항: form.qualificationNotes,
     };
 
     const files: Record<string, File> = {};
@@ -592,11 +609,50 @@ function JudgeForm({
           selected={form.specialties}
           onChange={(v) => set("specialties", v)}
         />
+        {/* 자격요건 체크박스 */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">자격요건</label>
+          <p className="text-xs text-gray-400 mb-3">※ 심사위원 기본 자격요건 (아래 중 1개 이상 해당, 복수 선택 가능)</p>
+          <div className="space-y-2">
+            {QUALIFICATION_OPTIONS.map((opt) => {
+              const checked = form.qualificationItems.includes(opt);
+              return (
+                <div key={opt}>
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...form.qualificationItems, opt]
+                          : form.qualificationItems.filter((o) => o !== opt);
+                        set("qualificationItems", next);
+                        if (!e.target.checked && opt === "기타") set("qualificationOtherText", "");
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 accent-brand shrink-0"
+                    />
+                    <span className={`text-sm transition-colors ${checked ? "text-gray-900 font-medium" : "text-gray-600"}`}>
+                      {opt}
+                    </span>
+                  </label>
+                  {opt === "기타" && checked && (
+                    <input
+                      type="text"
+                      value={form.qualificationOtherText}
+                      onChange={(e) => set("qualificationOtherText", e.target.value)}
+                      placeholder="해당 자격요건을 직접 입력해주세요"
+                      className="mt-1.5 ml-7 w-[calc(100%-1.75rem)] px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
         <TextareaField
-          label="자격요건 및 경력사항"
-          value={form.qualifications}
-          onChange={(v) => set("qualifications", v)}
-          hint="※ 심사위원 기본 자격요건 (아래 중 1개 이상 해당) ▶ 미용대회 수상경력 2회 이상 ▶ 미용업종 경력 2년 이상 ▶ 미용학과/관련학과 졸업자 및 학위 보유자"
+          label="경력사항 / 수상경력"
+          value={form.qualificationNotes}
+          onChange={(v) => set("qualificationNotes", v)}
           placeholder="경력사항 / 자격사항 / 수상경력 등을 자유롭게 작성해주세요"
           rows={4}
         />
