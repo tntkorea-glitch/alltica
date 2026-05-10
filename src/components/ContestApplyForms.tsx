@@ -31,23 +31,64 @@ const QUALIFICATION_OPTIONS = [
 const ATHLETE_GRADES = ["학생부", "프로전문가부"] as const;
 type AthleteGrade = typeof ATHLETE_GRADES[number];
 
-const ATHLETE_EVENT_CATEGORIES = [
-  { category: "헤어", items: ["헤어아트"] },
-  { category: "메이크업", items: ["메이크업"] },
-  { category: "퍼머넌트메이크업", items: ["퍼머넌트메이크업", "두피마이크로피그먼트"] },
-  { category: "네일", items: ["네일아트"] },
-  { category: "속눈썹", items: ["속눈썹연장", "LED속눈썹연장", "속눈썹펌"] },
-  { category: "왁싱", items: ["왁싱", "슈가링왁싱"] },
+const IBC_EVENT_CATEGORIES = [
+  { category: "SMP", items: ["SMP"] },
+  {
+    category: "PMU (반영구)",
+    items: ["아이라인", "헤어라인", "엠보기본", "엠보응용", "그라데이션(머신/수지/콤보)", "립아트", "풀조화아트"],
+  },
+  {
+    category: "네일",
+    items: [
+      "젤 매니큐어(선마블)", "젤 매니큐어(부채꼴마블)", "젤 원톤 스캅춰",
+      "아크릴 프렌치 스캅춰", "실크 익스텐션", "팁 위드 랩",
+      "페디아트", "스톤아트", "창작아트", "살롱매니아트",
+    ],
+  },
+  { category: "속눈썹연장", items: ["클래식연장", "볼륨연장"] },
+  { category: "LED속눈썹연장", items: ["LED 클래식연장", "LED 볼륨연장"] },
+  { category: "속눈썹펌", items: ["속눈썹펌", "언더펌"] },
+  { category: "슈가링왁싱", items: ["슈가링 페이스", "슈가링 바디"] },
+  { category: "왁싱", items: ["왁싱 페이스", "왁싱 바디"] },
+  {
+    category: "피부",
+    items: [
+      "페이스관리", "살롱테크닉(특수관리)", "살롱테크닉(밤부테라피)",
+      "바디관리(등)", "바디관리(복부)", "바디관리(다리)", "바디관리(팔)",
+    ],
+  },
+  { category: "타투", items: ["레터링", "미니타투"] },
+  { category: "플라즈마", items: ["플라즈마"] },
+  { category: "플래닝", items: ["스킨플래닝", "패디플래닝"] },
+  {
+    category: "헤어(미용)",
+    items: [
+      "원랭스(이사도라)", "원랭스(스파니엘)", "원랭스(그래듀에이션)", "원랭스(레이어드)",
+      "블로드라이", "롤세팅", "펌와인딩(9등분)", "펌와인딩(혼합형)",
+      "살롱헤어커트", "업스타일", "고전머리", "불임머리",
+    ],
+  },
+  {
+    category: "헤어(이용)",
+    items: ["단발형 이발(하상고)", "단발형 이발(중상고)", "짧은 단발형 이발(둥근형)", "아이롱"],
+  },
+  {
+    category: "메이크업",
+    items: [
+      "뷰티메이크업", "시대별메이크업", "캐릭터메이크업", "패션메이크업", "웨딩메이크업",
+      "환타지메이크업", "특수분장", "바디페인팅", "아트마스크", "뷰티일러스트레이션",
+    ],
+  },
 ];
 
-function buildEventCategories(tags: string[]) {
-  const result = ATHLETE_EVENT_CATEGORIES
-    .map(cat => ({ category: cat.category, items: cat.items.filter(i => tags.includes(i)) }))
-    .filter(cat => cat.items.length > 0);
-  const covered = result.flatMap(c => c.items);
-  const uncovered = tags.filter(t => !covered.includes(t));
-  if (uncovered.length > 0) result.push({ category: "기타", items: uncovered });
-  return result;
+const CONTEST_EVENT_MAP: Record<string, typeof IBC_EVENT_CATEGORIES> = {
+  "contest-ibc-12th-2026-07": IBC_EVENT_CATEGORIES,
+};
+
+function buildEventCategories(contestId: string, tags: string[]) {
+  if (CONTEST_EVENT_MAP[contestId]) return CONTEST_EVENT_MAP[contestId];
+  // 범용 폴백: 태그 기반 단순 목록
+  return [{ category: "신청 종목", items: tags }];
 }
 
 function calcAthleteFee(grade: string, count: number): string {
@@ -55,11 +96,13 @@ function calcAthleteFee(grade: string, count: number): string {
   if (grade === "학생부") {
     if (count === 1) return "40,000원";
     if (count === 2) return "70,000원";
-    return "100,000원";
+    if (count === 3) return "100,000원";
+    return `${100000 + (count - 3) * 30000}원`.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   }
   if (count === 1) return "100,000원";
   if (count === 2) return "180,000원";
-  return "260,000원";
+  if (count === 3) return "260,000원";
+  return `${260000 + (count - 3) * 80000}원`.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 const DAUM_POSTCODE_SRC =
@@ -1161,7 +1204,7 @@ function AthleteForm({
             대종목 클릭 → 세부종목 선택 · 복수 선택(2종목 이상) 가능
           </p>
           <EventCategorySelector
-            categories={buildEventCategories(contest.tags)}
+            categories={buildEventCategories(contest.id, contest.tags)}
             selected={form.divisions}
             onChange={(v) => update("divisions", v)}
             error={errors.divisions}
@@ -1175,27 +1218,28 @@ function AthleteForm({
         {form.grade && (
           <div className="text-xs text-gray-500 bg-gray-50 rounded-xl p-3 space-y-1">
             <p className="font-semibold text-gray-600 mb-1.5">참가비 안내 (작품 1점 기준)</p>
-            <div className="grid grid-cols-4 gap-1 text-center">
+            <div className="grid grid-cols-5 gap-1 text-center">
               <div className="font-semibold text-gray-500">구분</div>
               <div className="font-semibold">1종목</div>
               <div className="font-semibold">2종목</div>
               <div className="font-semibold">3종목</div>
+              <div className="font-semibold">4종목~</div>
               {(["학생부", "프로전문가부"] as const).map(g => {
                 const fees = g === "학생부"
-                  ? ["40,000", "70,000", "100,000"]
-                  : ["100,000", "180,000", "260,000"];
+                  ? ["40,000", "70,000", "100,000", "+30,000"]
+                  : ["100,000", "180,000", "260,000", "+80,000"];
                 const active = form.grade === g;
                 return (
                   <Fragment key={g}>
                     <div className={`text-left font-medium ${active ? "text-brand" : "text-gray-400"}`}>{g}</div>
                     {fees.map((fee, i) => (
-                      <div key={i} className={active ? "text-gray-800 font-semibold" : "text-gray-300"}>{fee}원</div>
+                      <div key={i} className={`${active ? "text-gray-800 font-semibold" : "text-gray-300"} ${i === 3 ? "text-amber-600" : ""}`}>{fee}원</div>
                     ))}
                   </Fragment>
                 );
               })}
             </div>
-            <p className="text-gray-400 pt-1">3종목 이상 참가 시 특별상(추가수여) 대상</p>
+            <p className="text-gray-400 pt-1">3종목 이상 참가 시 특별상(추가수여) 대상 · 4종목부터 종목당 추가요금</p>
           </div>
         )}
 
