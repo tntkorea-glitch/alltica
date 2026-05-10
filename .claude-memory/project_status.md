@@ -50,11 +50,18 @@ alltica.co.kr
   - 공통: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER`, `SOLAPI_PF_ID`(KA01PF26050906364994371YqrVj4doS), `SOLAPI_ALIMTALK_TEMPLATE_SIGNUP`(6fbJkroW1P)
   - alltica 전용: `SOLAPI_ALIMTALK_TEMPLATE_PREPARING`, `SOLAPI_ALIMTALK_TEMPLATE_SHIPPING`, `BANK_SMS_WEBHOOK_TOKEN` (템플릿 미생성 상태)
 
+## 추가 완료 (2026-05-10)
+
+- **대회 신청 폼 3종 구현**: `/contests/[id]/apply` — 선수/심사위원/조직위 탭 폼 (선택 부문 체크박스, 유효성 검사, /api/submissions 저장)
+- **완료 페이지**: `/contests/[id]/apply/complete?type={athlete|judge|committee}`
+- **contests.ts applyUrl 실링크 연결**: 모집중 2개, 예정 2개 모두 `/contests/{id}/apply`
+- **submissions API prefix 쿼리**: `?formSlugPrefix=contest-` → Supabase `.like()` 필터
+- **admin 대회 신청 탭 실데이터 연동**: 유형별 집계, 필터, 목록 테이블, 상세 모달
+
 ## Phase 2 남은 백로그
 
 - **토스 key 등록** — `.env.local`에 `NEXT_PUBLIC_TOSSPAYMENTS_CLIENT_KEY`, `TOSSPAYMENTS_SECRET_KEY` 추가 필요 (Vercel 환경변수도)
 - **대회 신청 실데이터** 교체 — `src/lib/contests.ts` CONTESTS 배열 수정
-- **대회 신청 폼** — `/contests/[id]/apply` 실제 신청 폼 구현 (현재 applyUrl="#" placeholder)
 - 카카오/네이버 소셜 로그인 실연동 (현재 "준비 중" alert)
 - ~~카카오 알림톡 전환~~ **코드 완료, 비즈니스 심사 대기 중**
 - 강사/관리자 시스템 로컬 E2E 테스트
