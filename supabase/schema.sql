@@ -115,7 +115,7 @@ create table if not exists public.users (
   phone      text,                      -- 강사용 — 세미나 SMS 발신번호로도 활용
   provider   text,                      -- 'google' | 'kakao' | 'naver' | 'credentials'
   role       text not null default 'user'
-             check (role in ('user', 'instructor', 'admin')),
+             check (role in ('user', 'instructor', 'subadmin', 'admin', 'KBA이사', 'KBA지회장', 'KBA지부장', 'KBA정회원')),
   last_login_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
