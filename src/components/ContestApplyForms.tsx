@@ -930,7 +930,7 @@ function JudgeForm({
           sub="밴드에서 대회 관련 공지를 받아보실 수 있습니다"
         />
         <a
-          href="https://band.us/n/a2a4A49c19c3t"
+          href="https://band.us/n/a6aebeQ093y3M"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-4 bg-[#FFDF00]/10 border border-[#FFDF00]/30 rounded-2xl p-4 hover:bg-[#FFDF00]/20 transition-colors group"
@@ -941,7 +941,7 @@ function JudgeForm({
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-gray-800 group-hover:text-brand transition-colors">밴드 초대 참여하기</p>
             <p className="text-xs text-gray-500 mt-0.5">제 12회 IBC 국제뷰티스트챔피언쉽 IN 2026</p>
-            <p className="text-xs text-brand mt-0.5 truncate">band.us/n/a2a4A49c19c3t</p>
+            <p className="text-xs text-brand mt-0.5 truncate">band.us/n/a6aebeQ093y3M</p>
           </div>
           <svg className="w-4 h-4 text-gray-400 group-hover:translate-x-0.5 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
