@@ -999,18 +999,23 @@ function JudgeForm({
 // ── 선수 신청 폼 ────────────────────────────────────────────────
 
 interface AthleteState {
-  name: string; birthdate: string; phone: string; email: string;
-  affiliation: string; career: string;
+  nameKo: string; nameEn: string; company: string; birthdate: string;
+  phone: string; email: string;
+  postalCode: string; address: string; addressDetail: string;
+  sns: string;
   grade: "" | AthleteGrade;
   divisions: string[];
   certificates: string; requests: string;
 }
 
 const emptyAthlete: AthleteState = {
-  name: "", birthdate: "", phone: "", email: "",
-  affiliation: "", career: "",
+  nameKo: "", nameEn: "", company: "", birthdate: "",
+  phone: "", email: "",
+  postalCode: "", address: "", addressDetail: "",
+  sns: "",
   grade: "",
-  divisions: [], certificates: "", requests: "",
+  divisions: [],
+  certificates: "", requests: "",
 };
 
 function AthleteForm({
@@ -1030,19 +1035,21 @@ function AthleteForm({
     if (errors[key]) setErrors((p) => ({ ...p, [key]: undefined }));
   }
 
-  function handleOcrResult(fields: { name?: string; company?: string; phone?: string; email?: string }, _postal: string, _addr: string) {
+  function handleOcrResult(fields: { name?: string; company?: string; phone?: string; email?: string; address?: string }, postal: string, addr: string) {
     setForm((p) => ({
       ...p,
-      name: fields.name || p.name,
-      affiliation: fields.company || p.affiliation,
+      nameKo: fields.name || p.nameKo,
+      company: fields.company || p.company,
       phone: fields.phone ? formatPhone(fields.phone) : p.phone,
       email: fields.email || p.email,
+      postalCode: postal || p.postalCode,
+      address: addr || p.address,
     }));
   }
 
   function validate(): boolean {
     const next: Partial<Record<keyof AthleteState, string>> = {};
-    if (!form.name.trim()) next.name = "이름을 입력해주세요.";
+    if (!form.nameKo.trim()) next.nameKo = "한글 이름을 입력해주세요.";
     if (!form.phone.trim()) next.phone = "연락처를 입력해주세요.";
     else if (!/^01[0-9]-?\d{3,4}-?\d{4}$/.test(form.phone.replace(/\s/g, "")))
       next.phone = "올바른 연락처 형식을 입력해주세요. (예: 010-0000-0000)";
@@ -1078,13 +1085,42 @@ function AthleteForm({
       <section className="space-y-4">
         <SectionHeader icon="👤" title="개인 정보" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <TextField label="이름" value={form.name} onChange={(v) => update("name", v)} required error={errors.name} placeholder="홍길동" />
-          <TextField label="생년월일" value={form.birthdate} onChange={(v) => update("birthdate", v)} type="date" />
-          <TextField label="연락처" value={form.phone} onChange={(v) => update("phone", formatPhone(v))} required error={errors.phone} placeholder="010-0000-0000" type="tel" />
-          <TextField label="이메일" value={form.email} onChange={(v) => update("email", v)} error={errors.email} placeholder="example@email.com" type="email" />
-          <TextField label="소속 (샵/살롱/학원명)" value={form.affiliation} onChange={(v) => update("affiliation", v)} placeholder="없으면 '개인'" className="sm:col-span-2" />
-          <SelectField label="경력" value={form.career} onChange={(v) => update("career", v)} options={CAREER_OPTIONS} placeholder="경력 선택" className="sm:col-span-2" />
+          <TextField
+            label="한글 이름" value={form.nameKo} onChange={(v) => update("nameKo", v)}
+            required error={errors.nameKo} placeholder="홍길동"
+          />
+          <TextField
+            label="영문 이름" value={form.nameEn} onChange={(v) => update("nameEn", v)}
+            placeholder="Hong Gil Dong"
+          />
+          <TextField
+            label="상호 / 업체명 / 소속" value={form.company} onChange={(v) => update("company", v)}
+            placeholder="업체명 또는 소속 기관" className="sm:col-span-2"
+          />
+          <TextField
+            label="생년월일" value={form.birthdate} onChange={(v) => update("birthdate", v)}
+            type="date"
+          />
+          <TextField
+            label="연락처" value={form.phone} onChange={(v) => update("phone", formatPhone(v))}
+            required error={errors.phone} placeholder="010-0000-0000" type="tel"
+          />
+          <TextField
+            label="이메일" value={form.email} onChange={(v) => update("email", v)}
+            required error={errors.email} placeholder="example@email.com" type="email"
+            className="sm:col-span-2"
+          />
         </div>
+        <AddressFields
+          postalCode={form.postalCode} address={form.address} addressDetail={form.addressDetail}
+          onPostalChange={(v) => update("postalCode", v)}
+          onAddressChange={(v) => update("address", v)}
+          onDetailChange={(v) => update("addressDetail", v)}
+        />
+        <TextField
+          label="인스타그램 / SNS 아이디" value={form.sns} onChange={(v) => update("sns", v)}
+          placeholder="@instagram_id (선택)"
+        />
       </section>
 
       <section className="space-y-5">
