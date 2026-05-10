@@ -1085,9 +1085,9 @@ function SettingsTab() {
 }
 
 // ============================================================
-// Users tab — role 관리 (user / instructor / subadmin / admin)
+// Users tab — role 관리 (user / instructor / subadmin / admin / KBA등급)
 // ============================================================
-type Role = "user" | "instructor" | "subadmin" | "admin";
+type Role = "user" | "instructor" | "subadmin" | "admin" | "KBA이사" | "KBA지회장" | "KBA지부장" | "KBA정회원";
 
 interface AdminUser {
   id: string;
@@ -1106,16 +1106,24 @@ interface AdminUser {
 }
 
 const ROLE_LABEL: Record<Role, string> = {
-  user: "일반",
+  user: "기본",
   instructor: "강사",
   subadmin: "서브관리자",
   admin: "관리자",
+  "KBA이사": "KBA이사",
+  "KBA지회장": "KBA지회장",
+  "KBA지부장": "KBA지부장",
+  "KBA정회원": "KBA정회원",
 };
 const ROLE_TONE: Record<Role, string> = {
   user: "bg-gray-100 text-gray-700 border-gray-200",
   instructor: "bg-blue-50 text-blue-700 border-blue-200",
   subadmin: "bg-orange-50 text-orange-700 border-orange-200",
   admin: "bg-purple-50 text-purple-700 border-purple-200",
+  "KBA이사": "bg-rose-50 text-rose-700 border-rose-200",
+  "KBA지회장": "bg-amber-50 text-amber-700 border-amber-200",
+  "KBA지부장": "bg-yellow-50 text-yellow-700 border-yellow-200",
+  "KBA정회원": "bg-teal-50 text-teal-700 border-teal-200",
 };
 
 function UsersTab() {
@@ -1191,9 +1199,8 @@ function UsersTab() {
         <div>
           <h2 className="text-lg font-bold text-gray-900">사용자 관리</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            <b>강사</b>는 <code className="text-brand">/teacher</code>에서 자기 세미나 CRUD ·
-            <b>서브관리자</b>는 관리자 페이지와 전체 세미나 접근 (단, 관리자 승격 권한은 없음) ·
-            <b>관리자</b>는 전체 권한.
+            <b>기본</b>: 일반 회원 · <b>KBA정회원/지부장/지회장/이사</b>: 조직위 신청 가능 · <b>강사</b>: 세미나 CRUD · <b>서브관리자</b>: 관리자 페이지 접근 · <b>관리자</b>: 전체 권한.
+            <span className="text-amber-600 ml-1">※ 등급 변경 후 해당 회원은 재로그인 필요</span>
           </p>
         </div>
         <button
@@ -1243,7 +1250,7 @@ function UsersTab() {
                       onChange={(e) => changeRole(u.id, e.target.value as AdminUser["role"])}
                       className={`text-xs font-semibold px-2 py-1 rounded-full border ${ROLE_TONE[u.role]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
                     >
-                      {(["user", "instructor", "subadmin", "admin"] as const).map((r) => (
+                      {(["user", "KBA정회원", "KBA지부장", "KBA지회장", "KBA이사", "instructor", "subadmin", "admin"] as const).map((r) => (
                         <option key={r} value={r}>
                           {ROLE_LABEL[r]}
                         </option>

@@ -1,8 +1,7 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Google from "next-auth/providers/google";
 import { getSupabaseAdmin } from "@/lib/supabase";
-
-type UserRole = "user" | "instructor" | "subadmin" | "admin";
+import type { UserRole } from "@/lib/roles";
 
 declare module "next-auth" {
   interface Session {
@@ -75,7 +74,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .maybeSingle();
           if (data) {
             token.id = data.id;
-            token.role = (data.role as UserRole) ?? "user";
+            token.role = (data.role as UserRole | undefined) ?? "user";
           }
         }
       }

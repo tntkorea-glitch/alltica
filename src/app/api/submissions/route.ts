@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Submission } from "@/lib/types";
 import { isAdminRequest } from "@/lib/admin-session";
 import { getSupabaseAdmin, SUBMISSION_FILES_BUCKET } from "@/lib/supabase";
+import { auth } from "@/lib/auth";
+import { KBA_ROLES } from "@/lib/roles";
 
 const SIGNED_URL_EXPIRY = 60 * 60; // 1시간
 
@@ -23,6 +25,20 @@ export async function POST(request: NextRequest) {
         { error: "formSlug, formTitle 은 필수입니다." },
         { status: 400 }
       );
+    }
+
+    // 대회 신청은 로그인 필수
+    if (formSlug.startsWith("contest-")) {
+      const session = await auth();
+      if (!session?.user) {
+        return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+      }
+      // 조직위 신청은 KBA 등급 필수
+      if (formSlug.endsWith("-committee")) {
+        if (!(KBA_ROLES as readonly string[]).includes(session.user.role)) {
+          return NextResponse.json({ error: "조직위 신청 권한이 없습니다." }, { status: 403 });
+        }
+      }
     }
 
     const supabase = getSupabaseAdmin();

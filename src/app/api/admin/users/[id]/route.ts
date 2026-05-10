@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const ROLES = ["user", "instructor", "subadmin", "admin"] as const;
+const ROLES = ["user", "instructor", "subadmin", "admin", "KBA이사", "KBA지회장", "KBA지부장", "KBA정회원"] as const;
 type Role = (typeof ROLES)[number];
 
 // "주체 관리자(admin)"인지 확인: 쿠키(password)로 들어왔거나, 세션 role=admin 이어야 함.
