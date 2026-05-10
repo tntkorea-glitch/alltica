@@ -58,6 +58,14 @@ alltica.co.kr
 - **submissions API prefix 쿼리**: `?formSlugPrefix=contest-` → Supabase `.like()` 필터
 - **admin 대회 신청 탭 실데이터 연동**: 유형별 집계, 필터, 목록 테이블, 상세 모달
 
+## 추가 완료 (2026-05-11)
+
+- **회원 등급 시스템**: KBA이사/지회장/지부장/정회원 + 기본 등급 (5종) — `src/lib/roles.ts` 신규
+- **대회 신청 로그인 게이트**: 미로그인 시 Google 로그인 유도 화면 표시
+- **조직위 신청 KBA 등급 제한**: KBA 4등급 외 클릭 시 팝업 안내 (KBA대표회장 010-8842-5659 / KBA사무국 010-9293-5659)
+- **서버 사이드 권한 검사**: `/api/submissions` POST에 로그인 검사 + 조직위 KBA 등급 검사 추가
+- **admin 등급 관리**: UsersTab 드롭다운에 KBA 4등급 추가, 등급 변경 후 재로그인 안내 문구
+
 ## Phase 2 남은 백로그
 
 - **토스 key 등록** — `.env.local`에 `NEXT_PUBLIC_TOSSPAYMENTS_CLIENT_KEY`, `TOSSPAYMENTS_SECRET_KEY` 추가 필요 (Vercel 환경변수도)

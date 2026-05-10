@@ -1085,9 +1085,20 @@ function SettingsTab() {
 }
 
 // ============================================================
-// Users tab — role 관리 (user / instructor / subadmin / admin / KBA등급)
+// Users tab — 시스템 권한 / KBA 등급 분리 관리
 // ============================================================
-type Role = "user" | "instructor" | "subadmin" | "admin" | "KBA이사" | "KBA지회장" | "KBA지부장" | "KBA정회원";
+type SysRole = "user" | "instructor" | "subadmin" | "admin";
+type KbaGrade = "KBA이사" | "KBA지회장" | "KBA지부장" | "KBA정회원";
+type Role = SysRole | KbaGrade;
+
+const KBA_GRADES: KbaGrade[] = ["KBA이사", "KBA지회장", "KBA지부장", "KBA정회원"];
+
+function getSysRole(role: Role): SysRole {
+  return (KBA_GRADES as string[]).includes(role) ? "user" : (role as SysRole);
+}
+function getKbaGrade(role: Role): KbaGrade | "" {
+  return (KBA_GRADES as string[]).includes(role) ? (role as KbaGrade) : "";
+}
 
 interface AdminUser {
   id: string;
@@ -1105,21 +1116,20 @@ interface AdminUser {
   solapi_pf_id: string | null;
 }
 
-const ROLE_LABEL: Record<Role, string> = {
+const SYS_ROLE_LABEL: Record<SysRole, string> = {
   user: "기본",
   instructor: "강사",
   subadmin: "서브관리자",
   admin: "관리자",
-  "KBA이사": "KBA이사",
-  "KBA지회장": "KBA지회장",
-  "KBA지부장": "KBA지부장",
-  "KBA정회원": "KBA정회원",
 };
-const ROLE_TONE: Record<Role, string> = {
+const SYS_ROLE_TONE: Record<SysRole, string> = {
   user: "bg-gray-100 text-gray-700 border-gray-200",
   instructor: "bg-blue-50 text-blue-700 border-blue-200",
   subadmin: "bg-orange-50 text-orange-700 border-orange-200",
   admin: "bg-purple-50 text-purple-700 border-purple-200",
+};
+const KBA_GRADE_TONE: Record<KbaGrade | "", string> = {
+  "": "bg-gray-50 text-gray-400 border-gray-200",
   "KBA이사": "bg-rose-50 text-rose-700 border-rose-200",
   "KBA지회장": "bg-amber-50 text-amber-700 border-amber-200",
   "KBA지부장": "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -1198,9 +1208,10 @@ function UsersTab() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-gray-900">사용자 관리</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            <b>기본</b>: 일반 회원 · <b>KBA정회원/지부장/지회장/이사</b>: 조직위 신청 가능 · <b>강사</b>: 세미나 CRUD · <b>서브관리자</b>: 관리자 페이지 접근 · <b>관리자</b>: 전체 권한.
-            <span className="text-amber-600 ml-1">※ 등급 변경 후 해당 회원은 재로그인 필요</span>
+          <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+            <b>시스템 권한</b> — 기본: 일반 회원 · 강사: 세미나 CRUD · 서브관리자: 관리자 페이지 접근 · 관리자: 전체 권한<br />
+            <b>KBA 등급</b> — 정회원/지부장/지회장/이사: 조직위 신청 가능 (KBA 등급 선택 시 시스템 권한은 &quot;기본&quot;으로 적용)
+            <span className="text-amber-600 ml-1">※ 변경 후 해당 회원 재로그인 필요</span>
           </p>
         </div>
         <button
@@ -1223,7 +1234,8 @@ function UsersTab() {
                 <Th>이메일</Th>
                 <Th>이름</Th>
                 <Th>연락처</Th>
-                <Th>권한</Th>
+                <Th>시스템 권한</Th>
+                <Th>KBA 등급</Th>
                 <Th>솔라피</Th>
                 <Th>가입일</Th>
                 <Th>최근 로그인</Th>
@@ -1243,17 +1255,42 @@ function UsersTab() {
                       onSave={(v) => changePhone(u.id, v)}
                     />
                   </Td>
+                  {/* 시스템 권한 */}
                   <Td>
                     <select
-                      value={u.role}
+                      value={getSysRole(u.role)}
                       disabled={savingId === u.id}
-                      onChange={(e) => changeRole(u.id, e.target.value as AdminUser["role"])}
-                      className={`text-xs font-semibold px-2 py-1 rounded-full border ${ROLE_TONE[u.role]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
+                      onChange={(e) => {
+                        const v = e.target.value as SysRole;
+                        // 시스템 권한 선택 시 KBA 등급 해제
+                        if (v !== "user") changeRole(u.id, v);
+                        else {
+                          // "기본" 선택 시 현재 KBA 등급 유지하거나 user로 초기화
+                          if ((KBA_GRADES as string[]).includes(u.role)) return;
+                          changeRole(u.id, "user");
+                        }
+                      }}
+                      className={`text-xs font-semibold px-2 py-1 rounded-full border ${SYS_ROLE_TONE[getSysRole(u.role)]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
                     >
-                      {(["user", "KBA정회원", "KBA지부장", "KBA지회장", "KBA이사", "instructor", "subadmin", "admin"] as const).map((r) => (
-                        <option key={r} value={r}>
-                          {ROLE_LABEL[r]}
-                        </option>
+                      {(["user", "instructor", "subadmin", "admin"] as const).map((r) => (
+                        <option key={r} value={r}>{SYS_ROLE_LABEL[r]}</option>
+                      ))}
+                    </select>
+                  </Td>
+                  {/* KBA 등급 */}
+                  <Td>
+                    <select
+                      value={getKbaGrade(u.role)}
+                      disabled={savingId === u.id}
+                      onChange={(e) => {
+                        const v = e.target.value as KbaGrade | "";
+                        changeRole(u.id, v === "" ? "user" : v);
+                      }}
+                      className={`text-xs font-semibold px-2 py-1 rounded-full border ${KBA_GRADE_TONE[getKbaGrade(u.role)]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
+                    >
+                      <option value="">없음</option>
+                      {(["KBA정회원", "KBA지부장", "KBA지회장", "KBA이사"] as const).map((r) => (
+                        <option key={r} value={r}>{r}</option>
                       ))}
                     </select>
                   </Td>
