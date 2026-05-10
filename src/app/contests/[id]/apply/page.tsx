@@ -4,8 +4,11 @@ import { notFound } from "next/navigation";
 import { CONTESTS } from "@/lib/contests";
 import ContestApplyForms from "@/components/ContestApplyForms";
 
+type ApplyType = "athlete" | "judge" | "committee";
+
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ type?: string }>;
 }
 
 export function generateStaticParams() {
@@ -24,8 +27,11 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function ContestApplyPage({ params }: Props) {
+export default async function ContestApplyPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { type } = await searchParams;
+  const VALID_TYPES: ApplyType[] = ["athlete", "judge", "committee"];
+  const defaultType: ApplyType = VALID_TYPES.includes(type as ApplyType) ? (type as ApplyType) : "judge";
   const contest = CONTESTS.find((c) => c.id === id);
   if (!contest) notFound();
 
@@ -79,7 +85,7 @@ export default async function ContestApplyPage({ params }: Props) {
 
         {isActive ? (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-10">
-            <ContestApplyForms contest={contest} />
+            <ContestApplyForms contest={contest} defaultType={defaultType} />
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-16 text-center">

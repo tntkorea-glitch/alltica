@@ -81,6 +81,25 @@ const IBC_EVENT_CATEGORIES = [
   },
 ];
 
+const IBC_COMMITTEE_CATEGORIES = [
+  "대회본부 직책 희망 (종목직책 이외) — 대회 종목별 대면 심사에는 직접 심사 참여하지 않는 직책",
+  "PMU (반영구)",
+  "SMP (선수인원 미충족시 PMU(반영구) 심사로 통합 진행)",
+  "네일",
+  "메이크업",
+  "속눈썹연장",
+  "LED속눈썹연장 (선수인원 미충족시 속눈썹 심사로 통합 진행)",
+  "속눈썹펌 (선수인원 미충족시 속눈썹 심사로 통합 진행)",
+  "왁싱",
+  "슈가링왁싱 (선수인원 미충족시 왁싱 심사로 통합 진행)",
+  "피부",
+  "플라즈마 (선수인원 미충족시 피부 심사로 통합 진행)",
+  "플래닝 (스킨플래닝) — 선수인원 미충족시 플래닝 혹은 피부 심사로 통합 진행",
+  "플래닝 (패디플래닝) — 선수인원 미충족시 플래닝 혹은 피부 심사로 통합 진행",
+  "헤어 (미용)",
+  "헤어 (이용)",
+];
+
 const CONTEST_EVENT_MAP: Record<string, typeof IBC_EVENT_CATEGORIES> = {
   "contest-ibc-12th-2026-07": IBC_EVENT_CATEGORIES,
 };
@@ -608,12 +627,55 @@ function AddressFields({
   );
 }
 
+// ── 배송지 주소 섹션 ────────────────────────────────────────────────
+
+function ShippingAddressSection({
+  notice, sameAddress, onSameAddressChange,
+  postalCode, address, addressDetail,
+  onPostalChange, onAddressChange, onDetailChange,
+}: {
+  notice: string;
+  sameAddress: boolean; onSameAddressChange: (v: boolean) => void;
+  postalCode: string; address: string; addressDetail: string;
+  onPostalChange: (v: string) => void; onAddressChange: (v: string) => void; onDetailChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-3 pt-1">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <label className="block text-sm font-semibold text-gray-700">배송지 주소</label>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox" checked={sameAddress}
+            onChange={(e) => onSameAddressChange(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 accent-brand"
+          />
+          <span className="text-sm text-gray-600">상동 (위와 동일한 주소)</span>
+        </label>
+      </div>
+      <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+        <span className="text-base">📦</span>
+        <p className="text-xs text-amber-700 leading-relaxed">{notice}</p>
+      </div>
+      {!sameAddress && (
+        <AddressFields
+          postalCode={postalCode} address={address} addressDetail={addressDetail}
+          onPostalChange={onPostalChange}
+          onAddressChange={onAddressChange}
+          onDetailChange={onDetailChange}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── 심사위원 신청 폼 ────────────────────────────────────────────────
 
 interface JudgeState {
   nameKo: string; nameEn: string; company: string; birthdate: string;
   phone: string; email: string;
   postalCode: string; address: string; addressDetail: string;
+  shippingPostalCode: string; shippingAddress: string; shippingAddressDetail: string;
+  sameShippingAddress: boolean;
   sns: string; position: string;
   specialties: string[];
   qualificationItems: string[];
@@ -629,6 +691,8 @@ const emptyJudge: JudgeState = {
   nameKo: "", nameEn: "", company: "", birthdate: "",
   phone: "", email: "",
   postalCode: "", address: "", addressDetail: "",
+  shippingPostalCode: "", shippingAddress: "", shippingAddressDetail: "",
+  sameShippingAddress: false,
   sns: "", position: "",
   specialties: [],
   qualificationItems: [],
@@ -697,6 +761,13 @@ function JudgeForm({
       form.address, form.addressDetail,
     ].map((s) => s.trim()).filter(Boolean).join(" ");
 
+    const shippingFullAddress = form.sameShippingAddress
+      ? fullAddress
+      : [
+          form.shippingPostalCode ? `(${form.shippingPostalCode})` : "",
+          form.shippingAddress, form.shippingAddressDetail,
+        ].map((s) => s.trim()).filter(Boolean).join(" ");
+
     const data: Record<string, unknown> = {
       한글이름: form.nameKo,
       영문이름: form.nameEn,
@@ -705,6 +776,7 @@ function JudgeForm({
       연락처: form.phone,
       이메일: form.email,
       주소: fullAddress,
+      배송지주소: shippingFullAddress,
       SNS아이디: form.sns,
       직책: form.position,
       심사종목: form.specialties,
@@ -782,6 +854,25 @@ function JudgeForm({
           onPostalChange={(v) => set("postalCode", v)}
           onAddressChange={(v) => set("address", v)}
           onDetailChange={(v) => set("addressDetail", v)}
+        />
+
+        <ShippingAddressSection
+          notice="위촉장 및 위촉패를 등록한 배송지 주소로 발송될 예정입니다."
+          sameAddress={form.sameShippingAddress}
+          onSameAddressChange={(v) => {
+            set("sameShippingAddress", v);
+            if (v) {
+              set("shippingPostalCode", form.postalCode);
+              set("shippingAddress", form.address);
+              set("shippingAddressDetail", form.addressDetail);
+            }
+          }}
+          postalCode={form.shippingPostalCode}
+          address={form.shippingAddress}
+          addressDetail={form.shippingAddressDetail}
+          onPostalChange={(v) => set("shippingPostalCode", v)}
+          onAddressChange={(v) => set("shippingAddress", v)}
+          onDetailChange={(v) => set("shippingAddressDetail", v)}
         />
 
         <TextField
@@ -1045,6 +1136,8 @@ interface AthleteState {
   nameKo: string; nameEn: string; company: string; birthdate: string;
   phone: string; email: string;
   postalCode: string; address: string; addressDetail: string;
+  shippingPostalCode: string; shippingAddress: string; shippingAddressDetail: string;
+  sameShippingAddress: boolean;
   sns: string;
   grade: "" | AthleteGrade;
   divisions: string[];
@@ -1055,6 +1148,8 @@ const emptyAthlete: AthleteState = {
   nameKo: "", nameEn: "", company: "", birthdate: "",
   phone: "", email: "",
   postalCode: "", address: "", addressDetail: "",
+  shippingPostalCode: "", shippingAddress: "", shippingAddressDetail: "",
+  sameShippingAddress: false,
   sns: "",
   grade: "",
   divisions: [],
@@ -1110,8 +1205,21 @@ function AthleteForm({
     setSubmitting(true);
     const files: Record<string, File> = {};
     if (docFile) files.document = docFile;
+
+    const fullAddress = [
+      form.postalCode ? `(${form.postalCode})` : "",
+      form.address, form.addressDetail,
+    ].map((s) => s.trim()).filter(Boolean).join(" ");
+
+    const shippingFullAddress = form.sameShippingAddress
+      ? fullAddress
+      : [
+          form.shippingPostalCode ? `(${form.shippingPostalCode})` : "",
+          form.shippingAddress, form.shippingAddressDetail,
+        ].map((s) => s.trim()).filter(Boolean).join(" ");
+
     try {
-      await onSubmit({ ...form }, files);
+      await onSubmit({ ...form, 주소: fullAddress, 배송지주소: shippingFullAddress }, files);
     } catch (err) {
       alert(err instanceof Error ? err.message : "신청 처리에 실패했습니다.");
       setSubmitting(false);
@@ -1160,6 +1268,25 @@ function AthleteForm({
           onAddressChange={(v) => update("address", v)}
           onDetailChange={(v) => update("addressDetail", v)}
         />
+        <ShippingAddressSection
+          notice="결과 발표 후 상장 및 트로피(메달)를 등록한 배송지 주소로 발송될 예정입니다."
+          sameAddress={form.sameShippingAddress}
+          onSameAddressChange={(v) => {
+            update("sameShippingAddress", v);
+            if (v) {
+              update("shippingPostalCode", form.postalCode);
+              update("shippingAddress", form.address);
+              update("shippingAddressDetail", form.addressDetail);
+            }
+          }}
+          postalCode={form.shippingPostalCode}
+          address={form.shippingAddress}
+          addressDetail={form.shippingAddressDetail}
+          onPostalChange={(v) => update("shippingPostalCode", v)}
+          onAddressChange={(v) => update("shippingAddress", v)}
+          onDetailChange={(v) => update("shippingAddressDetail", v)}
+        />
+
         <TextField
           label="인스타그램 / SNS 아이디" value={form.sns} onChange={(v) => update("sns", v)}
           placeholder="@instagram_id (선택)"
@@ -1255,52 +1382,77 @@ function AthleteForm({
 // ── 조직위 신청 폼 ────────────────────────────────────────────────
 
 interface CommitteeState {
-  name: string; phone: string; email: string;
-  affiliationPosition: string; desiredRole: string;
-  experience: string; motivation: string;
+  nameKo: string; nameEn: string; company: string; birthdate: string;
+  phone: string; email: string;
+  postalCode: string; address: string; addressDetail: string;
+  shippingPostalCode: string; shippingAddress: string; shippingAddressDetail: string;
+  sameShippingAddress: boolean;
+  sns: string; position: string;
+  desiredCategory: string;
+  bannerApply: boolean | null;
+  bannerHorizontalApply: boolean | null;
+  bannerHorizontalText: string;
+  agreePrivacy: boolean;
 }
 
 const emptyCommittee: CommitteeState = {
-  name: "", phone: "", email: "",
-  affiliationPosition: "", desiredRole: "", experience: "", motivation: "",
+  nameKo: "", nameEn: "", company: "", birthdate: "",
+  phone: "", email: "",
+  postalCode: "", address: "", addressDetail: "",
+  shippingPostalCode: "", shippingAddress: "", shippingAddressDetail: "",
+  sameShippingAddress: false,
+  sns: "", position: "",
+  desiredCategory: "",
+  bannerApply: null,
+  bannerHorizontalApply: null,
+  bannerHorizontalText: "",
+  agreePrivacy: false,
 };
 
+type CommitteeErrors = Partial<Record<keyof CommitteeState, string>>;
+
 function CommitteeForm({
+  contest,
   onSubmit,
 }: {
+  contest: Contest;
   onSubmit: (data: Record<string, unknown>, files: Record<string, File>) => Promise<void>;
 }) {
   const [form, setForm] = useState<CommitteeState>(emptyCommittee);
-  const [errors, setErrors] = useState<Partial<Record<keyof CommitteeState, string>>>({});
+  const [errors, setErrors] = useState<CommitteeErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [docFile, setDocFile] = useState<File | null>(null);
+  const [profileFile, setProfileFile] = useState<File | null>(null);
 
-  function update<K extends keyof CommitteeState>(key: K, val: CommitteeState[K]) {
+  function set<K extends keyof CommitteeState>(key: K, val: CommitteeState[K]) {
     setForm((p) => ({ ...p, [key]: val }));
     if (errors[key]) setErrors((p) => ({ ...p, [key]: undefined }));
   }
 
-  function handleOcrResult(fields: { name?: string; company?: string; position?: string; phone?: string; email?: string }, _postal: string, _addr: string) {
+  function handleOcrResult(fields: { name?: string; company?: string; position?: string; phone?: string; email?: string }, postal: string, addr: string) {
     setForm((p) => ({
       ...p,
-      name: fields.name || p.name,
-      affiliationPosition: [fields.company, fields.position].filter(Boolean).join(" / ") || p.affiliationPosition,
+      nameKo: fields.name || p.nameKo,
+      company: fields.company || p.company,
+      position: fields.position || p.position,
       phone: fields.phone ? formatPhone(fields.phone) : p.phone,
       email: fields.email || p.email,
+      postalCode: postal || p.postalCode,
+      address: addr || p.address,
     }));
   }
 
   function validate(): boolean {
-    const next: Partial<Record<keyof CommitteeState, string>> = {};
-    if (!form.name.trim()) next.name = "이름을 입력해주세요.";
+    const next: CommitteeErrors = {};
+    if (!form.nameKo.trim()) next.nameKo = "한글 이름을 입력해주세요.";
     if (!form.phone.trim()) next.phone = "연락처를 입력해주세요.";
     else if (!/^01[0-9]-?\d{3,4}-?\d{4}$/.test(form.phone.replace(/\s/g, "")))
       next.phone = "올바른 연락처 형식을 입력해주세요. (예: 010-0000-0000)";
     if (!form.email.trim()) next.email = "이메일을 입력해주세요.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       next.email = "올바른 이메일 형식을 입력해주세요.";
-    if (!form.desiredRole) next.desiredRole = "희망 역할을 선택해주세요.";
-    if (!form.motivation.trim()) next.motivation = "지원 동기를 입력해주세요.";
+    if (!form.desiredCategory) next.desiredCategory = "참가 희망 종목을 선택해주세요.";
+    if (!form.agreePrivacy) next.agreePrivacy = "개인정보 수집에 동의해주세요.";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -1309,10 +1461,42 @@ function CommitteeForm({
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
+
+    const fullAddress = [
+      form.postalCode ? `(${form.postalCode})` : "",
+      form.address, form.addressDetail,
+    ].map((s) => s.trim()).filter(Boolean).join(" ");
+
+    const shippingFullAddress = form.sameShippingAddress
+      ? fullAddress
+      : [
+          form.shippingPostalCode ? `(${form.shippingPostalCode})` : "",
+          form.shippingAddress, form.shippingAddressDetail,
+        ].map((s) => s.trim()).filter(Boolean).join(" ");
+
+    const data: Record<string, unknown> = {
+      한글이름: form.nameKo,
+      영문이름: form.nameEn,
+      상호업체명: form.company,
+      생년월일: form.birthdate,
+      연락처: form.phone,
+      이메일: form.email,
+      주소: fullAddress,
+      배송지주소: shippingFullAddress,
+      SNS아이디: form.sns,
+      직책: form.position,
+      참가희망종목: form.desiredCategory,
+      배너신청: form.bannerApply === null ? "미선택" : form.bannerApply ? "신청" : "미신청",
+      현수막신청: form.bannerHorizontalApply === null ? "미선택" : form.bannerHorizontalApply ? "신청" : "미신청",
+      현수막문구: form.bannerHorizontalApply ? form.bannerHorizontalText : "",
+    };
+
     const files: Record<string, File> = {};
     if (docFile) files.document = docFile;
+    if (profileFile) files.profilePhoto = profileFile;
+
     try {
-      await onSubmit({ ...form }, files);
+      await onSubmit(data, files);
     } catch (err) {
       alert(err instanceof Error ? err.message : "신청 처리에 실패했습니다.");
       setSubmitting(false);
@@ -1321,26 +1505,300 @@ function CommitteeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8" noValidate>
+      {/* ① 문서 업로드 (OCR) */}
       <section className="space-y-3">
-        <SectionHeader icon="📎" title="명함 / 사업자등록증 첨부" sub="선택사항 · 업로드 시 기본 정보가 자동 입력됩니다" />
+        <SectionHeader
+          icon="📎"
+          title="명함 / 사업자등록증 첨부"
+          sub="선택사항 · 업로드 시 아래 정보가 자동 입력됩니다"
+        />
         <DocumentUpload onOcrResult={handleOcrResult} onFileChange={setDocFile} />
       </section>
 
+      {/* ② 개인 정보 */}
       <section className="space-y-4">
         <SectionHeader icon="👤" title="개인 정보" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <TextField label="이름" value={form.name} onChange={(v) => update("name", v)} required error={errors.name} placeholder="홍길동" />
-          <TextField label="연락처" value={form.phone} onChange={(v) => update("phone", formatPhone(v))} required error={errors.phone} placeholder="010-0000-0000" type="tel" />
-          <TextField label="이메일" value={form.email} onChange={(v) => update("email", v)} required error={errors.email} placeholder="example@email.com" type="email" className="sm:col-span-2" />
-          <TextField label="소속 / 직책" value={form.affiliationPosition} onChange={(v) => update("affiliationPosition", v)} placeholder="소속 및 직책 (선택)" className="sm:col-span-2" />
-          <SelectField label="희망 역할" value={form.desiredRole} onChange={(v) => update("desiredRole", v)} options={COMMITTEE_ROLES} required error={errors.desiredRole} placeholder="역할 선택" className="sm:col-span-2" />
+          <TextField
+            label="한글 이름" value={form.nameKo} onChange={(v) => set("nameKo", v)}
+            required error={errors.nameKo} placeholder="홍길동"
+          />
+          <TextField
+            label="영문 이름" value={form.nameEn} onChange={(v) => set("nameEn", v)}
+            placeholder="Hong Gil Dong"
+          />
+          <TextField
+            label="상호 / 업체명 / 소속" value={form.company} onChange={(v) => set("company", v)}
+            placeholder="업체명 또는 소속 기관" className="sm:col-span-2"
+          />
+          <TextField
+            label="생년월일" value={form.birthdate} onChange={(v) => set("birthdate", v)}
+            type="date" placeholder="1990-01-01"
+          />
+          <TextField
+            label="연락처" value={form.phone} onChange={(v) => set("phone", formatPhone(v))}
+            required error={errors.phone} placeholder="010-0000-0000" type="tel"
+          />
+          <TextField
+            label="이메일" value={form.email} onChange={(v) => set("email", v)}
+            required error={errors.email} placeholder="example@email.com" type="email"
+            className="sm:col-span-2"
+          />
+        </div>
+
+        <AddressFields
+          postalCode={form.postalCode} address={form.address} addressDetail={form.addressDetail}
+          onPostalChange={(v) => set("postalCode", v)}
+          onAddressChange={(v) => set("address", v)}
+          onDetailChange={(v) => set("addressDetail", v)}
+        />
+
+        <ShippingAddressSection
+          notice="위촉장 및 위촉패를 등록한 배송지 주소로 발송될 예정입니다."
+          sameAddress={form.sameShippingAddress}
+          onSameAddressChange={(v) => {
+            set("sameShippingAddress", v);
+            if (v) {
+              set("shippingPostalCode", form.postalCode);
+              set("shippingAddress", form.address);
+              set("shippingAddressDetail", form.addressDetail);
+            }
+          }}
+          postalCode={form.shippingPostalCode}
+          address={form.shippingAddress}
+          addressDetail={form.shippingAddressDetail}
+          onPostalChange={(v) => set("shippingPostalCode", v)}
+          onAddressChange={(v) => set("shippingAddress", v)}
+          onDetailChange={(v) => set("shippingAddressDetail", v)}
+        />
+
+        <TextField
+          label="인스타그램 / SNS 아이디" value={form.sns} onChange={(v) => set("sns", v)}
+          placeholder="@instagram_id (선택)"
+        />
+      </section>
+
+      {/* ③ 조직위 정보 */}
+      <section className="space-y-4">
+        <SectionHeader icon="📋" title="조직위 정보" />
+        <TextField
+          label="직책 / 직위" value={form.position} onChange={(v) => set("position", v)}
+          placeholder="예: 원장, 강사, 교수 등"
+        />
+
+        {/* 참가 희망 종목 */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            참가 희망 종목<span className="text-red-500 ml-1">*</span>
+          </label>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3 text-xs text-amber-700 space-y-1 leading-relaxed">
+            <p className="font-semibold">조직위 직책 우선순위 배정 방법 안내</p>
+            <p>1. KBA 협회 직책 및 참여율 우선 순위 배정 (동순위 일 경우 KBA 직책 및 활동정도 순)</p>
+            <p>2. 각 직책별 2회차(동일종목기준) 단위로 직책 승급 위촉</p>
+            <p>3. 기존 참여 종목 이동 시에는 동일 직책으로 1회 더 위촉 (+1회차 제외)</p>
+            <p>4. +3회차 참가시 수석 / 총괄 직책 추가 부여</p>
+          </div>
+          <div className="space-y-2">
+            {IBC_COMMITTEE_CATEGORIES.map((cat) => (
+              <label key={cat} className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="radio"
+                  name="desiredCategory"
+                  value={cat}
+                  checked={form.desiredCategory === cat}
+                  onChange={() => set("desiredCategory", cat)}
+                  className="w-4 h-4 mt-0.5 accent-brand shrink-0"
+                />
+                <span className={`text-sm transition-colors ${form.desiredCategory === cat ? "text-gray-900 font-medium" : "text-gray-600"}`}>
+                  {cat}
+                </span>
+              </label>
+            ))}
+          </div>
+          {errors.desiredCategory && <p className="text-red-500 text-xs mt-2">{errors.desiredCategory}</p>}
         </div>
       </section>
 
+      {/* ④ 배너 / 현수막 신청 */}
       <section className="space-y-4">
-        <SectionHeader icon="📋" title="지원 내용" />
-        <TextareaField label="관련 경험" value={form.experience} onChange={(v) => update("experience", v)} placeholder="관련 경험이 있으시면 입력해주세요 (없으면 생략)" rows={3} />
-        <TextareaField label="지원 동기" value={form.motivation} onChange={(v) => update("motivation", v)} required error={errors.motivation} placeholder="조직위원으로 활동하고자 하는 동기를 작성해주세요" rows={4} />
+        <SectionHeader
+          icon="🎌"
+          title="배너 / 현수막 신청 (선택)"
+          sub="신청수량한정 · 선착순마감 · X배너 40,000원 / 현수막 60,000원"
+        />
+
+        {/* 조직위 X배너 */}
+        <div className="rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <span className="text-sm font-bold text-gray-800">조직위 X배너</span>
+              <span className="ml-2 text-xs text-brand font-semibold">40,000원</span>
+            </div>
+            <span className="text-[10px] text-gray-400">신청수량한정 · 선착순</span>
+          </div>
+          <div className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="shrink-0 flex justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/contests/mockup-banner.svg" alt="배너 시안" className="h-52 w-auto object-contain rounded-xl border border-gray-100 shadow-sm" />
+              </div>
+              <div className="flex-1 space-y-2 text-xs text-gray-600">
+                <p className="font-semibold text-gray-700">배너 제작 안내</p>
+                <ul className="space-y-1 text-gray-500 leading-relaxed">
+                  <li>• 위에 첨부한 프로필 사진으로 작업이 진행됩니다</li>
+                  <li>• 다른 사진을 원하시면 이메일로 보내주세요</li>
+                  <li className="text-brand font-medium">  kbabeautist@naver.com</li>
+                  <li>• 대회 행사 후 개별적으로 가져가실 수 있습니다</li>
+                  <li>• 신청 후 시안 작업 완료 시 개별 안내 드립니다</li>
+                </ul>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
+                  <p className="text-amber-700 font-semibold text-[11px]">💳 입금 안내</p>
+                  <p className="text-amber-600 text-[11px] mt-0.5">기업은행 · KBA뷰티스트총연합회</p>
+                  <p className="text-amber-600 text-[11px]">010-9293-5659</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              {([true, false] as const).map((val) => (
+                <button
+                  key={String(val)}
+                  type="button"
+                  onClick={() => set("bannerApply", val)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                    form.bannerApply === val
+                      ? val
+                        ? "border-brand bg-brand text-white"
+                        : "border-gray-400 bg-gray-100 text-gray-600"
+                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                  }`}
+                >
+                  {val ? "✓ 신청합니다" : "신청안함"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 현수막 */}
+        <div className="rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <span className="text-sm font-bold text-gray-800">현수막</span>
+              <span className="ml-2 text-xs text-brand font-semibold">60,000원</span>
+            </div>
+            <span className="text-[10px] text-gray-400">신청수량한정 · 선착순</span>
+          </div>
+          <div className="p-4 space-y-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/contests/mockup-horizontal.svg" alt="현수막 시안" className="w-full rounded-xl border border-gray-100 shadow-sm" />
+            <p className="text-xs text-gray-500">상호명(업체명)만 넣으면 더 깔끔합니다. 신청 후 시안 작업 완료 시 개별 안내 드립니다.</p>
+            <div className="flex gap-2">
+              {([true, false] as const).map((val) => (
+                <button
+                  key={String(val)}
+                  type="button"
+                  onClick={() => {
+                    set("bannerHorizontalApply", val);
+                    if (!val) set("bannerHorizontalText", "");
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                    form.bannerHorizontalApply === val
+                      ? val
+                        ? "border-brand bg-brand text-white"
+                        : "border-gray-400 bg-gray-100 text-gray-600"
+                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                  }`}
+                >
+                  {val ? "✓ 신청합니다" : "신청안함"}
+                </button>
+              ))}
+            </div>
+            {form.bannerHorizontalApply === true && (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-gray-700">
+                  현수막 문구 <span className="text-red-500">*</span>
+                </label>
+                <p className="text-xs text-gray-400">추천: 상호명만 입력하면 더 깔끔합니다 (예: ○○뷰티살롱, ○○아카데미)</p>
+                <input
+                  type="text"
+                  value={form.bannerHorizontalText}
+                  onChange={(e) => set("bannerHorizontalText", e.target.value)}
+                  placeholder="현수막에 들어갈 문구를 입력하세요"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ⑤ 대회 안내사항 (밴드 초대) */}
+      <section className="space-y-3">
+        <SectionHeader
+          icon="📣"
+          title="대회 안내사항"
+          sub="밴드에서 대회 관련 공지를 받아보실 수 있습니다"
+        />
+        <a
+          href="https://band.us/n/a6aebeQ093y3M"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-4 bg-[#FFDF00]/10 border border-[#FFDF00]/30 rounded-2xl p-4 hover:bg-[#FFDF00]/20 transition-colors group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-[#FFDF00] flex items-center justify-center shrink-0 text-xl font-black text-black shadow-sm">
+            b
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-gray-800 group-hover:text-brand transition-colors">밴드 초대 참여하기</p>
+            <p className="text-xs text-gray-500 mt-0.5">제 12회 IBC 국제뷰티스트챔피언쉽 IN 2026</p>
+            <p className="text-xs text-brand mt-0.5 truncate">band.us/n/a6aebeQ093y3M</p>
+          </div>
+          <svg className="w-4 h-4 text-gray-400 group-hover:translate-x-0.5 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      </section>
+
+      {/* ⑥ 프로필 사진 */}
+      <section className="space-y-3">
+        <SectionHeader
+          icon="🖼"
+          title="프로필 사진"
+          sub="선택사항 · 대회 책자 및 배너 제작에 사용됩니다"
+        />
+        <ProfilePhotoUpload file={profileFile} onChange={setProfileFile} />
+      </section>
+
+      {/* ⑦ 개인정보 동의 */}
+      <section>
+        <div className={`rounded-xl border p-4 ${errors.agreePrivacy ? "border-red-300 bg-red-50" : "border-gray-100 bg-gray-50"}`}>
+          <div className="text-xs text-gray-600 mb-3 space-y-1">
+            <div className="flex gap-8">
+              <span className="text-gray-400 w-24 shrink-0">수집 항목</span>
+              <span>이름, 연락처, 이메일, 주소</span>
+            </div>
+            <div className="flex gap-8">
+              <span className="text-gray-400 w-24 shrink-0">수집 목적</span>
+              <span>대회 진행 및 대회 안내</span>
+            </div>
+            <div className="flex gap-8">
+              <span className="text-gray-400 w-24 shrink-0">보유 기간</span>
+              <span>대회 종료 후 1년</span>
+            </div>
+          </div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.agreePrivacy}
+              onChange={(e) => set("agreePrivacy", e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-brand accent-brand"
+            />
+            <span className="text-sm font-semibold text-gray-700">
+              개인정보 수집 및 이용에 동의합니다<span className="text-red-500 ml-1">*</span>
+            </span>
+          </label>
+          {errors.agreePrivacy && <p className="text-red-500 text-xs mt-2">{errors.agreePrivacy}</p>}
+        </div>
       </section>
 
       <SubmitButton submitting={submitting} label="조직위 신청 접수하기" />
@@ -1350,9 +1808,9 @@ function CommitteeForm({
 
 // ── 메인 래퍼 ────────────────────────────────────────────────
 
-export default function ContestApplyForms({ contest }: { contest: Contest }) {
+export default function ContestApplyForms({ contest, defaultType = "judge" }: { contest: Contest; defaultType?: ApplyType }) {
   const router = useRouter();
-  const [activeType, setActiveType] = useState<ApplyType>("judge");
+  const [activeType, setActiveType] = useState<ApplyType>(defaultType);
 
   async function handleSubmit(type: ApplyType, data: Record<string, unknown>, files: Record<string, File>) {
     const fd = new FormData();
@@ -1405,7 +1863,7 @@ export default function ContestApplyForms({ contest }: { contest: Contest }) {
         <JudgeForm contest={contest} onSubmit={(d, f) => handleSubmit("judge", d, f)} />
       )}
       {activeType === "committee" && (
-        <CommitteeForm onSubmit={(d, f) => handleSubmit("committee", d, f)} />
+        <CommitteeForm contest={contest} onSubmit={(d, f) => handleSubmit("committee", d, f)} />
       )}
     </div>
   );
