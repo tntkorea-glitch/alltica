@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 570" width="240" height="570">
+  <!-- X-stand legs -->
+  <line x1="120" y1="496" x2="42" y2="555" stroke="#c0c0c0" stroke-width="4" stroke-linecap="round"/>
+  <line x1="120" y1="496" x2="198" y2="555" stroke="#c0c0c0" stroke-width="4" stroke-linecap="round"/>
+  <line x1="80" y1="518" x2="160" y2="518" stroke="#c0c0c0" stroke-width="2.5" stroke-linecap="round"/>
+  <ellipse cx="120" cy="558" rx="70" ry="7" fill="#e0e0e0"/>
+  <!-- Stand poles top -->
+  <line x1="120" y1="14" x2="120" y2="4" stroke="#c0c0c0" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="120" cy="4" r="4" fill="#bbb"/>
+  <!-- Banner body shadow -->
+  <rect x="24" y="14" width="200" height="482" rx="3" fill="#00000015"/>
+  <!-- Banner body -->
+  <rect x="20" y="10" width="200" height="482" rx="3" fill="white" stroke="#e0e0e0" stroke-width="1"/>
+  <!-- Dark header -->
+  <defs>
+    <linearGradient id="hdrGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f0f2e"/>
+      <stop offset="100%" stop-color="#1e1454"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e6c84a"/>
+      <stop offset="100%" stop-color="#b8920e"/>
+    </linearGradient>
+  </defs>
+  <rect x="20" y="10" width="200" height="150" rx="3" fill="url(#hdrGrad)"/>
+  <rect x="20" y="155" width="200" height="6" fill="url(#goldGrad)"/>
+  <!-- IBC logo circle -->
+  <circle cx="120" cy="64" r="38" fill="url(#goldGrad)"/>
+  <circle cx="120" cy="64" r="35" fill="none" stroke="white" stroke-width="0.8" opacity="0.35"/>
+  <!-- Laurel hints -->
+  <text x="96" y="60" text-anchor="middle" fill="white" font-size="16" font-family="Georgia, serif" opacity="0.5">❧</text>
+  <text x="144" y="60" text-anchor="middle" fill="white" font-size="16" font-family="Georgia, serif" opacity="0.5">❧</text>
+  <text x="120" y="55" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="Georgia, serif">IBC</text>
+  <text x="120" y="66" text-anchor="middle" fill="white" font-size="5.5" font-family="Arial">INTERNATIONAL</text>
+  <text x="120" y="74" text-anchor="middle" fill="white" font-size="5.5" font-family="Arial">BEAUTIST</text>
+  <!-- Title text -->
+  <text x="120" y="103" text-anchor="middle" fill="white" font-size="11" font-weight="bold" font-family="Arial, sans-serif" letter-spacing="1">THE 12TH</text>
+  <text x="120" y="116" text-anchor="middle" fill="#e6c84a" font-size="7.5" font-family="Arial" letter-spacing="0.5">INTERNATIONAL BEAUTIST</text>
+  <text x="120" y="128" text-anchor="middle" fill="#e6c84a" font-size="7.5" font-family="Arial" letter-spacing="0.5">CHAMPIONSHIP IN 2026</text>
+  <text x="120" y="142" text-anchor="middle" fill="white" font-size="6.5" font-family="Arial" opacity="0.75">제 12회 국제뷰티스트챔피언쉽</text>
+  <!-- Photo area -->
+  <rect x="40" y="168" width="160" height="208" rx="4" fill="#f0f0f0" stroke="#e0e0e0" stroke-width="1"/>
+  <!-- Person silhouette -->
+  <ellipse cx="120" cy="222" rx="38" ry="42" fill="#d8d8d8"/>
+  <rect x="62" y="262" width="116" height="106" rx="58" fill="#d8d8d8"/>
+  <text x="120" y="358" text-anchor="middle" fill="#bbb" font-size="9" font-family="Arial">프로필 사진</text>
+  <!-- Bottom dark section -->
+  <rect x="20" y="384" width="200" height="108" fill="url(#hdrGrad)"/>
+  <rect x="20" y="485" width="200" height="7" fill="url(#goldGrad)"/>
+  <!-- Role -->
+  <rect x="70" y="393" width="100" height="18" rx="9" fill="#e6c84a" opacity="0.2"/>
+  <text x="120" y="406" text-anchor="middle" fill="#e6c84a" font-size="9.5" font-family="Arial" letter-spacing="2">심 사 위 원</text>
+  <!-- Name -->
+  <text x="120" y="442" text-anchor="middle" fill="white" font-size="28" font-weight="bold" font-family="Arial, sans-serif">홍 길 동</text>
+  <!-- Company -->
+  <text x="120" y="461" text-anchor="middle" fill="#aaa" font-size="9" font-family="Arial">소속 / 업체명</text>
+  <line x1="55" y1="468" x2="185" y2="468" stroke="#333" stroke-width="0.7"/>
+  <text x="120" y="479" text-anchor="middle" fill="#666" font-size="7" font-family="Arial">대구 중앙컨벤션센터 · 2026. 7. 15</text>
+</svg>

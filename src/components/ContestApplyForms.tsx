@@ -434,6 +434,9 @@ interface JudgeState {
   qualificationItems: string[];
   qualificationOtherText: string;
   qualificationNotes: string;
+  bannerApply: boolean | null;
+  bannerHorizontalApply: boolean | null;
+  bannerHorizontalText: string;
   agreePrivacy: boolean;
 }
 
@@ -446,6 +449,9 @@ const emptyJudge: JudgeState = {
   qualificationItems: [],
   qualificationOtherText: "",
   qualificationNotes: "",
+  bannerApply: null,
+  bannerHorizontalApply: null,
+  bannerHorizontalText: "",
   agreePrivacy: false,
 };
 
@@ -523,6 +529,9 @@ function JudgeForm({
           : item
       ),
       경력사항: form.qualificationNotes,
+      배너신청: form.bannerApply === null ? "미선택" : form.bannerApply ? "신청" : "미신청",
+      현수막신청: form.bannerHorizontalApply === null ? "미선택" : form.bannerHorizontalApply ? "신청" : "미신청",
+      현수막문구: form.bannerHorizontalApply ? form.bannerHorizontalText : "",
     };
 
     const files: Record<string, File> = {};
@@ -658,17 +667,157 @@ function JudgeForm({
         />
       </section>
 
-      {/* ④ 프로필 사진 */}
+      {/* ④ 배너 / 현수막 신청 */}
+      <section className="space-y-4">
+        <SectionHeader
+          icon="🎌"
+          title="배너 / 현수막 신청 (선택)"
+          sub="신청수량한정 · 선착순마감 · 각 60,000원"
+        />
+
+        {/* 배너 신청 */}
+        <div className="rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <span className="text-sm font-bold text-gray-800">심사위원 X배너</span>
+              <span className="ml-2 text-xs text-brand font-semibold">60,000원</span>
+            </div>
+            <span className="text-[10px] text-gray-400">신청수량한정 · 선착순</span>
+          </div>
+          <div className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="shrink-0 flex justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/contests/mockup-banner.svg" alt="배너 시안" className="h-52 w-auto object-contain rounded-xl border border-gray-100 shadow-sm" />
+              </div>
+              <div className="flex-1 space-y-2 text-xs text-gray-600">
+                <p className="font-semibold text-gray-700">배너 제작 안내</p>
+                <ul className="space-y-1 text-gray-500 leading-relaxed">
+                  <li>• 위에 첨부한 프로필 사진으로 작업이 진행됩니다</li>
+                  <li>• 다른 사진을 원하시면 이메일로 보내주세요</li>
+                  <li className="text-brand font-medium">  kbabeautist@naver.com</li>
+                  <li>• 대회 행사 후 개별적으로 가져가실 수 있습니다</li>
+                  <li>• 신청 후 시안 작업 완료 시 개별 안내 드립니다</li>
+                </ul>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
+                  <p className="text-amber-700 font-semibold text-[11px]">💳 입금 안내</p>
+                  <p className="text-amber-600 text-[11px] mt-0.5">기업은행 · KBA뷰티스트총연합회</p>
+                  <p className="text-amber-600 text-[11px]">010-9293-5659</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              {([true, false] as const).map((val) => (
+                <button
+                  key={String(val)}
+                  type="button"
+                  onClick={() => set("bannerApply", val)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                    form.bannerApply === val
+                      ? val
+                        ? "border-brand bg-brand text-white"
+                        : "border-gray-400 bg-gray-100 text-gray-600"
+                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                  }`}
+                >
+                  {val ? "✓ 신청합니다" : "신청안함"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 현수막 신청 */}
+        <div className="rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <span className="text-sm font-bold text-gray-800">현수막</span>
+              <span className="ml-2 text-xs text-brand font-semibold">60,000원</span>
+            </div>
+            <span className="text-[10px] text-gray-400">신청수량한정 · 선착순</span>
+          </div>
+          <div className="p-4 space-y-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/contests/mockup-horizontal.svg" alt="현수막 시안" className="w-full rounded-xl border border-gray-100 shadow-sm" />
+            <p className="text-xs text-gray-500">상호명(업체명)만 넣으면 더 깔끔합니다. 신청 후 시안 작업 완료 시 개별 안내 드립니다.</p>
+            <div className="flex gap-2">
+              {([true, false] as const).map((val) => (
+                <button
+                  key={String(val)}
+                  type="button"
+                  onClick={() => {
+                    set("bannerHorizontalApply", val);
+                    if (!val) set("bannerHorizontalText", "");
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                    form.bannerHorizontalApply === val
+                      ? val
+                        ? "border-brand bg-brand text-white"
+                        : "border-gray-400 bg-gray-100 text-gray-600"
+                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                  }`}
+                >
+                  {val ? "✓ 신청합니다" : "신청안함"}
+                </button>
+              ))}
+            </div>
+            {form.bannerHorizontalApply === true && (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-gray-700">
+                  현수막 문구 <span className="text-red-500">*</span>
+                </label>
+                <p className="text-xs text-gray-400">추천: 상호명만 입력하면 더 깔끔합니다 (예: ○○뷰티살롱, ○○아카데미)</p>
+                <input
+                  type="text"
+                  value={form.bannerHorizontalText}
+                  onChange={(e) => set("bannerHorizontalText", e.target.value)}
+                  placeholder="현수막에 들어갈 문구를 입력하세요"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-sm"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ⑤ 대회 안내사항 (밴드 초대) */}
+      <section className="space-y-3">
+        <SectionHeader
+          icon="📣"
+          title="대회 안내사항"
+          sub="밴드에서 대회 관련 공지를 받아보실 수 있습니다"
+        />
+        <a
+          href="https://band.us/n/a2a4A49c19c3t"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-4 bg-[#FFDF00]/10 border border-[#FFDF00]/30 rounded-2xl p-4 hover:bg-[#FFDF00]/20 transition-colors group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-[#FFDF00] flex items-center justify-center shrink-0 text-xl font-black text-black shadow-sm">
+            b
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-gray-800 group-hover:text-brand transition-colors">밴드 초대 참여하기</p>
+            <p className="text-xs text-gray-500 mt-0.5">제 12회 IBC 국제뷰티스트챔피언쉽 IN 2026</p>
+            <p className="text-xs text-brand mt-0.5 truncate">band.us/n/a2a4A49c19c3t</p>
+          </div>
+          <svg className="w-4 h-4 text-gray-400 group-hover:translate-x-0.5 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      </section>
+
+      {/* ⑥ 프로필 사진 */}
       <section className="space-y-3">
         <SectionHeader
           icon="🖼"
           title="프로필 사진"
-          sub="선택사항 · 대회 책자에 등록됩니다"
+          sub="선택사항 · 대회 책자 및 배너 제작에 사용됩니다"
         />
         <ProfilePhotoUpload file={profileFile} onChange={setProfileFile} />
       </section>
 
-      {/* ⑤ 개인정보 동의 */}
+      {/* ⑦ 개인정보 동의 */}
       <section>
         <div className={`rounded-xl border p-4 ${errors.agreePrivacy ? "border-red-300 bg-red-50" : "border-gray-100 bg-gray-50"}`}>
           <div className="text-xs text-gray-600 mb-3 space-y-1">

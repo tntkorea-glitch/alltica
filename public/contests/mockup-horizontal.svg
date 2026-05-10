@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" width="600" height="180">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0f0f2e"/>
+      <stop offset="35%" stop-color="#1a1460"/>
+      <stop offset="65%" stop-color="#1a1460"/>
+      <stop offset="100%" stop-color="#0f0f2e"/>
+    </linearGradient>
+    <linearGradient id="goldH" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e6c84a"/>
+      <stop offset="100%" stop-color="#b8920e"/>
+    </linearGradient>
+  </defs>
+  <!-- Shadow -->
+  <rect x="4" y="6" width="594" height="172" rx="4" fill="#00000020"/>
+  <!-- Background -->
+  <rect x="0" y="0" width="600" height="178" rx="4" fill="url(#bgGrad)"/>
+  <!-- Gold borders -->
+  <rect x="0" y="0" width="600" height="8" rx="2" fill="url(#goldH)"/>
+  <rect x="0" y="170" width="600" height="8" rx="2" fill="url(#goldH)"/>
+  <rect x="0" y="0" width="8" height="178" fill="url(#goldH)"/>
+  <rect x="592" y="0" width="8" height="178" fill="url(#goldH)"/>
+  <!-- Left IBC logo -->
+  <circle cx="72" cy="89" r="48" fill="#e6c84a" opacity="0.1"/>
+  <circle cx="72" cy="89" r="38" fill="#e6c84a" opacity="0.15"/>
+  <circle cx="72" cy="84" r="30" fill="#e6c84a"/>
+  <circle cx="72" cy="84" r="27" fill="none" stroke="white" stroke-width="0.8" opacity="0.3"/>
+  <text x="72" y="78" text-anchor="middle" fill="white" font-size="12" font-weight="bold" font-family="Georgia, serif">IBC</text>
+  <text x="72" y="89" text-anchor="middle" fill="white" font-size="5" font-family="Arial">INTERNATIONAL</text>
+  <text x="72" y="97" text-anchor="middle" fill="white" font-size="5" font-family="Arial">BEAUTIST</text>
+  <text x="72" y="115" text-anchor="middle" fill="#e6c84a" font-size="8" font-weight="bold" font-family="Arial">2026</text>
+  <!-- Center content -->
+  <text x="312" y="45" text-anchor="middle" fill="#e6c84a" font-size="11.5" font-weight="bold" font-family="Arial" letter-spacing="0.5">제 12회 IBC 국제뷰티스트챔피언쉽 IN 2026</text>
+  <line x1="135" y1="52" x2="489" y2="52" stroke="#e6c84a" stroke-width="0.6" opacity="0.5"/>
+  <!-- Company name placeholder area -->
+  <rect x="130" y="63" width="354" height="70" rx="6" fill="white" opacity="0.06"/>
+  <rect x="130" y="63" width="354" height="70" rx="6" fill="none" stroke="#e6c84a" stroke-width="0.6" opacity="0.3"/>
+  <text x="307" y="97" text-anchor="middle" fill="white" font-size="30" font-weight="bold" font-family="Arial, sans-serif" opacity="0.35" letter-spacing="4">○ ○ 뷰티살롱</text>
+  <text x="307" y="120" text-anchor="middle" fill="#888" font-size="9" font-family="Arial">← 현수막에 들어갈 문구 (상호명 또는 직접 입력) →</text>
+  <!-- Bottom info -->
+  <text x="312" y="151" text-anchor="middle" fill="#666" font-size="8" font-family="Arial">2026. 7. 15 (수) · 대구 중앙컨벤션센터 · 한정수량 선착순 마감</text>
+  <!-- Right section -->
+  <circle cx="533" cy="84" r="32" fill="#e6c84a" opacity="0.1"/>
+  <circle cx="533" cy="84" r="24" fill="#e6c84a" opacity="0.15"/>
+  <text x="533" y="80" text-anchor="middle" fill="#e6c84a" font-size="13" font-weight="bold" font-family="Arial">심사</text>
+  <text x="533" y="95" text-anchor="middle" fill="#e6c84a" font-size="13" font-weight="bold" font-family="Arial">위원</text>
+  <text x="533" y="118" text-anchor="middle" fill="#666" font-size="7.5" font-family="Arial">대구 중앙컨벤션센터</text>
+</svg>
