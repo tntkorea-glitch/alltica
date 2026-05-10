@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, useRef } from "react";
+import { useState, FormEvent, useRef, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { Contest } from "@/lib/contests";
 import { formatPhone } from "@/lib/phone";
@@ -1180,16 +1180,20 @@ function AthleteForm({
               <div className="font-semibold">1종목</div>
               <div className="font-semibold">2종목</div>
               <div className="font-semibold">3종목</div>
-              {(["학생부", "프로전문가부"] as const).map(g => (
-                <>
-                  <div key={g + "label"} className={`text-left font-medium ${form.grade === g ? "text-brand" : "text-gray-400"}`}>{g}</div>
-                  {["40,000", "70,000", "100,000"].map((fee, i) => (
-                    <div key={i} className={form.grade === g ? "text-gray-800 font-semibold" : "text-gray-300"}>
-                      {g === "프로전문가부" ? ["100,000", "180,000", "260,000"][i] : fee}원
-                    </div>
-                  ))}
-                </>
-              ))}
+              {(["학생부", "프로전문가부"] as const).map(g => {
+                const fees = g === "학생부"
+                  ? ["40,000", "70,000", "100,000"]
+                  : ["100,000", "180,000", "260,000"];
+                const active = form.grade === g;
+                return (
+                  <Fragment key={g}>
+                    <div className={`text-left font-medium ${active ? "text-brand" : "text-gray-400"}`}>{g}</div>
+                    {fees.map((fee, i) => (
+                      <div key={i} className={active ? "text-gray-800 font-semibold" : "text-gray-300"}>{fee}원</div>
+                    ))}
+                  </Fragment>
+                );
+              })}
             </div>
             <p className="text-gray-400 pt-1">3종목 이상 참가 시 특별상(추가수여) 대상</p>
           </div>
