@@ -60,11 +60,22 @@ alltica.co.kr
 
 ## 추가 완료 (2026-05-11)
 
-- **회원 등급 시스템**: KBA이사/지회장/지부장/정회원 + 기본 등급 (5종) — `src/lib/roles.ts` 신규
+- **회원 등급 시스템 (2컬럼 분리)**: `role`(시스템권한) + `kba_grade`(KBA등급) 완전 독립 — `src/lib/roles.ts` 신규
 - **대회 신청 로그인 게이트**: 미로그인 시 Google 로그인 유도 화면 표시
-- **조직위 신청 KBA 등급 제한**: KBA 4등급 외 클릭 시 팝업 안내 (KBA대표회장 010-8842-5659 / KBA사무국 010-9293-5659)
-- **서버 사이드 권한 검사**: `/api/submissions` POST에 로그인 검사 + 조직위 KBA 등급 검사 추가
-- **admin 등급 관리**: UsersTab 드롭다운에 KBA 4등급 추가, 등급 변경 후 재로그인 안내 문구
+- **조직위 신청 KBA 등급 제한**: `kbaGrade` 존재 여부로 판단, 없으면 팝업 안내 (연락처 포함)
+- **서버 사이드 권한 검사**: `/api/submissions` POST에 로그인 + kbaGrade 검사
+- **admin 등급 관리 UI**: 시스템권한/KBA등급 드롭다운 분리 + pending 방식 저장 버튼
+- **JWT 항상 fresh**: 매 요청마다 DB에서 role/kbaGrade 조회 → 재로그인 없이 즉시 반영
+- **admin 저장 후 세션 강제 갱신**: `updateSession()` 호출
+
+## ⚠️ Next up when resuming (최우선)
+
+1. **Supabase SQL 실행 필수** — 아직 미실행 시:
+   ```sql
+   ALTER TABLE public.users ADD COLUMN IF NOT EXISTS kba_grade text;
+   UPDATE public.users SET kba_grade = role, role = 'user' WHERE role IN ('KBA이사','KBA지회장','KBA지부장','KBA정회원');
+   ```
+2. **KBA 등급 E2E 테스트**: admin에서 등급 변경 → 저장 → 조직위 신청 탭 즉시 열리는지 확인
 - **대회 신청 폼 대규모 개선** (심사위원/선수/조직위 전체):
   - 심사위원: 자격요건 체크박스(기타 포함), X배너/현수막 신청(SVG 시안), Band 초대링크, 프로필사진
   - 선수: 명함 OCR, 개인정보 통일, 경력사항 삭제, 15개 대종목 세부종목 2단계 선택, 학생부/프로 구분 금액계산
