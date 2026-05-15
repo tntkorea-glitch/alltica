@@ -58,3 +58,5 @@ credentials*.json
 *.db-journal
 # claude scheduler lock
 .claude/scheduled_tasks.lock
+
+.vercel

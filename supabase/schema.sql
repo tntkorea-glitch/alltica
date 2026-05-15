@@ -120,6 +120,11 @@ create table if not exists public.users (
   role       text not null default 'user'
              check (role in ('user', 'instructor', 'subadmin', 'admin', 'KBA이사', 'KBA지회장', 'KBA지부장', 'KBA정회원')),
   kba_grade  text,                       -- KBA 등급 (role과 독립 — 조직위 신청 자격용)
+  solapi_api_key    text,               -- 강사별 자체 Solapi 키 (없으면 공용 키 사용)
+  solapi_api_secret text,
+  solapi_sender     text,
+  use_own_solapi    boolean not null default false,
+  solapi_pf_id      text,
   last_login_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

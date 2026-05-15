@@ -9,18 +9,19 @@ originSessionId: cc8b50ae-ba95-4216-8623-7836d9e50551
 ## 핵심 환경 (참조)
 
 - Next.js 16 (`proxy.ts`, middleware.ts 아님) + React 19 + Tailwind v4 + TypeScript
-- Supabase ref `omzkzxrncypfluxfwrpg` — 테이블: `applications`/`users`/`seminars`/`submissions`/`app_settings`. Storage: `business-cards`/`submission-files`/`seminar-images`
+- Supabase ref `ytemhdubbrinpbdbgri` (신 프로젝트, 2026-05-15 이관) — 테이블: `applications`/`users`/`seminars`/`submissions`/`app_settings`. Storage: `business-cards`/`submission-files`/`seminar-images`
 - 인증: NextAuth v5 (Google만 활성, 카카오/네이버 placeholder) + admin_session HMAC 쿠키
 - OCR: Claude Haiku 4.5 Vision tool_use
 - SMS: SolAPI 단문 90B (postica와 크레덴셜 공유)
 - 결제: 토스페이먼츠 PG (`@tosspayments/tosspayments-sdk`) — 카드결제. TOSSPAYMENTS_SECRET_KEY / NEXT_PUBLIC_TOSSPAYMENTS_CLIENT_KEY 환경변수 필요
-- 도메인: alltica.co.kr (호스팅케이알 DNS) + alltica.vercel.app
+- 도메인: alltica.co.kr (호스팅케이알 DNS) + alltica-gamma.vercel.app
+- Vercel 계정: a01092935659-s-projects (신 계정, 2026-05-15 이관)
 - 자동화: Stop 훅 auto-commit (push 안 함) + gitleaks pre-commit + SessionStart git pull
 
 ## 배포 상태
 
-**2026-05-09 배포** — push `24619fd` → Vercel 자동빌드 트리거됨  
-alltica.co.kr
+**2026-05-15 배포** — Supabase + Vercel 계정 완전 이관 완료  
+alltica.co.kr (신 Vercel a01092935659, 신 Supabase ytemhdubbrinpbdbgri)
 
 ## 이번 세션 완료 작업 (2026-05-09 2차)
 
