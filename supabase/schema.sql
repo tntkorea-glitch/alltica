@@ -29,6 +29,9 @@ create table if not exists public.applications (
   business_card_url text,                 -- Supabase Storage public URL
   ocr_raw         jsonb,                  -- Claude Vision 원본 응답 (감사용)
 
+  -- 토스페이먼츠 결제
+  toss_payment_key text,
+
   -- 상태 관리
   status          text not null default 'pending'
                   check (status in ('pending', 'confirmed', 'cancelled')),
@@ -116,6 +119,7 @@ create table if not exists public.users (
   provider   text,                      -- 'google' | 'kakao' | 'naver' | 'credentials'
   role       text not null default 'user'
              check (role in ('user', 'instructor', 'subadmin', 'admin', 'KBA이사', 'KBA지회장', 'KBA지부장', 'KBA정회원')),
+  kba_grade  text,                       -- KBA 등급 (role과 독립 — 조직위 신청 자격용)
   last_login_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -205,3 +209,14 @@ alter table public.submissions enable row level security;
 insert into storage.buckets (id, name, public)
 values ('submission-files', 'submission-files', false)
 on conflict (id) do nothing;
+
+-- ============================================================
+-- Storage bucket: 세미나 이미지
+-- ============================================================
+insert into storage.buckets (id, name, public)
+values ('seminar-images', 'seminar-images', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Public read seminar images" on storage.objects;
+create policy "Public read seminar images" on storage.objects
+  for select using (bucket_id = 'seminar-images');
