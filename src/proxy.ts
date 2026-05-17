@@ -3,7 +3,10 @@ import { ADMIN_COOKIE, verifyAdminToken } from "@/lib/admin-session";
 import { auth } from "@/lib/auth";
 
 export const config = {
-  matcher: ["/admin/:path*", "/mypage/:path*", "/profile/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/((?!_next/static|_next/image|favicon\\.ico|api/).*)",
+  ],
 };
 
 export async function proxy(request: NextRequest) {

@@ -18,7 +18,7 @@ function ProfileCompleteInner() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
 
-  const [name, setName] = useState(session?.user?.name ?? "");
+  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [loading, setLoading] = useState(false);
