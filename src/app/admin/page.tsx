@@ -1150,6 +1150,7 @@ function UsersTab() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [solapiTarget, setSolapiTarget] = useState<AdminUser | null>(null);
   const [pending, setPending] = useState<Record<string, { role?: SysRole; kba_grade?: KbaGrade | null }>>({});
 
@@ -1233,6 +1234,23 @@ function UsersTab() {
     }
   }
 
+  async function deleteUser(u: AdminUser) {
+    if (!confirm(`"${u.name || u.email}" 회원을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    setDeletingId(u.id);
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? "삭제 실패");
+      }
+      setUsers((prev) => prev.filter((x) => x.id !== u.id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "삭제 실패");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   function handleSolapiSaved(updated: Partial<AdminUser> & { id: string }) {
     setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
     setSolapiTarget((prev) => (prev ? { ...prev, ...updated } : null));
@@ -1305,6 +1323,7 @@ function UsersTab() {
                 <Th>솔라피</Th>
                 <Th>가입일</Th>
                 <Th>최근 로그인</Th>
+                <Th>{""}</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -1391,6 +1410,18 @@ function UsersTab() {
                   </Td>
                   <Td className="text-xs text-gray-500 whitespace-nowrap">
                     {u.last_login_at ? formatKST(u.last_login_at) : "-"}
+                  </Td>
+                  <Td>
+                    {u.role !== "admin" && (
+                      <button
+                        onClick={() => deleteUser(u)}
+                        disabled={deletingId === u.id || savingId === u.id}
+                        className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+                        title="회원 삭제"
+                      >
+                        {deletingId === u.id ? "삭제중…" : "삭제"}
+                      </button>
+                    )}
                   </Td>
                 </tr>
               ))}

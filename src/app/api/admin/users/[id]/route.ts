@@ -89,3 +89,27 @@ export async function PATCH(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  if (!(await isAdminRequest(request))) {
+    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  }
+  if (!(await isFullAdmin(request))) {
+    return NextResponse.json({ error: "최고관리자만 회원을 삭제할 수 있습니다." }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const supabase = getSupabaseAdmin();
+
+  const { data: target } = await supabase.from("users").select("role").eq("id", id).maybeSingle();
+  if (target?.role === "admin") {
+    return NextResponse.json({ error: "관리자 계정은 삭제할 수 없습니다." }, { status: 403 });
+  }
+
+  const { error } = await supabase.from("users").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
