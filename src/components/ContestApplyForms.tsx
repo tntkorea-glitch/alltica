@@ -1464,8 +1464,16 @@ function CommitteeForm({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!validate()) {
-      setFormError("필수 항목을 모두 입력해주세요. 위로 스크롤하여 확인해주세요.");
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setFormError("아래 항목을 확인해주세요.");
+      // 에러 렌더링 후 첫 번째 에러 필드로 스크롤
+      setTimeout(() => {
+        const firstError = formRef.current?.querySelector(".border-red-400, .border-red-300");
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else {
+          formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 50);
       return;
     }
     setFormError("");
@@ -1512,8 +1520,31 @@ function CommitteeForm({
     }
   }
 
+  const ERROR_LABEL: Partial<Record<keyof CommitteeState, string>> = {
+    nameKo: "한글 이름",
+    phone: "연락처",
+    email: "이메일",
+    desiredCategory: "참가 희망 종목",
+    agreePrivacy: "개인정보 동의",
+  };
+
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-8" noValidate>
+      {/* 에러 요약 배너 */}
+      {formError && Object.keys(errors).length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <p className="text-sm font-semibold text-red-600 mb-1.5">⚠️ {formError}</p>
+          <ul className="space-y-0.5">
+            {(Object.entries(errors) as [keyof CommitteeState, string][]).map(([key, msg]) => (
+              <li key={key} className="text-xs text-red-500 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                <span className="font-semibold">{ERROR_LABEL[key] ?? key}</span>: {msg}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* ① 문서 업로드 (OCR) */}
       <section className="space-y-3">
         <SectionHeader
@@ -1832,11 +1863,6 @@ function CommitteeForm({
         </div>
       </section>
 
-      {formError && (
-        <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
-          {formError}
-        </p>
-      )}
       <SubmitButton submitting={submitting} label="조직위 신청 접수하기" />
     </form>
   );
