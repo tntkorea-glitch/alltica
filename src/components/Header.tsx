@@ -11,11 +11,14 @@ export default function Header() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
 
+  const isHome = pathname === "/";
+
   useEffect(() => {
+    if (!isHome) { setScrolled(true); return; }
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [isHome]);
 
   // /admin은 자체 헤더가 있어 전역 Header를 숨김 (UI 겹침 방지)
   if (pathname?.startsWith("/admin")) return null;
