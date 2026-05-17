@@ -23,6 +23,24 @@ function formatKST(iso: string): string {
   return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function formatPhone(raw: string | null | undefined): string {
+  if (!raw) return "미등록";
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("02")) {
+    if (digits.length <= 9) return `${digits.slice(0, 2)}-${digits.slice(2, 5)}-${digits.slice(5)}`;
+    return `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6, 10)}`;
+  }
+  if (digits.length <= 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  user: "일반회원",
+  instructor: "강사",
+  subadmin: "서브관리자",
+  admin: "관리자",
+};
+
 export default async function MyPage() {
   const session = await auth();
   if (!session?.user?.email) redirect("/login?callbackUrl=/mypage");
@@ -30,7 +48,7 @@ export default async function MyPage() {
   const supabase = getSupabaseAdmin();
   const { data: profile } = await supabase
     .from("users")
-    .select("email, name, image, phone, role, created_at, last_login_at")
+    .select("email, name, image, phone, role, business_name, created_at, last_login_at")
     .eq("email", session.user.email)
     .maybeSingle();
 
@@ -76,12 +94,18 @@ export default async function MyPage() {
           <dl className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div>
               <dt className="text-gray-500">연락처</dt>
-              <dd className="text-gray-900 mt-0.5">{profile?.phone || "미등록"}</dd>
+              <dd className="text-gray-900 mt-0.5">{formatPhone(profile?.phone)}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">권한</dt>
-              <dd className="text-gray-900 mt-0.5">{profile?.role ?? "user"}</dd>
+              <dt className="text-gray-500">회원등급</dt>
+              <dd className="text-gray-900 mt-0.5">{ROLE_LABEL[profile?.role ?? "user"] ?? "일반회원"}</dd>
             </div>
+            {(profile as any)?.business_name && (
+              <div>
+                <dt className="text-gray-500">상호</dt>
+                <dd className="text-gray-900 mt-0.5">{(profile as any).business_name}</dd>
+              </div>
+            )}
             <div>
               <dt className="text-gray-500">가입일</dt>
               <dd className="text-gray-900 mt-0.5">
