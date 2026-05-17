@@ -1432,16 +1432,19 @@ function CommitteeForm({
   const [form, setForm] = useState<CommitteeState>(emptyCommittee);
   const [errors, setErrors] = useState<CommitteeErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitCount, setSubmitCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [profileFile, setProfileFile] = useState<File | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const errorBannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (submitted && Object.keys(errors).length > 0) {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (submitCount > 0 && Object.keys(errors).length > 0 && errorBannerRef.current) {
+      const top = errorBannerRef.current.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top, behavior: "smooth" });
     }
-  }, [submitted, errors]);
+  }, [submitCount]);
 
   function set<K extends keyof CommitteeState>(key: K, val: CommitteeState[K]) {
     setForm((p) => ({ ...p, [key]: val }));
@@ -1479,6 +1482,7 @@ function CommitteeForm({
     e.preventDefault();
     if (!validate()) {
       setSubmitted(true);
+      setSubmitCount((c) => c + 1);
       return;
     }
     setSubmitting(true);
@@ -1528,7 +1532,7 @@ function CommitteeForm({
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-8" noValidate>
       {/* 에러 요약 배너 */}
       {submitted && Object.keys(errors).length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+        <div ref={errorBannerRef} className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
           <p className="text-sm font-semibold text-red-600 mb-1.5">⚠️ 아래 항목을 확인해주세요.</p>
           <ul className="space-y-0.5">
             {(Object.entries(errors) as [keyof CommitteeState, string][]).map(([key, msg]) => (
