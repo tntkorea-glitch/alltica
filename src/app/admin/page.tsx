@@ -936,9 +936,26 @@ function FormsTab({
                     </Td>
                     <Td>
                       {Object.keys(sub.files).length > 0 ? (
-                        <span className="text-emerald-600 text-xs">
-                          📎 {Object.keys(sub.files).length}개
-                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          {Object.entries(sub.files).map(([key, path]) => {
+                            const rawName = (path as string).split("/").pop()?.split("?")[0] ?? key;
+                            const parts = rawName.split("_");
+                            const displayName = parts.length > 1 && /^\d{10,}$/.test(parts[0]) ? parts.slice(1).join("_") : rawName;
+                            return (
+                              <a
+                                key={key}
+                                href={path as string}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs text-brand hover:underline flex items-center gap-1 whitespace-nowrap max-w-[140px] truncate"
+                                title={displayName}
+                              >
+                                📎 {displayName}
+                              </a>
+                            );
+                          })}
+                        </div>
                       ) : (
                         <span className="text-gray-300 text-xs">-</span>
                       )}
