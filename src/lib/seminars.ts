@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getSupabaseAdmin, getSupabasePublic } from "@/lib/supabase";
 
 export type SeminarStatus = "upcoming" | "open" | "closed" | "completed";
@@ -102,6 +103,26 @@ export async function getOpenSeminars(): Promise<Seminar[]> {
   const all = await getAllSeminars();
   return all.filter((s) => s.status === "open" || s.status === "upcoming");
 }
+
+// 홈 페이지 미리보기용 — 전체 대신 진행 중인 3개만 직접 쿼리
+export const getPreviewSeminars = unstable_cache(
+  async (limit = 3): Promise<Seminar[]> => {
+    const supabase = getSupabasePublic();
+    const { data, error } = await supabase
+      .from("seminars")
+      .select("*")
+      .in("status", ["open", "upcoming"])
+      .order("start_at", { ascending: true })
+      .limit(limit);
+    if (error) {
+      console.error("[seminars] getPreviewSeminars", error);
+      return [];
+    }
+    return (data as SeminarRow[]).map(mapRow);
+  },
+  ["seminars-preview"],
+  { revalidate: 60, tags: ["seminars"] }
+);
 
 export async function getSeminarBySlug(slug: string): Promise<Seminar | undefined> {
   const supabase = getSupabasePublic();

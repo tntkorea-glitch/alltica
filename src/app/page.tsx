@@ -2,12 +2,12 @@ import FormCard from "@/components/FormCard";
 import SeminarCard from "@/components/SeminarCard";
 import ServiceLineup from "@/components/ServiceLineup";
 import { formTemplates } from "@/lib/forms";
-import { getAllSeminars } from "@/lib/seminars";
+import { getPreviewSeminars } from "@/lib/seminars";
 import { CONTESTS } from "@/lib/contests";
 import Link from "next/link";
 
 export default async function Home() {
-  const seminars = await getAllSeminars();
+  const seminars = await getPreviewSeminars(3);
   return (
     <div>
       {/* Hero - Full screen */}
@@ -121,12 +121,9 @@ export default async function Home() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {seminars
-            .filter((s) => s.status === "open" || s.status === "upcoming")
-            .slice(0, 3)
-            .map((s) => (
-              <SeminarCard key={s.slug} seminar={s} />
-            ))}
+          {seminars.map((s) => (
+            <SeminarCard key={s.slug} seminar={s} />
+          ))}
         </div>
 
         <div className="text-center mt-8 sm:hidden">

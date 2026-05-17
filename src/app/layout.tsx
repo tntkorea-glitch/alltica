@@ -63,8 +63,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const theme = await getCurrentTheme();
-  const isAdmin = await isAdminContext();
+  const [theme, isAdmin] = await Promise.all([
+    getCurrentTheme(),
+    isAdminContext(),
+  ]);
   return (
     <html
       lang="ko"

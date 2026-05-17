@@ -66,6 +66,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
     async jwt({ token, user }) {
+      // user 객체는 최초 로그인 시에만 전달됨 — 이후 요청은 token만 존재
+      // 이미 id/role이 토큰에 있으면 DB 재조회 없이 바로 반환
+      if (!user && token.id && token.role) return token;
+
       const email = user?.email ?? token.email;
       if (email) {
         const supabase = getSupabaseAdmin();

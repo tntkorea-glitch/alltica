@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getSupabaseAdmin } from "./supabase";
 
 export const THEMES = [
@@ -11,18 +12,26 @@ export const THEMES = [
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 
+const fetchTheme = unstable_cache(
+  async (): Promise<ThemeId> => {
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "theme")
+        .maybeSingle();
+      const value = data?.value as ThemeId | undefined;
+      if (value && THEMES.some((t) => t.id === value)) return value;
+    } catch (err) {
+      console.error("[theme] getCurrentTheme 실패:", err);
+    }
+    return "navy";
+  },
+  ["app-theme"],
+  { revalidate: 60, tags: ["app-theme"] }
+);
+
 export async function getCurrentTheme(): Promise<ThemeId> {
-  try {
-    const supabase = getSupabaseAdmin();
-    const { data } = await supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "theme")
-      .maybeSingle();
-    const value = data?.value as ThemeId | undefined;
-    if (value && THEMES.some((t) => t.id === value)) return value;
-  } catch (err) {
-    console.error("[theme] getCurrentTheme 실패:", err);
-  }
-  return "navy";
+  return fetchTheme();
 }
