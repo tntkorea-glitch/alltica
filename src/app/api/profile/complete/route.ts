@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  const { name, phone } = await req.json();
+  const { name, phone, businessName } = await req.json();
   if (!name?.trim() || !phone?.trim()) {
     return NextResponse.json({ error: "이름과 연락처는 필수입니다." }, { status: 400 });
   }
@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     .update({
       name: name.trim(),
       phone: cleanPhone,
+      business_name: businessName?.trim() || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", session.user.id);

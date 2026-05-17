@@ -20,6 +20,7 @@ function ProfileCompleteInner() {
 
   const [name, setName] = useState(session?.user?.name ?? "");
   const [phone, setPhone] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,7 +36,7 @@ function ProfileCompleteInner() {
       const res = await fetch("/api/profile/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), phone: trimmedPhone }),
+        body: JSON.stringify({ name: name.trim(), phone: trimmedPhone, businessName: businessName.trim() || null }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "저장 실패"); return; }
@@ -88,6 +89,19 @@ function ProfileCompleteInner() {
               placeholder="010-0000-0000"
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
               required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              상호명 <span className="text-xs font-normal text-gray-400">(선택)</span>
+            </label>
+            <input
+              type="text"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="예: 홍길동헤어샵"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
             />
           </div>
 
