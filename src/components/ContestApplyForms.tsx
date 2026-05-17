@@ -1832,13 +1832,13 @@ function CommitteeForm({
 
 // ── 메인 래퍼 ────────────────────────────────────────────────
 
-export default function ContestApplyForms({ contest, defaultType = "judge" }: { contest: Contest; defaultType?: ApplyType }) {
+export default function ContestApplyForms({ contest, defaultType = "judge", serverKbaGrade }: { contest: Contest; defaultType?: ApplyType; serverKbaGrade?: string | null }) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [activeType, setActiveType] = useState<ApplyType>(defaultType);
   const [showCommitteeModal, setShowCommitteeModal] = useState(false);
 
-  const canAccessCommittee = !!session?.user?.kbaGrade;
+  const canAccessCommittee = serverKbaGrade !== undefined ? !!serverKbaGrade : !!session?.user?.kbaGrade;
 
   function handleTabClick(type: ApplyType) {
     if (type === "committee" && !canAccessCommittee) {

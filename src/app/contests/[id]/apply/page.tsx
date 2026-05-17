@@ -3,6 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CONTESTS } from "@/lib/contests";
 import ContestApplyForms from "@/components/ContestApplyForms";
+import { auth } from "@/lib/auth";
+import { getSupabaseAdmin } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
 
 type ApplyType = "athlete" | "judge" | "committee";
 
@@ -10,12 +14,6 @@ interface Props {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ type?: string }>;
 }
-
-export function generateStaticParams() {
-  return CONTESTS.map((c) => ({ id: c.id }));
-}
-
-export const dynamicParams = false;
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
@@ -36,6 +34,19 @@ export default async function ContestApplyPage({ params, searchParams }: Props) 
   if (!contest) notFound();
 
   const isActive = contest.status === "모집중" || contest.status === "마감임박";
+
+  // JWT 캐시 우회 — DB에서 최신 kba_grade 직접 조회
+  const session = await auth();
+  let serverKbaGrade: string | null = null;
+  if (session?.user?.email) {
+    const supabase = getSupabaseAdmin();
+    const { data } = await supabase
+      .from("users")
+      .select("kba_grade")
+      .eq("email", session.user.email)
+      .maybeSingle();
+    serverKbaGrade = data?.kba_grade ?? null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -85,7 +96,7 @@ export default async function ContestApplyPage({ params, searchParams }: Props) 
 
         {isActive ? (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-10">
-            <ContestApplyForms contest={contest} defaultType={defaultType} />
+            <ContestApplyForms contest={contest} defaultType={defaultType} serverKbaGrade={serverKbaGrade} />
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-16 text-center">
