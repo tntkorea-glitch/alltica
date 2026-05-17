@@ -1221,6 +1221,9 @@ function UsersTab() {
     setSolapiTarget((prev) => (prev ? { ...prev, ...updated } : null));
   }
 
+  const noPhoneCount = users.filter((u) => !u.phone).length;
+  const noNameCount = users.filter((u) => !u.name).length;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -1239,6 +1242,33 @@ function UsersTab() {
           새로고침
         </button>
       </div>
+
+      {/* 회원 현황 요약 */}
+      {!loading && users.length > 0 && (
+        <div className="flex flex-wrap gap-3 mb-4">
+          <div className="bg-white rounded-xl border border-gray-100 px-4 py-2.5 flex items-center gap-2">
+            <span className="text-lg font-bold text-brand">{users.length}</span>
+            <span className="text-xs text-gray-500">명 전체</span>
+          </div>
+          <div className={`rounded-xl border px-4 py-2.5 flex items-center gap-2 ${noPhoneCount > 0 ? "bg-orange-50 border-orange-200" : "bg-emerald-50 border-emerald-200"}`}>
+            <span className={`text-lg font-bold ${noPhoneCount > 0 ? "text-orange-600" : "text-emerald-600"}`}>{noPhoneCount}</span>
+            <div>
+              <div className={`text-xs font-semibold ${noPhoneCount > 0 ? "text-orange-700" : "text-emerald-700"}`}>연락처 미등록</div>
+              {noPhoneCount > 0 && <div className="text-[10px] text-orange-500">재로그인 시 자동 안내</div>}
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 px-4 py-2.5 flex items-center gap-2">
+            <span className="text-lg font-bold text-gray-700">{users.length - noPhoneCount}</span>
+            <span className="text-xs text-gray-500">명 연락처 등록 완료</span>
+          </div>
+          {noNameCount > 0 && (
+            <div className="bg-amber-50 rounded-xl border border-amber-200 px-4 py-2.5 flex items-center gap-2">
+              <span className="text-lg font-bold text-amber-600">{noNameCount}</span>
+              <span className="text-xs text-amber-700">명 이름 미등록</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <p className="text-center text-gray-500 py-12">불러오는 중...</p>
@@ -1558,9 +1588,21 @@ function PhoneEditor({
     return (
       <button
         onClick={() => setEditing(true)}
-        className="text-xs text-gray-600 hover:text-brand underline-offset-2 hover:underline"
+        className="flex items-center gap-1.5 group"
+        title="클릭하여 수정"
       >
-        {initial ? formatPhone(initial) : "— 입력 —"}
+        {initial ? (
+          <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full group-hover:bg-emerald-100 transition-colors">
+            {formatPhone(initial)}
+          </span>
+        ) : (
+          <span className="text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full group-hover:bg-orange-100 transition-colors">
+            미등록
+          </span>
+        )}
+        <svg className="w-3 h-3 text-gray-400 group-hover:text-brand transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
       </button>
     );
   }
