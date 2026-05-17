@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, useRef, Fragment } from "react";
+import { useState, useEffect, FormEvent, useRef, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import { Contest } from "@/lib/contests";
@@ -1414,6 +1414,14 @@ const emptyCommittee: CommitteeState = {
 
 type CommitteeErrors = Partial<Record<keyof CommitteeState, string>>;
 
+const COMMITTEE_ERROR_LABEL: Partial<Record<keyof CommitteeState, string>> = {
+  nameKo: "한글 이름",
+  phone: "연락처",
+  email: "이메일",
+  desiredCategory: "참가 희망 종목",
+  agreePrivacy: "개인정보 동의",
+};
+
 function CommitteeForm({
   contest,
   onSubmit,
@@ -1423,11 +1431,17 @@ function CommitteeForm({
 }) {
   const [form, setForm] = useState<CommitteeState>(emptyCommittee);
   const [errors, setErrors] = useState<CommitteeErrors>({});
-  const [formError, setFormError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [profileFile, setProfileFile] = useState<File | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (submitted && Object.keys(errors).length > 0) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [submitted, errors]);
 
   function set<K extends keyof CommitteeState>(key: K, val: CommitteeState[K]) {
     setForm((p) => ({ ...p, [key]: val }));
@@ -1464,19 +1478,9 @@ function CommitteeForm({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!validate()) {
-      setFormError("아래 항목을 확인해주세요.");
-      // 에러 렌더링 후 첫 번째 에러 필드로 스크롤
-      setTimeout(() => {
-        const firstError = formRef.current?.querySelector(".border-red-400, .border-red-300");
-        if (firstError) {
-          firstError.scrollIntoView({ behavior: "smooth", block: "center" });
-        } else {
-          formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 50);
+      setSubmitted(true);
       return;
     }
-    setFormError("");
     setSubmitting(true);
 
     const fullAddress = [
@@ -1520,25 +1524,17 @@ function CommitteeForm({
     }
   }
 
-  const ERROR_LABEL: Partial<Record<keyof CommitteeState, string>> = {
-    nameKo: "한글 이름",
-    phone: "연락처",
-    email: "이메일",
-    desiredCategory: "참가 희망 종목",
-    agreePrivacy: "개인정보 동의",
-  };
-
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-8" noValidate>
       {/* 에러 요약 배너 */}
-      {formError && Object.keys(errors).length > 0 && (
+      {submitted && Object.keys(errors).length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          <p className="text-sm font-semibold text-red-600 mb-1.5">⚠️ {formError}</p>
+          <p className="text-sm font-semibold text-red-600 mb-1.5">⚠️ 아래 항목을 확인해주세요.</p>
           <ul className="space-y-0.5">
             {(Object.entries(errors) as [keyof CommitteeState, string][]).map(([key, msg]) => (
               <li key={key} className="text-xs text-red-500 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                <span className="font-semibold">{ERROR_LABEL[key] ?? key}</span>: {msg}
+                <span className="font-semibold">{COMMITTEE_ERROR_LABEL[key] ?? key}</span>: {msg}
               </li>
             ))}
           </ul>
