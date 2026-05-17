@@ -1927,24 +1927,99 @@ function ContestsApplyTab({
 }) {
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>("");
+  const [search, setSearch] = useState("");
 
-  const filtered = typeFilter
-    ? submissions.filter((s) => s.formSlug.endsWith(`-${typeFilter}`))
-    : submissions;
+  const filtered = useMemo(() => {
+    let list = typeFilter
+      ? submissions.filter((s) => s.formSlug.endsWith(`-${typeFilter}`))
+      : submissions;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((s) => {
+        const d = s.data as Record<string, unknown>;
+        return (
+          String(d.name ?? "").toLowerCase().includes(q) ||
+          String(d.phone ?? "").replace(/\D/g, "").includes(q.replace(/\D/g, "")) ||
+          String(d.email ?? "").toLowerCase().includes(q) ||
+          s.formTitle.toLowerCase().includes(q)
+        );
+      });
+    }
+    return list;
+  }, [submissions, typeFilter, search]);
 
   const countByType = (type: string) =>
     submissions.filter((s) => s.formSlug.endsWith(`-${type}`)).length;
 
+  function fileDisplayName(path: string): string {
+    const raw = path.split("/").pop()?.split("?")[0] ?? path;
+    const parts = raw.split("_");
+    return parts.length > 1 && /^\d{10,}$/.test(parts[0]) ? parts.slice(1).join("_") : raw;
+  }
+
+  function subToRow(sub: Submission) {
+    const d = sub.data as Record<string, unknown>;
+    const { contestId, type } = parseContestSlug(sub.formSlug);
+    const contest = CONTESTS.find((c) => c.id === contestId);
+    const extra = Object.entries(d)
+      .filter(([k]) => !["name", "phone", "email"].includes(k))
+      .reduce<Record<string, string>>((acc, [k, v]) => {
+        acc[k] = Array.isArray(v) ? (v as string[]).join(", ") : String(v ?? "");
+        return acc;
+      }, {});
+    return {
+      접수일시: formatKST(sub.submittedAt),
+      대회: contest?.title ?? contestId,
+      유형: (CONTEST_TYPE_LABEL[type] ?? type).replace(/[^\w가-힣\s]/g, "").trim(),
+      이름: String(d.name ?? ""),
+      연락처: d.phone ? formatPhone(d.phone as string) : "",
+      이메일: String(d.email ?? ""),
+      ...extra,
+      파일: Object.values(sub.files).map((p) => fileDisplayName(p as string)).join(" | "),
+    };
+  }
+
+  function exportExcel() {
+    if (submissions.length === 0) {
+      alert("내보낼 신청 데이터가 없습니다.");
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(submissions.map(subToRow)), "전체");
+    for (const type of ["athlete", "judge", "committee"]) {
+      const typeSubs = submissions.filter((s) => s.formSlug.endsWith(`-${type}`));
+      if (typeSubs.length > 0) {
+        const label = sanitizeSheetName((CONTEST_TYPE_LABEL[type] ?? type).replace(/[^\w가-힣]/g, "").trim() || type);
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(typeSubs.map(subToRow)), label);
+      }
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `alltica-대회신청-${today}.xlsx`);
+  }
+
   return (
     <div className="space-y-5">
+      {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-bold text-gray-900">대회 신청 관리</h2>
           <p className="text-xs text-gray-500 mt-0.5">대회별 신청자 현황</p>
         </div>
-        <button onClick={onRefresh} className="text-sm text-gray-500 hover:text-brand transition-colors px-3 py-1.5 rounded-lg border border-gray-200">
-          새로고침
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportExcel}
+            disabled={submissions.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-40 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            엑셀 다운로드
+          </button>
+          <button onClick={onRefresh} className="text-sm text-gray-500 hover:text-brand transition-colors px-3 py-1.5 rounded-lg border border-gray-200">
+            새로고침
+          </button>
+        </div>
       </div>
 
       {/* 유형별 집계 카드 */}
@@ -1961,13 +2036,25 @@ function ContestsApplyTab({
         ))}
       </div>
 
-      {/* 유형 필터 */}
-      <div className="flex gap-2">
-        {[{ val: "", label: "전체" }, { val: "athlete", label: "🏅 선수" }, { val: "judge", label: "⚖️ 심사위원" }, { val: "committee", label: "📋 조직위" }].map(({ val, label }) => (
+      {/* 검색 + 유형 필터 */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="이름 / 연락처 / 이메일 검색"
+          className="flex-1 min-w-[180px] px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
+        />
+        {[
+          { val: "", label: "전체" },
+          { val: "athlete", label: "🏅 선수" },
+          { val: "judge", label: "⚖️ 심사위원" },
+          { val: "committee", label: "📋 조직위" },
+        ].map(({ val, label }) => (
           <button
             key={val}
             onClick={() => setTypeFilter(val)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+            className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
               typeFilter === val ? "bg-brand text-white border-brand" : "bg-white text-gray-600 border-gray-200 hover:border-brand/40"
             }`}
           >
@@ -1976,79 +2063,142 @@ function ContestsApplyTab({
         ))}
       </div>
 
-      {/* 신청 목록 */}
+      {/* 신청 목록 테이블 */}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100">
+          <h3 className="font-bold text-gray-900 text-sm">
+            신청 목록{" "}
+            <span className="text-gray-400 font-normal">
+              ({filtered.length}{filtered.length !== submissions.length ? ` / ${submissions.length}` : ""})
+            </span>
+          </h3>
+        </div>
         {loading ? (
           <div className="p-16 text-center text-gray-400 text-sm">불러오는 중...</div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center">
             <div className="text-3xl mb-3">🏆</div>
-            <p className="text-sm text-gray-500">신청 내역이 없습니다.</p>
+            <p className="text-sm text-gray-500">{submissions.length === 0 ? "신청 내역이 없습니다." : "검색 결과가 없습니다."}</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">접수일시</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">유형</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">이름</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">연락처</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 hidden md:table-cell">대회</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 hidden lg:table-cell">세부내용</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.map((sub) => {
-                const d = sub.data as Record<string, unknown>;
-                const { contestId, type } = parseContestSlug(sub.formSlug);
-                const contest = CONTESTS.find((c) => c.id === contestId);
-                const divisions = Array.isArray(d.divisions) ? (d.divisions as string[]).join(", ") : "";
-                const specialties = Array.isArray(d.specialties) ? (d.specialties as string[]).join(", ") : "";
-                const detail = divisions || specialties || (d.desiredRole as string) || "";
-                return (
-                  <tr
-                    key={sub.id}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => setSelectedSub(sub)}
-                  >
-                    <td className="px-4 py-3 text-xs text-gray-500">{formatKST(sub.submittedAt)}</td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-semibold">{CONTEST_TYPE_LABEL[type] ?? type}</span>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{(d.name as string) || ""}</td>
-                    <td className="px-4 py-3 text-gray-600">{d.phone ? formatPhone(d.phone as string) : ""}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell max-w-[160px] truncate">
-                      {contest?.title ?? contestId}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-500 hidden lg:table-cell max-w-[200px] truncate">{detail}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">접수일시</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">대회</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">유형</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">이름</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">연락처</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">이메일</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">신청항목</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">파일</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">상세</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map((sub) => {
+                  const d = sub.data as Record<string, unknown>;
+                  const { contestId, type } = parseContestSlug(sub.formSlug);
+                  const contest = CONTESTS.find((c) => c.id === contestId);
+                  const divisions = Array.isArray(d.divisions) ? (d.divisions as string[]).join(", ") : "";
+                  const specialties = Array.isArray(d.specialties) ? (d.specialties as string[]).join(", ") : "";
+                  const detail = divisions || specialties || (d.desiredRole as string) || "";
+                  const extraCount = Object.keys(d).filter((k) => !["name", "phone", "email"].includes(k)).length;
+                  return (
+                    <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{formatKST(sub.submittedAt)}</td>
+                      <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap max-w-[140px] truncate" title={contest?.title ?? contestId}>
+                        {contest?.title ?? contestId}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs font-semibold">{CONTEST_TYPE_LABEL[type] ?? type}</span>
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{String(d.name ?? "")}</td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{d.phone ? formatPhone(d.phone as string) : "-"}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{String(d.email ?? "-")}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600 max-w-[180px]">
+                        {detail ? (
+                          <span title={detail}>{detail.length > 35 ? detail.slice(0, 35) + "…" : detail}</span>
+                        ) : (
+                          <button onClick={() => setSelectedSub(sub)} className="text-brand hover:underline">
+                            {extraCount}개 항목 보기
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {Object.keys(sub.files).length > 0 ? (
+                          <div className="flex flex-col gap-0.5">
+                            {Object.entries(sub.files).map(([key, path]) => (
+                              <a
+                                key={key}
+                                href={path as string}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs text-brand hover:underline whitespace-nowrap max-w-[120px] truncate block"
+                                title={fileDisplayName(path as string)}
+                              >
+                                📎 {fileDisplayName(path as string)}
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-300 text-xs">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => setSelectedSub(sub)} className="text-xs font-semibold text-brand hover:underline whitespace-nowrap">
+                          전체 보기
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {/* 상세 모달 */}
       {selectedSub && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setSelectedSub(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
               <div>
                 <div className="font-bold text-gray-900">{selectedSub.formTitle}</div>
                 <div className="text-xs text-gray-500 mt-0.5">{formatKST(selectedSub.submittedAt)}</div>
               </div>
-              <button onClick={() => setSelectedSub(null)} className="text-gray-400 hover:text-gray-700 text-xl font-bold">×</button>
+              <button onClick={() => setSelectedSub(null)} className="text-gray-400 hover:text-gray-700 text-xl font-bold shrink-0 ml-4">×</button>
             </div>
-            <div className="p-6 space-y-3">
+            <div className="p-6 space-y-1.5">
               {Object.entries(selectedSub.data as Record<string, unknown>).map(([key, val]) => (
-                <div key={key} className="flex gap-3 text-sm">
-                  <span className="text-gray-400 w-28 shrink-0">{key}</span>
-                  <span className="text-gray-800 break-all">
-                    {Array.isArray(val) ? val.join(", ") : String(val ?? "")}
+                <div key={key} className="flex gap-3 py-2 border-b border-gray-50 text-sm">
+                  <span className="text-gray-400 w-28 shrink-0 text-xs font-medium pt-0.5">{key}</span>
+                  <span className="text-gray-800 break-all flex-1">
+                    {Array.isArray(val) ? (val as string[]).join(", ") : String(val ?? "-")}
                   </span>
                 </div>
               ))}
+              {Object.keys(selectedSub.files).length > 0 && (
+                <div className="pt-3">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">첨부파일</p>
+                  <div className="space-y-1.5">
+                    {Object.entries(selectedSub.files).map(([key, path]) => (
+                      <a
+                        key={key}
+                        href={path as string}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-brand hover:underline bg-blue-50 px-3 py-2 rounded-lg"
+                      >
+                        📎 {fileDisplayName(path as string)}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
