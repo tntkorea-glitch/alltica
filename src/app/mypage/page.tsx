@@ -58,7 +58,15 @@ export default async function MyPage() {
     .eq("email", session.user.email)
     .order("created_at", { ascending: false });
 
+  const { data: contestSubs } = await supabase
+    .from("submissions")
+    .select("id, form_slug, form_title, submitted_at")
+    .eq("user_email", session.user.email)
+    .like("form_slug", "contest-%")
+    .order("submitted_at", { ascending: false });
+
   const apps = applications ?? [];
+  const contests = contestSubs ?? [];
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
@@ -121,41 +129,60 @@ export default async function MyPage() {
           </dl>
         </section>
 
-        {/* Applications */}
+        {/* 세미나 신청 내역 */}
         <section className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">신청한 세미나</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">신청한 세미나</h2>
+            <Link href="/seminars" className="text-xs text-brand hover:underline">세미나 보기 →</Link>
+          </div>
           {apps.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-sm text-gray-500">아직 신청한 세미나가 없습니다.</p>
-              <Link
-                href="/seminars"
-                className="inline-block mt-3 text-brand text-sm font-semibold hover:underline"
-              >
-                세미나 둘러보기 →
-              </Link>
-            </div>
+            <p className="text-sm text-gray-400 text-center py-6">아직 신청한 세미나가 없습니다.</p>
           ) : (
             <ul className="divide-y divide-gray-100">
               {apps.map((a) => (
                 <li key={a.id} className="py-3 flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-gray-900 truncate">
-                      {a.seminar_title}
-                    </div>
+                    <div className="text-sm font-semibold text-gray-900 truncate">{a.seminar_title}</div>
                     <div className="text-xs text-gray-500 mt-0.5">
                       {formatKST(a.created_at)} · {a.attendees ?? 1}명
                       {a.seminar_price ? ` · ${formatPrice(a.seminar_price)}` : ""}
                     </div>
                   </div>
-                  <span
-                    className={`shrink-0 text-xs font-medium px-2 py-1 rounded border ${
-                      STATUS_TONE[a.status] ?? STATUS_TONE.pending
-                    }`}
-                  >
+                  <span className={`shrink-0 text-xs font-medium px-2 py-1 rounded border ${STATUS_TONE[a.status] ?? STATUS_TONE.pending}`}>
                     {STATUS_LABEL[a.status] ?? a.status}
                   </span>
                 </li>
               ))}
+            </ul>
+          )}
+        </section>
+
+        {/* 대회 신청 내역 */}
+        <section className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">신청한 대회</h2>
+            <Link href="/contests" className="text-xs text-brand hover:underline">대회 보기 →</Link>
+          </div>
+          {contests.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">아직 신청한 대회가 없습니다.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {contests.map((c) => {
+                const type = c.form_slug?.endsWith("-committee") ? "조직위원" : c.form_slug?.endsWith("-judge") ? "심사위원" : "선수";
+                return (
+                  <li key={c.id} className="py-3 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-gray-900 truncate">{c.form_title}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {c.submitted_at ? formatKST(c.submitted_at) : "-"} · {type}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs font-medium px-2 py-1 rounded border bg-blue-50 text-blue-700 border-blue-200">
+                      접수완료
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

@@ -26,9 +26,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const session = await auth();
+
     // 대회 신청은 로그인 필수
     if (formSlug.startsWith("contest-")) {
-      const session = await auth();
       if (!session?.user) {
         return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
       }
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const userEmail = session?.user?.email ?? null;
     const supabase = getSupabaseAdmin();
 
     // 첨부 파일 → Storage 업로드
@@ -66,6 +68,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const session = await auth();
+    const userEmail = session?.user?.email ?? null;
+
     const { data: inserted, error } = await supabase
       .from("submissions")
       .insert({
@@ -73,6 +78,7 @@ export async function POST(request: NextRequest) {
         form_title: formTitle,
         data,
         files,
+        user_email: userEmail,
       })
       .select("id")
       .single();
