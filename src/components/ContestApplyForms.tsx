@@ -1423,9 +1423,11 @@ function CommitteeForm({
 }) {
   const [form, setForm] = useState<CommitteeState>(emptyCommittee);
   const [errors, setErrors] = useState<CommitteeErrors>({});
+  const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [profileFile, setProfileFile] = useState<File | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   function set<K extends keyof CommitteeState>(key: K, val: CommitteeState[K]) {
     setForm((p) => ({ ...p, [key]: val }));
@@ -1461,7 +1463,12 @@ function CommitteeForm({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate()) {
+      setFormError("필수 항목을 모두 입력해주세요. 위로 스크롤하여 확인해주세요.");
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    setFormError("");
     setSubmitting(true);
 
     const fullAddress = [
@@ -1506,7 +1513,7 @@ function CommitteeForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8" noValidate>
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-8" noValidate>
       {/* ① 문서 업로드 (OCR) */}
       <section className="space-y-3">
         <SectionHeader
@@ -1825,6 +1832,11 @@ function CommitteeForm({
         </div>
       </section>
 
+      {formError && (
+        <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
+          {formError}
+        </p>
+      )}
       <SubmitButton submitting={submitting} label="조직위 신청 접수하기" />
     </form>
   );
