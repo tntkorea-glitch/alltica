@@ -70,6 +70,14 @@ function sanitizeSheetName(name: string): string {
   return cleaned.length > 31 ? cleaned.slice(0, 31) : cleaned || "Sheet";
 }
 
+function extractFields(d: Record<string, unknown>) {
+  return {
+    name: (d.name || d["한글이름"] || "") as string,
+    phone: (d.phone || d["연락처"] || "") as string,
+    email: (d.email || d["이메일"] || "") as string,
+  };
+}
+
 export default function AdminPage() {
   const [tab, setTab] = useState<"seminars" | "contests" | "seminar-mgmt" | "contest-mgmt" | "forms" | "users" | "settings">("seminars");
 
@@ -244,8 +252,9 @@ export default function AdminPage() {
   function submissionsToSheet(rows: Submission[]) {
     return rows.map((r) => {
       const d = r.data as Record<string, string | string[]>;
+      const { name, phone, email } = extractFields(d as Record<string, unknown>);
       const fileLinks = Object.values(r.files).join(" | ");
-      const knownKeys = new Set(["name", "phone", "email", "company", "position"]);
+      const knownKeys = new Set(["name", "phone", "email", "company", "position", "한글이름", "연락처", "이메일"]);
       const extra = Object.entries(d)
         .filter(([k]) => !knownKeys.has(k))
         .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
@@ -253,9 +262,9 @@ export default function AdminPage() {
       return {
         접수일시: formatKST(r.submittedAt),
         유형: r.formTitle,
-        이름: (d.name as string) || "",
-        연락처: d.phone ? formatPhone(d.phone as string) : "",
-        이메일: (d.email as string) || "",
+        이름: name,
+        연락처: phone ? formatPhone(phone) : "",
+        이메일: email,
         회사: (d.company as string) || "",
         직책: (d.position as string) || "",
         기타: extra,
@@ -926,13 +935,15 @@ function FormsTab({
                       </span>
                     </Td>
                     <Td className="font-medium text-gray-900 whitespace-nowrap">
-                      {(sub.data.name as string) || "-"}
+                      {extractFields(sub.data as Record<string, unknown>).name || "-"}
                     </Td>
                     <Td className="text-gray-600 whitespace-nowrap">
-                      {sub.data.phone ? formatPhone(sub.data.phone as string) : "-"}
+                      {extractFields(sub.data as Record<string, unknown>).phone
+                        ? formatPhone(extractFields(sub.data as Record<string, unknown>).phone)
+                        : "-"}
                     </Td>
                     <Td className="text-gray-600 whitespace-nowrap">
-                      {(sub.data.email as string) || "-"}
+                      {extractFields(sub.data as Record<string, unknown>).email || "-"}
                     </Td>
                     <Td>
                       {Object.keys(sub.files).length > 0 ? (
@@ -1967,11 +1978,11 @@ function ContestsApplyTab({
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter((s) => {
-        const d = s.data as Record<string, unknown>;
+        const { name, phone, email } = extractFields(s.data as Record<string, unknown>);
         return (
-          String(d.name ?? "").toLowerCase().includes(q) ||
-          String(d.phone ?? "").replace(/\D/g, "").includes(q.replace(/\D/g, "")) ||
-          String(d.email ?? "").toLowerCase().includes(q) ||
+          name.toLowerCase().includes(q) ||
+          phone.replace(/\D/g, "").includes(q.replace(/\D/g, "")) ||
+          email.toLowerCase().includes(q) ||
           s.formTitle.toLowerCase().includes(q)
         );
       });
@@ -1990,10 +2001,12 @@ function ContestsApplyTab({
 
   function subToRow(sub: Submission) {
     const d = sub.data as Record<string, unknown>;
+    const { name, phone, email } = extractFields(d);
     const { contestId, type } = parseContestSlug(sub.formSlug);
     const contest = CONTESTS.find((c) => c.id === contestId);
+    const knownKeys = new Set(["name", "phone", "email", "한글이름", "연락처", "이메일"]);
     const extra = Object.entries(d)
-      .filter(([k]) => !["name", "phone", "email"].includes(k))
+      .filter(([k]) => !knownKeys.has(k))
       .reduce<Record<string, string>>((acc, [k, v]) => {
         acc[k] = Array.isArray(v) ? (v as string[]).join(", ") : String(v ?? "");
         return acc;
@@ -2002,9 +2015,9 @@ function ContestsApplyTab({
       접수일시: formatKST(sub.submittedAt),
       대회: contest?.title ?? contestId,
       유형: (CONTEST_TYPE_LABEL[type] ?? type).replace(/[^\w가-힣\s]/g, "").trim(),
-      이름: String(d.name ?? ""),
-      연락처: d.phone ? formatPhone(d.phone as string) : "",
-      이메일: String(d.email ?? ""),
+      이름: name,
+      연락처: phone ? formatPhone(phone) : "",
+      이메일: email,
       ...extra,
       파일: Object.values(sub.files).map((p) => fileDisplayName(p as string)).join(" | "),
     };
