@@ -30,12 +30,18 @@ export async function POST(request: NextRequest) {
 
     // 대회 신청은 로그인 필수
     if (formSlug.startsWith("contest-")) {
-      if (!session?.user) {
+      if (!session?.user?.email) {
         return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
       }
-      // 조직위 신청은 KBA 등급 필수
+      // 조직위 신청은 KBA 등급 필수 — JWT 캐시 우회, DB 직접 확인
       if (formSlug.endsWith("-committee")) {
-        if (!session.user.kbaGrade) {
+        const supabaseCheck = getSupabaseAdmin();
+        const { data: userRow } = await supabaseCheck
+          .from("users")
+          .select("kba_grade")
+          .eq("email", session.user.email)
+          .maybeSingle();
+        if (!userRow?.kba_grade) {
           return NextResponse.json({ error: "조직위 신청 권한이 없습니다." }, { status: 403 });
         }
       }
@@ -67,9 +73,6 @@ export async function POST(request: NextRequest) {
         files[fieldName] = path;
       }
     }
-
-    const session = await auth();
-    const userEmail = session?.user?.email ?? null;
 
     const { data: inserted, error } = await supabase
       .from("submissions")
