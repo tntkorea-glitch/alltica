@@ -1888,7 +1888,7 @@ export default function ContestApplyForms({ contest, defaultType = "judge", serv
 
   async function handleSubmit(type: ApplyType, data: Record<string, unknown>, files: Record<string, File>) {
     const fd = new FormData();
-    fd.append("formSlug", `contest-${contest.id}-${type}`);
+    fd.append("formSlug", `${contest.id}-${type}`);
     fd.append("formTitle", `${contest.title} - ${TYPE_TITLE[type]}`);
     fd.append("data", JSON.stringify(data));
     for (const [key, file] of Object.entries(files)) {

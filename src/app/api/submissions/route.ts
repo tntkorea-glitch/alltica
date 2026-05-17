@@ -7,7 +7,7 @@ import { auth } from "@/lib/auth";
 const SIGNED_URL_EXPIRY = 60 * 60; // 1시간
 
 function safeName(originalName: string): string {
-  return originalName.replace(/[^a-zA-Z0-9가-힣._-]/g, "_");
+  return originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
 export async function POST(request: NextRequest) {
