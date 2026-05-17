@@ -1890,10 +1890,6 @@ function ContestMgmtTab() {
         </table>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-        대회 추가·수정은 <code className="font-mono">src/lib/contests.ts</code>의 <code className="font-mono">CONTESTS</code> 배열을 직접 편집하세요.
-        대회 신청 폼 연동 후 이 탭에서 신청자 관리도 가능합니다.
-      </div>
     </div>
   );
 }
