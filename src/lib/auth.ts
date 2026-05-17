@@ -11,11 +11,13 @@ declare module "next-auth" {
       id: string;
       role: UserRole;
       kbaGrade?: KbaGrade;
+      phone?: string;
     } & DefaultSession["user"];
   }
   interface User {
     role?: UserRole;
     kbaGrade?: KbaGrade;
+    phone?: string;
   }
 }
 
@@ -24,6 +26,7 @@ declare module "@auth/core/jwt" {
     id?: string;
     role?: UserRole;
     kbaGrade?: KbaGrade;
+    phone?: string;
   }
 }
 
@@ -87,13 +90,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const supabase = getSupabaseAdmin();
         const { data } = await supabase
           .from("users")
-          .select("id, role, kba_grade")
+          .select("id, role, kba_grade, phone")
           .eq("email", email)
           .maybeSingle();
         if (data) {
           token.id = data.id;
           token.role = (data.role as UserRole | undefined) ?? "user";
           token.kbaGrade = (data.kba_grade as KbaGrade | undefined) ?? undefined;
+          token.phone = (data.phone as string | undefined) ?? undefined;
         }
       }
       return token;
@@ -103,6 +107,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (token.id) session.user.id = token.id;
         session.user.role = token.role ?? "user";
         if (token.kbaGrade) session.user.kbaGrade = token.kbaGrade;
+        if (token.phone) session.user.phone = token.phone;
       }
       return session;
     },
