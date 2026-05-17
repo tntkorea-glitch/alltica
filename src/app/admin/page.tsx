@@ -1318,7 +1318,7 @@ function UsersTab() {
                 <Th>이름</Th>
                 <Th>연락처</Th>
                 <Th>시스템 권한</Th>
-                <Th>KBA 등급</Th>
+                <Th>회원등급</Th>
                 <Th>{""}</Th>
                 <Th>솔라피</Th>
                 <Th>가입일</Th>
@@ -1361,7 +1361,7 @@ function UsersTab() {
                       onChange={(e) => setPendingKba(u.id, (e.target.value as KbaGrade) || null)}
                       className={`text-xs font-semibold px-2 py-1 rounded-full border ${KBA_GRADE_TONE[getKba(u) ?? ""]} focus:outline-none focus:ring-2 focus:ring-brand/20`}
                     >
-                      <option value="">없음</option>
+                      <option value="">일반회원</option>
                       {(["KBA정회원", "KBA지부장", "KBA지회장", "KBA이사"] as const).map((r) => (
                         <option key={r} value={r}>{r}</option>
                       ))}

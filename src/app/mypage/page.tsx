@@ -48,7 +48,7 @@ export default async function MyPage() {
   const supabase = getSupabaseAdmin();
   const { data: profile } = await supabase
     .from("users")
-    .select("email, name, image, phone, role, business_name, created_at, last_login_at")
+    .select("email, name, image, phone, role, kba_grade, business_name, created_at, last_login_at")
     .eq("email", session.user.email)
     .maybeSingle();
 
@@ -106,7 +106,7 @@ export default async function MyPage() {
             </div>
             <div>
               <dt className="text-gray-500">회원등급</dt>
-              <dd className="text-gray-900 mt-0.5">{ROLE_LABEL[profile?.role ?? "user"] ?? "일반회원"}</dd>
+              <dd className="text-gray-900 mt-0.5">{(profile as any)?.kba_grade ?? "일반회원"}</dd>
             </div>
             {(profile as any)?.business_name && (
               <div>
