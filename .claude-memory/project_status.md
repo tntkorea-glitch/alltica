@@ -9,7 +9,7 @@ originSessionId: cc8b50ae-ba95-4216-8623-7836d9e50551
 ## 핵심 환경 (참조)
 
 - Next.js 16 (`proxy.ts`, middleware.ts 아님) + React 19 + Tailwind v4 + TypeScript
-- Supabase ref `ytemhdubbrinpbdbgri` (신 프로젝트, 2026-05-15 이관) — 테이블: `applications`/`users`/`seminars`/`submissions`/`app_settings`. Storage: `business-cards`/`submission-files`/`seminar-images`
+- Supabase ref `ytemhdubbjrinpbdbgri` (신 프로젝트, 2026-05-15 이관) — 테이블: `applications`/`users`/`seminars`/`submissions`/`app_settings`. Storage: `business-cards`/`submission-files`/`seminar-images`
 - 인증: NextAuth v5 (Google만 활성, 카카오/네이버 placeholder) + admin_session HMAC 쿠키
 - OCR: Claude Haiku 4.5 Vision tool_use
 - SMS: SolAPI 단문 90B (postica와 크레덴셜 공유)
@@ -20,8 +20,8 @@ originSessionId: cc8b50ae-ba95-4216-8623-7836d9e50551
 
 ## 배포 상태
 
-**2026-05-15 배포** — Supabase + Vercel 계정 완전 이관 완료  
-alltica.co.kr (신 Vercel a01092935659, 신 Supabase ytemhdubbrinpbdbgri)
+**2026-05-18 배포** — 성능 최적화 + Supabase URL 오타 수정 배포  
+alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
 
 ## 이번 세션 완료 작업 (2026-05-09 2차)
 
@@ -68,6 +68,12 @@ alltica.co.kr (신 Vercel a01092935659, 신 Supabase ytemhdubbrinpbdbgri)
 - **admin 등급 관리 UI**: 시스템권한/KBA등급 드롭다운 분리 + pending 방식 저장 버튼
 - **JWT 항상 fresh**: 매 요청마다 DB에서 role/kbaGrade 조회 → 재로그인 없이 즉시 반영
 - **admin 저장 후 세션 강제 갱신**: `updateSession()` 호출
+
+## 추가 완료 (2026-05-18)
+
+- **성능 최적화**: layout.tsx `Promise.all` 병렬화, auth.ts JWT 콜백 DB 재조회 제거 (토큰 캐시), theme.ts `unstable_cache` 60초 캐싱, 홈페이지 `getPreviewSeminars` 한정 쿼리 (전체→3개)
+- **Google OAuth 에러**: 구글 클라우드 콘솔 OAuth 클라이언트 재설정 안내 (invalid_client, 계정 이전 후 발생)
+- **Supabase URL 오타 수정**: `.env.local` + Vercel env `ytemhdubbrinpbdbgri` → `ytemhdubbjrinpbdbgri` (j 누락 → Bucket not found 에러 원인)
 
 ## ⚠️ Next up when resuming (최우선)
 
