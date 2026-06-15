@@ -69,25 +69,33 @@ alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
 - **JWT 항상 fresh**: 매 요청마다 DB에서 role/kbaGrade 조회 → 재로그인 없이 즉시 반영
 - **admin 저장 후 세션 강제 갱신**: `updateSession()` 호출
 
-## 추가 완료 (2026-05-18)
+## 추가 완료 (2026-05-18 1차)
 
 - **성능 최적화**: layout.tsx `Promise.all` 병렬화, auth.ts JWT 콜백 DB 재조회 제거 (토큰 캐시), theme.ts `unstable_cache` 60초 캐싱, 홈페이지 `getPreviewSeminars` 한정 쿼리 (전체→3개)
 - **Google OAuth 에러**: 구글 클라우드 콘솔 OAuth 클라이언트 재설정 안내 (invalid_client, 계정 이전 후 발생)
 - **Supabase URL 오타 수정**: `.env.local` + Vercel env `ytemhdubbrinpbdbgri` → `ytemhdubbjrinpbdbgri` (j 누락 → Bucket not found 에러 원인)
 
+## 추가 완료 (2026-05-18 2차)
+
+- **신규 회원 프로필 완성 게이트**: 처음 Google 로그인 시 이름/연락처/상호 입력 폼 강제 표시 후 메인 이동
+- **연락처 자동 하이픈**: 프로필 완성 폼 + 마이페이지 010-XXXX-XXXX 포맷 자동 적용
+- **마이페이지 개선**: 회원등급(한글표기), 상호 표시, 신청 대회 내역 섹션 추가
+- **어드민 패널**: 회원 삭제 버튼, "KBA등급"→"회원등급", "없음"→"일반회원"
+- **헤더 항상 solid**: 홈 외 모든 페이지에서 투명 → 고정 흰색 헤더
+- **KBA 등급 JWT 캐시 우회**: 대회 신청 페이지에서 DB 직접 조회 후 prop 전달 (재로그인 불필요)
+- **조직위 신청 폼 에러 UX**: `submitted` + `useEffect` 스크롤 패턴으로 에러 배너 표시 (헤더 오프셋 -80px)
+- **formSlug 중복 버그 수정**: `contest-contest-ibc-...` → `contest-ibc-...-committee` (contest- 이중 적용 수정)
+- **Supabase Storage 한글 파일명 오류 수정**: `safeName` 함수에서 한글 제거, ASCII만 허용
+- **어드민 신청자 이름/연락처 표시**: `extractFields` 헬퍼 추가 — `name`/`phone`/`email`(영어키) + `한글이름`/`연락처`/`이메일`(한글키) 모두 지원
+
 ## ⚠️ Next up when resuming (최우선)
 
-1. **Supabase SQL 실행 필수** — 아직 미실행 시:
+1. **프로덕션 배포**: GitHub push 완료 (bcd298a), vercel.json 없음 → Vercel 자동배포 트리거됨 확인 필요
+2. **Supabase SQL 확인**: `submissions` 테이블에 `user_email` 컬럼 추가 여부 확인:
    ```sql
-   ALTER TABLE public.users ADD COLUMN IF NOT EXISTS kba_grade text;
-   UPDATE public.users SET kba_grade = role, role = 'user' WHERE role IN ('KBA이사','KBA지회장','KBA지부장','KBA정회원');
+   ALTER TABLE submissions ADD COLUMN IF NOT EXISTS user_email TEXT;
    ```
-2. **KBA 등급 E2E 테스트**: admin에서 등급 변경 → 저장 → 조직위 신청 탭 즉시 열리는지 확인
-- **대회 신청 폼 대규모 개선** (심사위원/선수/조직위 전체):
-  - 심사위원: 자격요건 체크박스(기타 포함), X배너/현수막 신청(SVG 시안), Band 초대링크, 프로필사진
-  - 선수: 명함 OCR, 개인정보 통일, 경력사항 삭제, 15개 대종목 세부종목 2단계 선택, 학생부/프로 구분 금액계산
-  - 조직위: 명함 OCR, X배너/현수막(40,000원) 신청, KBA직책 체크박스(4종)
-- **admin KBA 역할 저장 버그 수정**: Supabase users 테이블 CHECK 제약에 KBA 4등급 추가 (`migrate_role_kba.sql` 실행 완료)
+3. **조직위 신청 E2E 테스트**: 파일 업로드(한글파일명), 폼 제출, 어드민 패널 이름/연락처 표시 모두 확인
 
 ## Phase 2 남은 백로그
 
