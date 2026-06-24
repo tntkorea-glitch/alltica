@@ -88,9 +88,15 @@ alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
 - **Supabase Storage 한글 파일명 오류 수정**: `safeName` 함수에서 한글 제거, ASCII만 허용
 - **어드민 신청자 이름/연락처 표시**: `extractFields` 헬퍼 추가 — `name`/`phone`/`email`(영어키) + `한글이름`/`연락처`/`이메일`(한글키) 모두 지원
 
+## 추가 완료 (2026-06-24)
+
+- **대회 신청 전체 마감 처리**: `src/lib/contests.ts` IBC 12th 상태 `"모집중"` → `"마감"` 변경
+- **누락 대회 2개 복구**: 제1회 Alltica 전국 뷰티 기술 경연대회 + 슈가링왁싱 챔피언십 2026 코드에 재추가 (상태: `"마감"`)
+- **배포**: ef548ab push → Vercel 수동 배포 필요 (Vercel 로그인 만료로 터미널에서 `vercel login` 후 `vercel --prod --yes` 실행 필요)
+
 ## ⚠️ Next up when resuming (최우선)
 
-1. **프로덕션 배포**: GitHub push 완료 (bcd298a), vercel.json 없음 → Vercel 자동배포 트리거됨 확인 필요
+1. **Vercel 배포 완료**: `vercel login` 후 `npx vercel --prod --yes` 실행 (Vercel 로그인 만료 상태)
 2. **Supabase SQL 확인**: `submissions` 테이블에 `user_email` 컬럼 추가 여부 확인:
    ```sql
    ALTER TABLE submissions ADD COLUMN IF NOT EXISTS user_email TEXT;
