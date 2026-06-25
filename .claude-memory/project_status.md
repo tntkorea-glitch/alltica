@@ -92,11 +92,11 @@ alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
 
 - **대회 신청 전체 마감 처리**: `src/lib/contests.ts` IBC 12th 상태 `"모집중"` → `"마감"` 변경
 - **누락 대회 2개 복구**: 제1회 Alltica 전국 뷰티 기술 경연대회 + 슈가링왁싱 챔피언십 2026 코드에 재추가 (상태: `"마감"`)
-- **배포**: ef548ab push → Vercel 수동 배포 필요 (Vercel 로그인 만료로 터미널에서 `vercel login` 후 `vercel --prod --yes` 실행 필요)
+- **배포**: ef548ab → Vercel 프로덕션 배포 완료 (2026-06-24)
 
 ## ⚠️ Next up when resuming (최우선)
 
-1. **Vercel 배포 완료**: `vercel login` 후 `npx vercel --prod --yes` 실행 (Vercel 로그인 만료 상태)
+1. **alltica.co.kr/contests** 접속해 3개 대회 모두 '마감' 배지 노출 확인
 2. **Supabase SQL 확인**: `submissions` 테이블에 `user_email` 컬럼 추가 여부 확인:
    ```sql
    ALTER TABLE submissions ADD COLUMN IF NOT EXISTS user_email TEXT;
