@@ -921,16 +921,20 @@ function JudgeForm({
           {/* 위촉패 종류 안내 */}
           <div className="rounded-xl border border-yellow-200 bg-gradient-to-br from-yellow-50 via-white to-gray-50 p-4">
             <p className="text-xs font-bold text-gray-700 mb-3">🏆 신청 종류별 위촉패 안내</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="text-center space-y-1">
-                <div className="w-10 h-10 mx-auto rounded-xl bg-gray-900 flex items-center justify-center text-yellow-400 text-lg font-black shadow">★</div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/contests/judge-trophy.png"
+              alt="심사위원 위촉패 — 글로벌(블랙 골드) · 일반(크리스탈)"
+              className="w-full max-w-xs mx-auto rounded-xl object-contain"
+            />
+            <div className="grid grid-cols-2 gap-2 mt-3 text-center">
+              <div>
                 <p className="text-xs font-bold text-yellow-800">글로벌 심사위원</p>
-                <p className="text-[11px] text-gray-500 leading-snug">블랙 골드 스타 트로피<br/>「제 12회 IBC 글로벌<br/>심사위원 위촉」각인</p>
+                <p className="text-[11px] text-gray-500 leading-snug">블랙 골드 스타 트로피<br/>「IBC 글로벌 심사위원 위촉」각인</p>
               </div>
-              <div className="text-center space-y-1">
-                <div className="w-10 h-10 mx-auto rounded-xl bg-sky-100 border border-sky-200 flex items-center justify-center text-sky-500 text-lg font-black shadow-sm">★</div>
-                <p className="text-xs font-bold text-slate-700">수석 / 일반 심사위원</p>
-                <p className="text-[11px] text-gray-500 leading-snug">크리스탈 스타 트로피<br/>「제 12회 IBC<br/>심사위원 위촉」각인</p>
+              <div>
+                <p className="text-xs font-bold text-slate-600">수석 / 일반 심사위원</p>
+                <p className="text-[11px] text-gray-500 leading-snug">크리스탈 스타 트로피<br/>「IBC 심사위원 위촉」각인</p>
               </div>
             </div>
           </div>
