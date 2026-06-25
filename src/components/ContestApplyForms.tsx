@@ -671,6 +671,8 @@ function ShippingAddressSection({
 
 // ── 심사위원 신청 폼 ────────────────────────────────────────────────
 
+type JudgeType = "" | "글로벌 심사위원" | "수석 심사위원" | "심사위원";
+
 interface JudgeState {
   nameKo: string; nameEn: string; company: string; birthdate: string;
   phone: string; email: string;
@@ -679,6 +681,7 @@ interface JudgeState {
   sameShippingAddress: boolean;
   sns: string; position: string;
   specialties: string[];
+  judgeType: JudgeType;
   qualificationItems: string[];
   qualificationOtherText: string;
   qualificationNotes: string;
@@ -696,6 +699,7 @@ const emptyJudge: JudgeState = {
   sameShippingAddress: false,
   sns: "", position: "",
   specialties: [],
+  judgeType: "",
   qualificationItems: [],
   qualificationOtherText: "",
   qualificationNotes: "",
@@ -747,6 +751,7 @@ function JudgeForm({
     if (!form.email.trim()) next.email = "이메일을 입력해주세요.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       next.email = "올바른 이메일 형식을 입력해주세요.";
+    if (!form.judgeType) next.judgeType = "심사위원 신청 종류를 선택해주세요.";
     if (!form.agreePrivacy) next.agreePrivacy = "개인정보 수집에 동의해주세요.";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -780,6 +785,7 @@ function JudgeForm({
       배송지주소: shippingFullAddress,
       SNS아이디: form.sns,
       직책: form.position,
+      심사위원종류: form.judgeType,
       심사종목: form.specialties,
       자격요건: form.qualificationItems.map((item) =>
         item === "기타" && form.qualificationOtherText
@@ -895,6 +901,113 @@ function JudgeForm({
           selected={form.specialties}
           onChange={(v) => set("specialties", v)}
         />
+
+        {/* 심사위원 신청 종류 */}
+        <div className="space-y-4">
+          <label className="block text-sm font-semibold text-gray-700">
+            심사위원 신청 종류<span className="text-red-500 ml-1">*</span>
+          </label>
+
+          {/* 온라인 심사 / 위촉패 핵심 안내 */}
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 space-y-1.5">
+            <p className="text-xs font-bold text-indigo-800">📋 이번 추가모집 심사위원 신청 안내 (꼭 확인해주세요)</p>
+            <ul className="text-xs text-indigo-700 space-y-1 leading-relaxed">
+              <li>✅ <span className="font-semibold">심사위원 위촉장 및 위촉패(트로피) 수여</span></li>
+              <li>✅ 대회 심사는 <span className="font-bold">온라인 심사</span>로 진행됩니다 — 7월 15일(수) 대구 대회장 현장 참석 없음</li>
+              <li>✅ 위촉장·위촉패는 대회 후 등록 배송지 주소로 순차 발송</li>
+            </ul>
+          </div>
+
+          {/* 위촉패 종류 안내 */}
+          <div className="rounded-xl border border-yellow-200 bg-gradient-to-br from-yellow-50 via-white to-gray-50 p-4">
+            <p className="text-xs font-bold text-gray-700 mb-3">🏆 신청 종류별 위촉패 안내</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="text-center space-y-1">
+                <div className="w-10 h-10 mx-auto rounded-xl bg-gray-900 flex items-center justify-center text-yellow-400 text-lg font-black shadow">★</div>
+                <p className="text-xs font-bold text-yellow-800">글로벌 심사위원</p>
+                <p className="text-[11px] text-gray-500 leading-snug">블랙 골드 스타 트로피<br/>「제 12회 IBC 글로벌<br/>심사위원 위촉」각인</p>
+              </div>
+              <div className="text-center space-y-1">
+                <div className="w-10 h-10 mx-auto rounded-xl bg-sky-100 border border-sky-200 flex items-center justify-center text-sky-500 text-lg font-black shadow-sm">★</div>
+                <p className="text-xs font-bold text-slate-700">수석 / 일반 심사위원</p>
+                <p className="text-[11px] text-gray-500 leading-snug">크리스탈 스타 트로피<br/>「제 12회 IBC<br/>심사위원 위촉」각인</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 3종류 비교 카드 */}
+          <div className="space-y-2">
+            {(["글로벌 심사위원", "수석 심사위원", "심사위원"] as const).map((type) => {
+              const isSelected = form.judgeType === type;
+              const isGlobal = type === "글로벌 심사위원";
+              const isSenior = type === "수석 심사위원";
+              const fee = isGlobal ? "200,000원" : "150,000원";
+              const icon = isGlobal ? "🌐" : isSenior ? "⭐" : "⚖️";
+              const colorSelected = isGlobal
+                ? "border-yellow-400 bg-yellow-50"
+                : "border-brand bg-brand/5";
+              const textColor = isSelected
+                ? (isGlobal ? "text-yellow-800" : "text-brand")
+                : "text-gray-700";
+              const feeColor = isSelected
+                ? (isGlobal ? "text-yellow-700" : "text-brand")
+                : "text-gray-500";
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => set("judgeType", type)}
+                  className={`w-full flex items-start justify-between px-4 py-3.5 rounded-xl border-2 transition-all text-left ${
+                    isSelected ? colorSelected : "border-gray-200 bg-white hover:border-brand/30"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl mt-0.5">{icon}</span>
+                    <div>
+                      <p className={`text-sm font-bold ${textColor}`}>{type}</p>
+                      {isGlobal && (
+                        <p className="text-xs text-gray-500 mt-0.5">국제 대회 심사위원 직책 위촉 · 블랙 골드 위촉패</p>
+                      )}
+                      {isSenior && (
+                        <>
+                          <p className="text-xs text-gray-500 mt-0.5">크리스탈 위촉패 수여</p>
+                          <p className="text-xs text-red-500 font-semibold mt-0.5">* IBC 대회 3회 이상 심사위원 위촉 경력자에 한해 신청 가능</p>
+                        </>
+                      )}
+                      {!isGlobal && !isSenior && (
+                        <p className="text-xs text-gray-500 mt-0.5">기본 심사위원 직책 위촉 · 크리스탈 위촉패</p>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`text-sm font-extrabold shrink-0 ml-2 mt-0.5 ${feeColor}`}>{fee}</span>
+                </button>
+              );
+            })}
+          </div>
+          {errors.judgeType && <p className="text-red-500 text-xs mt-1">{errors.judgeType}</p>}
+
+          {/* 선택 후 결제 안내 */}
+          {form.judgeType && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-emerald-800">{form.judgeType} 신청비</p>
+                <p className="text-xl font-extrabold text-emerald-700">
+                  {form.judgeType === "글로벌 심사위원" ? "200,000원" : "150,000원"}
+                </p>
+              </div>
+              <div className="border-t border-emerald-200 pt-3 space-y-1.5">
+                <p className="text-xs font-bold text-emerald-700">💳 입금 계좌 안내</p>
+                <p className="text-sm font-semibold text-emerald-800">기업은행 · 010-9293-5659 · KBA뷰티스트총연합회</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-1">
+                  <p className="text-xs text-amber-800 font-semibold leading-relaxed">
+                    ⚡ 신청 접수 후 <span className="underline">바로 입금 완료</span> 시에만 추가 위촉이 즉시 확정됩니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* 자격요건 체크박스 */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">자격요건</label>
