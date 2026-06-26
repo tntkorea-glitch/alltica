@@ -94,14 +94,23 @@ alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
 - **누락 대회 2개 복구**: 제1회 Alltica 전국 뷰티 기술 경연대회 + 슈가링왁싱 챔피언십 2026 코드에 재추가 (상태: `"마감"`)
 - **배포**: ef548ab → Vercel 프로덕션 배포 완료 (2026-06-24)
 
+## 추가 완료 (2026-06-25)
+
+- **IBC 12th 추가모집 오픈**: `status: "마감"` → `"마감임박"`, `applicationDeadline` → `"2026년 6월 26일 (금)까지 · 추가모집"`, subtitle에 추가모집 기간(6/25~6/26) 표기, schedule에 추가모집 접수 항목 추가
+- **심사위원 신청 종류 선택 추가**: 심사 가능 종목 선택 후 3종류 선택 (글로벌 200만원 / 수석·일반 150,000원), 수석은 IBC 3회 이상 경력자 한정 안내
+- **위촉패 이미지 추가**: `public/contests/judge-trophy.png` (블랙골드·크리스탈 트로피 사진)
+- **온라인 심사 안내**: 7/15 대회장 불참석, 온라인 심사 진행, 위촉장·위촉패 발송 안내 박스
+- **결제 안내**: 기업은행 010-9293-5659 KBA뷰티스트총연합회, 즉시 입금 시 즉시 확정 안내
+- **배포**: 589c276 → Vercel 프로덕션 배포 완료 (2026-06-25), alltica.co.kr 반영
+
 ## ⚠️ Next up when resuming (최우선)
 
-1. **alltica.co.kr/contests** 접속해 3개 대회 모두 '마감' 배지 노출 확인
-2. **Supabase SQL 확인**: `submissions` 테이블에 `user_email` 컬럼 추가 여부 확인:
+1. **Supabase SQL 확인**: `submissions` 테이블에 `user_email` 컬럼 추가 여부 확인:
    ```sql
    ALTER TABLE submissions ADD COLUMN IF NOT EXISTS user_email TEXT;
    ```
-3. **조직위 신청 E2E 테스트**: 파일 업로드(한글파일명), 폼 제출, 어드민 패널 이름/연락처 표시 모두 확인
+2. **조직위 신청 E2E 테스트**: 파일 업로드(한글파일명), 폼 제출, 어드민 패널 이름/연락처 표시 모두 확인
+3. **추가모집 마감 후 처리**: 6/27 이후 IBC 12th 상태 다시 `"마감"` 으로 되돌리기
 
 ## Phase 2 남은 백로그
 
