@@ -109,6 +109,11 @@ alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
 - **결제 안내**: 기업은행 010-9293-5659 KBA뷰티스트총연합회, 즉시 입금 시 즉시 확정 안내
 - **배포**: 589c276 → Vercel 프로덕션 배포 완료 (2026-06-25), alltica.co.kr 반영
 
+## 추가 완료 (2026-06-28)
+
+- **IBC 12th 추가모집 마감 연장**: `applicationDeadline` `6월 26일(금)` → `6월 29일(월)`, subtitle/schedule 동일 업데이트
+- **배포**: 3a973dc → Vercel 프로덕션 배포 완료 (2026-06-28), alltica.co.kr 반영
+
 ## ⚠️ Next up when resuming (최우선)
 
 1. **Supabase SQL 확인**: `submissions` 테이블에 `user_email` 컬럼 추가 여부 확인:
@@ -116,7 +121,7 @@ alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
    ALTER TABLE submissions ADD COLUMN IF NOT EXISTS user_email TEXT;
    ```
 2. **조직위 신청 E2E 테스트**: 파일 업로드(한글파일명), 폼 제출, 어드민 패널 이름/연락처 표시 모두 확인
-3. **추가모집 마감 후 처리**: 6/27 이후 IBC 12th 상태 다시 `"마감"` 으로 되돌리기
+3. **추가모집 마감 후 처리**: 6/29 이후 IBC 12th 상태 다시 `"마감"` 으로 되돌리기
 
 ## Phase 2 남은 백로그
 
