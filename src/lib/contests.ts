@@ -31,7 +31,7 @@ export const CONTESTS: Contest[] = [
     id: "contest-ibc-12th-2026-07",
     title: "제 12회 IBC 국제뷰티스트챔피언쉽 IN 2026",
     titleEn: "The 12th International Beautist Championship in 2026",
-    subtitle: "▶ 추가모집 중 (6/25~6/26) · 시술 기술 경쟁을 지향함과 동시에 이를 예술 작품으로 기록·전시하기 위해 운영되는 전시형 공모전",
+    subtitle: "▶ 추가모집 중 (6/25~6/29) · 시술 기술 경쟁을 지향함과 동시에 이를 예술 작품으로 기록·전시하기 위해 운영되는 전시형 공모전",
     category: "국제 기술 경연",
     tags: [
       "헤어아트", "메이크업", "반영구", "SMP",
@@ -39,7 +39,7 @@ export const CONTESTS: Contest[] = [
       "피부", "플래닝",
     ],
     dateDisplay: "2026년 7월 15일 (수) · 대구 중앙컨벤션센터",
-    applicationDeadline: "2026년 6월 26일 (금)까지 · 추가모집",
+    applicationDeadline: "2026년 6월 29일 (월)까지 · 추가모집",
     location: "대구 중앙컨벤션센터",
     organizer: "KBA뷰티스트총연합회 · 티엔티코리아 · 세렌태리 · 올티카(ALLTICA)",
     prize: "월드MVP챔피언 · 월드마스터 · 그랑프리 · 대상 · 금은동상",
@@ -50,7 +50,7 @@ export const CONTESTS: Contest[] = [
     eligible: "중·고등부·대학부(학생부) / 프로전문가부",
     contact: "사무국 010-9293-5659 · 대표회장 010-8842-5659 · 이사장 010-5588-7945",
     schedule: [
-      { label: "추가모집 접수", value: "2026년 6월 25일 (목) ~ 6월 26일 (금) ★ 마감임박" },
+      { label: "추가모집 접수", value: "2026년 6월 25일 (목) ~ 6월 29일 (월) ★ 마감임박" },
       { label: "서류·작품 접수", value: "2026년 5월 1일 ~ 6월 19일 (금) (1차 마감)" },
       { label: "위촉식", value: "2026년 7월 15일 (수) 오후 3시 예정" },
       { label: "심사발표·시상식", value: "2026년 7월 15일 (수) 오후 5시 예정" },
