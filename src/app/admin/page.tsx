@@ -1970,6 +1970,7 @@ function ContestsApplyTab({
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [search, setSearch] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   const filtered = useMemo(() => {
     let list = typeFilter
@@ -2041,6 +2042,55 @@ function ContestsApplyTab({
     XLSX.writeFile(wb, `alltica-대회신청-${today}.xlsx`);
   }
 
+  async function downloadAllFiles() {
+    const FIELD_LABEL: Record<string, string> = { profilePhoto: "프로필사진", document: "첨부서류" };
+    const TYPE_SHORT: Record<string, string> = { athlete: "선수", judge: "심사위원", committee: "조직위" };
+    const subsWithFiles = filtered.filter((s) => Object.keys(s.files).length > 0);
+    if (subsWithFiles.length === 0) {
+      alert("현재 목록에 첨부파일이 없습니다.");
+      return;
+    }
+    setDownloading(true);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      const seen = new Map<string, number>();
+      for (const sub of subsWithFiles) {
+        const { name } = extractFields(sub.data as Record<string, unknown>);
+        const { type } = parseContestSlug(sub.formSlug);
+        const safeName = (name || "이름없음").replace(/[\\/:*?"<>|]/g, "_").trim();
+        const typeLabel = TYPE_SHORT[type] ?? type;
+        const nameKey = `${safeName}_${typeLabel}`;
+        const cnt = (seen.get(nameKey) ?? 0) + 1;
+        seen.set(nameKey, cnt);
+        const dedup = cnt > 1 ? `_${cnt}` : "";
+        for (const [field, signedUrl] of Object.entries(sub.files)) {
+          const url = signedUrl as string;
+          const ext = url.split("?")[0].split(".").pop() ?? "jpg";
+          const label = FIELD_LABEL[field] ?? field;
+          const filename = `${safeName}_${typeLabel}${dedup}_${label}.${ext}`;
+          const resp = await fetch(url);
+          if (!resp.ok) continue;
+          zip.file(filename, await resp.blob());
+        }
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const today = new Date().toISOString().slice(0, 10);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `alltica-대회신청-파일-${today}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      console.error("zip download error:", err);
+      alert("파일 다운로드 중 오류가 발생했습니다.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* 헤더 */}
@@ -2050,6 +2100,28 @@ function ContestsApplyTab({
           <p className="text-xs text-gray-500 mt-0.5">대회별 신청자 현황</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={downloadAllFiles}
+            disabled={downloading || filtered.filter((s) => Object.keys(s.files).length > 0).length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
+          >
+            {downloading ? (
+              <>
+                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                다운로드 중...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                파일 일괄 다운로드
+              </>
+            )}
+          </button>
           <button
             onClick={exportExcel}
             disabled={submissions.length === 0}

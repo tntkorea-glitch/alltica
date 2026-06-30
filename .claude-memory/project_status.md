@@ -114,6 +114,12 @@ alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
 - **IBC 12th 추가모집 마감 연장**: `applicationDeadline` `6월 26일(금)` → `6월 29일(월)`, subtitle/schedule 동일 업데이트
 - **배포**: 3a973dc → Vercel 프로덕션 배포 완료 (2026-06-28), alltica.co.kr 반영
 
+## 추가 완료 (2026-06-30)
+
+- **프로필 사진 업로드 413 버그 수정**: 핸드폰 원본 사진(CYMERA 등 3~8MB) 제출 시 Vercel 4.5MB 페이로드 한도 초과 → 비JSON 413 응답 → `res.json()` 파싱 실패 → "신청 실패" alert 현상 수정
+- **클라이언트 이미지 압축 추가**: `compressImage()` 함수(Canvas API, 외부 라이브러리 없음) — 800KB 초과 파일만 max 1200px JPEG 82%로 압축, 에러 시 원본 폴백
+- **배포**: dcc5f99 → Vercel 프로덕션 배포 완료 (2026-06-30), alltica.co.kr 반영
+
 ## ⚠️ Next up when resuming (최우선)
 
 1. **Supabase SQL 확인**: `submissions` 테이블에 `user_email` 컬럼 추가 여부 확인:
