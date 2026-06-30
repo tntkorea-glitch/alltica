@@ -515,15 +515,43 @@ function DocumentUpload({ onOcrResult, onFileChange }: DocumentUploadProps) {
 
 // ── 프로필 사진 업로드 컴포넌트 ────────────────────────────────────────────────
 
+function compressImage(file: File, maxPx = 1200, quality = 0.82): Promise<File> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) { height = Math.round((height * maxPx) / width); width = maxPx; }
+        else { width = Math.round((width * maxPx) / height); height = maxPx; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+        },
+        "image/jpeg", quality
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 function ProfilePhotoUpload({ file, onChange }: { file: File | null; onChange: (f: File | null) => void }) {
   const [preview, setPreview] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleFile(f: File | null) {
+  async function handleFile(f: File | null) {
     if (!f) return;
-    onChange(f);
+    const compressed = f.size > 800_000 ? await compressImage(f) : f;
+    onChange(compressed);
     if (preview) URL.revokeObjectURL(preview);
-    setPreview(URL.createObjectURL(f));
+    setPreview(URL.createObjectURL(compressed));
   }
 
   function remove() {
