@@ -13,5 +13,6 @@ metadata:
 
 **How to apply:**
 - `/bye` 또는 `npx vercel --prod` 실행 전 `.vercel/project.json`의 `orgId`가 팀 계정(`team_tlz48...`)이 아닌지 확인
-- 현재 `.vercel/project.json` → `orgId: team_tlz48DHPiwm1LZkXYtpFO3pG` 는 잘못된 값 → 재링크 필요 (npx vercel link → a01092935659 > alltica 선택)
-- Vercel CLI 로그인 계정이 a01092935659인지 먼저 확인 후 배포
+- `.vercel/project.json` 올바른 값: `orgId: "a01092935659-s-projects"`, `projectId: "prj_tPXxYGm84RwTwXYLOHS5l0Gwuihy"`
+- 배포 전 `npx vercel whoami`로 `a01092935659` 계정인지 확인
+- CLI 재인증 필요 시: `npx vercel login` (브라우저 자동 오픈 안되면 토큰 방식 사용)
