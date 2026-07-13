@@ -60,12 +60,19 @@ metadata:
 - `POST /api/judge/import` action=excel-rows → IBC 행 일괄 등록
 - `POST /api/judge/import` action=judges → 심사위원 배정 (email → user_id 매핑)
 
+## 2026-07-14 추가 완료
+
+### 심사 화면 + 채점항목 자동 설정 (IBC 기준표 분석 기반)
+- **`src/lib/judge-criteria-data.ts`**: JSON 기준표 파싱 결과를 하드코딩 — PMU/SMP/네일(11종)/메이크업(10종)/속눈썹/왁싱/슈가링/피부/헤어/플래닝/플라즈마 전종목 scale 배열 포함
+- **`/api/judge/criteria/seed` (POST)**: 종목명 자동 감지 → scoring_criteria 일괄 등록 (기존 항목 교체)
+- **Admin CriteriaTab 업그레이드**: "자동 설정" 버튼 + 대면/출품 토글 추가 — 한 번 클릭으로 전종목 채점항목 등록
+- **`/judge/score` ScoreCard 5단계 버튼 UX**: 숫자 직접 입력 → 매우미흡/미흡/보통/잘함/매우잘함 5개 버튼 (scale 값 표시), scoresRef로 stale closure 버그 수정
+
 ## 남은 작업 (다음 세션 우선순위)
 
-1. **채점항목(criteria) 설정** — 사용자가 채점 항목 정보 보내줄 예정
-2. **시상설정(awards) 설정** — 사용자가 시상 정보 보내줄 예정
-3. **실제 심사 화면** `/judge` 경로 — 심사위원이 접속해서 선수별 점수 입력하는 화면
-4. **결과 확인** `/judge/admin` → 결과 확인 버튼 연동
+1. **채점항목 실제 등록**: admin `/judge/admin` → 채점 항목 탭 → 각 종목 선택 → "자동 설정" 버튼 클릭 (출품대회 선택)
+2. **시상설정**: 각 종목별로 금상/은상/동상/장려상 수 설정
+3. **결과 확인** `/judge/result` — 이미 구현 완료, 결과 확인 버튼만 admin과 연동 필요
 
 ## 주의사항
 
