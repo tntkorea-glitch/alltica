@@ -36,3 +36,4 @@ export function getSupabasePublic(): SupabaseClient {
 export const BUSINESS_CARD_BUCKET = "business-cards";
 export const SUBMISSION_FILES_BUCKET = "submission-files";
 export const SEMINAR_IMAGES_BUCKET = "seminar-images";
+export const CONTESTANT_FILES_BUCKET = "contestant-files";
