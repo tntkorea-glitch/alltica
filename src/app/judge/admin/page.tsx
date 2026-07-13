@@ -636,61 +636,108 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
         </div>
       )}
 
-      {/* 선수 목록 */}
-      <div className="space-y-3">
-        {contestants.map((c) => (
-          <div key={c.id} className="bg-white border rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                {c.number && <span className="text-xs font-bold text-white bg-blue-500 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">{c.number}</span>}
-                <span className="font-semibold text-gray-900">{c.name}</span>
-                {(c as Contestant & { category_name?: string }).category_name && !filterCatId && (
-                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{(c as Contestant & { category_name?: string }).category_name}</span>
+      {/* 선수 목록 — 종목별 테이블 */}
+      {contestants.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-6">
+          {allContestants.length === 0 ? "등록된 선수가 없습니다. 신청서 또는 단체접수 파일에서 불러오세요." : "이 종목에 등록된 선수가 없습니다."}
+        </p>
+      ) : (() => {
+        const groups: Array<{ catName: string; catId: string; rows: typeof contestants }> = [];
+        if (filterCatId) {
+          groups.push({ catName: categories.find((c) => c.id === filterCatId)?.name ?? "", catId: filterCatId, rows: contestants });
+        } else {
+          const grouped = new Map<string, { catName: string; catId: string; rows: typeof contestants }>();
+          for (const c of contestants) {
+            const catId = c.category_id;
+            const catName = (c as Contestant & { category_name?: string }).category_name ?? "미분류";
+            if (!grouped.has(catId)) grouped.set(catId, { catName, catId, rows: [] });
+            grouped.get(catId)!.rows.push(c);
+          }
+          grouped.forEach((v) => groups.push(v));
+        }
+        return (
+          <div className="space-y-5">
+            {groups.map(({ catName, catId, rows }) => (
+              <div key={catId} className="bg-white rounded-xl border overflow-hidden">
+                {catName && (
+                  <div className="px-4 py-2 bg-purple-50 border-b flex items-center gap-2">
+                    <span className="text-sm font-semibold text-purple-800">{catName}</span>
+                    <span className="text-xs text-gray-400">{rows.length}명</span>
+                  </div>
                 )}
-                {c.company && <span className="text-xs text-gray-500">{c.company}</span>}
-                {c.phone && <span className="text-xs text-gray-400">{c.phone}</span>}
-                {c.grade && <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{c.grade}</span>}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 text-xs text-gray-500 border-b">
+                        <th className="px-3 py-2 text-center w-10 font-medium">번호</th>
+                        <th className="px-3 py-2 text-left font-medium">이름</th>
+                        <th className="px-3 py-2 text-left font-medium">단체명</th>
+                        <th className="px-3 py-2 text-left font-medium">연락처</th>
+                        <th className="px-3 py-2 text-left font-medium">부문</th>
+                        <th className="px-3 py-2 text-left font-medium">파일/첨부</th>
+                        <th className="px-3 py-2 text-center w-12 font-medium">삭제</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {rows.map((c) => (
+                        <tr key={c.id} className="hover:bg-gray-50 align-top">
+                          <td className="px-3 py-2.5 text-center">
+                            {c.number != null && (
+                              <span className="text-xs font-bold text-white bg-blue-500 rounded-full w-6 h-6 inline-flex items-center justify-center">{c.number}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">{c.name}</td>
+                          <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">{c.company ?? "-"}</td>
+                          <td className="px-3 py-2.5 text-gray-400 text-xs whitespace-nowrap">{c.phone ?? "-"}</td>
+                          <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                            {c.grade && <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{c.grade}</span>}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex flex-wrap gap-1 items-center">
+                              {(c.contestant_files ?? []).map((f) => (
+                                <div key={f.id} className="flex items-center gap-1 bg-gray-100 rounded px-1.5 py-0.5 text-xs whitespace-nowrap">
+                                  <span>{f.file_type === "youtube" ? "▶" : f.file_type.startsWith("video") ? "🎬" : "🖼"}</span>
+                                  <span className="max-w-[90px] truncate">
+                                    {f.file_type === "youtube" ? `YT:${getYouTubeId(f.video_url ?? "")}` : f.file_name}
+                                  </span>
+                                  {f.file_type === "youtube" && f.video_url
+                                    ? <a href={f.video_url} target="_blank" rel="noopener noreferrer" className="text-blue-500">↗</a>
+                                    : f.storage_path && <a href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/contestant-files/${f.storage_path}`} target="_blank" rel="noopener noreferrer" className="text-blue-500">↗</a>}
+                                  <button onClick={() => deleteFile(f.id, f.storage_path)} className="text-red-400 hover:text-red-600">×</button>
+                                </div>
+                              ))}
+                              <label className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs cursor-pointer transition whitespace-nowrap ${uploading === c.id ? "bg-gray-200 text-gray-400" : "bg-blue-50 text-blue-600 hover:bg-blue-100"}`}>
+                                {uploading === c.id ? "..." : "+파일"}
+                                <input type="file" className="hidden" accept="image/*,video/*" disabled={uploading === c.id}
+                                  onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFile(c.id, file); e.target.value = ""; }} />
+                              </label>
+                              {ytInputId === c.id ? (
+                                <div className="flex gap-1 items-center">
+                                  <input autoFocus value={ytUrl} onChange={(e) => setYtUrl(e.target.value)}
+                                    placeholder="https://youtu.be/..." className="border rounded px-2 py-0.5 text-xs w-36"
+                                    onKeyDown={(e) => { if (e.key === "Enter") addYouTubeUrl(c.id); if (e.key === "Escape") { setYtInputId(null); setYtUrl(""); } }} />
+                                  <button onClick={() => addYouTubeUrl(c.id)} className="px-2 py-0.5 bg-red-600 text-white rounded text-xs">등록</button>
+                                  <button onClick={() => { setYtInputId(null); setYtUrl(""); }} className="text-gray-400 text-xs">✕</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => { setYtInputId(c.id); setYtUrl(""); }}
+                                  className="px-2 py-0.5 bg-red-50 text-red-600 hover:bg-red-100 rounded text-xs whitespace-nowrap">▶YT</button>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <button onClick={() => deleteContestant(c.id)} className="text-xs text-red-400 hover:text-red-600">삭제</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <button onClick={() => deleteContestant(c.id)} className="text-xs text-red-400 hover:text-red-600">삭제</button>
-            </div>
-
-            <div className="flex flex-wrap gap-2 mb-2">
-              {(c.contestant_files ?? []).map((f) => (
-                <div key={f.id} className="flex items-center gap-1 bg-gray-100 rounded-lg px-3 py-1 text-xs">
-                  {f.file_type === "youtube" ? "▶️" : f.file_type.startsWith("video") ? "🎬" : "🖼️"}
-                  <span className="text-gray-700 max-w-[160px] truncate">{f.file_type === "youtube" ? `YouTube: ${getYouTubeId(f.video_url ?? "")}` : f.file_name}</span>
-                  {f.file_type === "youtube" && f.video_url
-                    ? <a href={f.video_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline ml-1">보기</a>
-                    : f.storage_path && <a href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/contestant-files/${f.storage_path}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline ml-1">보기</a>}
-                  <button onClick={() => deleteFile(f.id, f.storage_path)} className="text-red-400 hover:text-red-600 ml-1">×</button>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-2 flex-wrap">
-              <label className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${uploading === c.id ? "bg-gray-200 text-gray-400" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}>
-                {uploading === c.id ? "업로드 중..." : "+ 이미지/파일"}
-                <input type="file" className="hidden" accept="image/*,video/*" disabled={uploading === c.id} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFile(c.id, file); e.target.value = ""; }} />
-              </label>
-              {ytInputId === c.id ? (
-                <div className="flex gap-1 flex-1">
-                  <input autoFocus value={ytUrl} onChange={(e) => setYtUrl(e.target.value)} placeholder="https://youtu.be/..." className="flex-1 border rounded-lg px-3 py-1.5 text-xs min-w-0"
-                    onKeyDown={(e) => { if (e.key === "Enter") addYouTubeUrl(c.id); if (e.key === "Escape") { setYtInputId(null); setYtUrl(""); } }} />
-                  <button onClick={() => addYouTubeUrl(c.id)} className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700">등록</button>
-                  <button onClick={() => { setYtInputId(null); setYtUrl(""); }} className="px-2 py-1.5 text-gray-400 hover:text-gray-600 text-xs">취소</button>
-                </div>
-              ) : (
-                <button onClick={() => { setYtInputId(c.id); setYtUrl(""); }} className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-xs font-medium transition">▶ YouTube URL</button>
-              )}
-            </div>
+            ))}
           </div>
-        ))}
-          {contestants.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-6">
-              {allContestants.length === 0 ? "등록된 선수가 없습니다. 신청서 또는 단체접수 파일에서 불러오세요." : "이 종목에 등록된 선수가 없습니다."}
-            </p>
-          )}
-      </div>
+        );
+      })()}
     </div>
   );
 }
@@ -790,55 +837,72 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
           </div>
           <p className="text-xs text-gray-500 mb-4">오른쪽 <strong>입금 확인</strong> 체크 → 종목·직책 선택 → 일괄 배정</p>
 
-          <div className="space-y-2 mb-4 max-h-[480px] overflow-y-auto pr-1">
-            {importJudges.map((j) => {
-              const cfg = judgeConfig[j.id] ?? { paid: false, categoryId: "", title: "심사위원" };
-              return (
-                <div key={j.id} className={`bg-white rounded-xl border transition ${cfg.paid ? "border-green-400 shadow-sm" : "border-gray-200"}`}>
-                  <div className="flex items-start gap-3 p-3">
-                    {/* 좌: 심사위원 정보 */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-gray-900">{j.name}</span>
-                        <span className="text-xs text-gray-400">{j.phone}</span>
-                        <span className="text-xs text-gray-400">{j.email}</span>
-                        {j.title && <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{j.title}</span>}
-                      </div>
-                      {j.categories.length > 0 && (
-                        <div className="flex gap-1 flex-wrap mt-1">
-                          {j.categories.map((c) => <span key={c} className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{c}</span>)}
+          <div className="overflow-x-auto mb-4 max-h-[520px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-green-100 text-xs text-green-800">
+                  <th className="px-3 py-2 text-left font-medium">이름</th>
+                  <th className="px-3 py-2 text-left font-medium">연락처</th>
+                  <th className="px-3 py-2 text-left font-medium">직책</th>
+                  <th className="px-3 py-2 text-left font-medium">신청종목</th>
+                  <th className="px-3 py-2 text-left font-medium max-w-[180px]">경력</th>
+                  <th className="px-3 py-2 text-center font-medium w-20">입금확인</th>
+                  <th className="px-3 py-2 text-left font-medium">배정종목</th>
+                  <th className="px-3 py-2 text-left font-medium">배정직책</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {importJudges.map((j) => {
+                  const cfg = judgeConfig[j.id] ?? { paid: false, categoryId: "", title: "심사위원" };
+                  return (
+                    <tr key={j.id} className={`align-top hover:bg-gray-50 transition ${cfg.paid ? "bg-green-50" : ""}`}>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <div className="font-semibold text-gray-900">{j.name}</div>
+                        <div className="text-xs text-gray-400">{j.email}</div>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">{j.phone}</td>
+                      <td className="px-3 py-2.5 text-xs">
+                        {j.title && <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded whitespace-nowrap">{j.title}</span>}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex gap-1 flex-wrap">
+                          {j.categories.map((c) => <span key={c} className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded whitespace-nowrap">{c}</span>)}
                         </div>
-                      )}
-                      {j.career && <p className="text-xs text-gray-400 mt-1 line-clamp-1">{j.career}</p>}
-
-                      {/* 입금 확인 시에만 배정 옵션 표시 */}
-                      {cfg.paid && (
-                        <div className="flex gap-2 mt-2 flex-wrap">
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-gray-400 max-w-[180px]">
+                        <span className="line-clamp-2">{j.career}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <label className={`inline-flex flex-col items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition ${cfg.paid ? "bg-green-100" : "bg-gray-50 hover:bg-gray-100"}`}>
+                          <input type="checkbox" className="w-4 h-4 accent-green-600" checked={cfg.paid}
+                            onChange={(e) => setPaid(j.id, e.target.checked)} />
+                          <span className={`text-xs font-medium whitespace-nowrap ${cfg.paid ? "text-green-700" : "text-gray-400"}`}>
+                            {cfg.paid ? "입금✓" : "미확인"}
+                          </span>
+                        </label>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {cfg.paid && (
                           <select value={cfg.categoryId} onChange={(e) => setCfg(j.id, "categoryId", e.target.value)}
-                            className="border rounded-lg px-2 py-1.5 text-xs font-medium text-gray-700">
+                            className="border rounded px-2 py-1.5 text-xs font-medium text-gray-700 w-full min-w-[100px]">
                             <option value="">종목 선택</option>
                             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {cfg.paid && (
                           <select value={cfg.title} onChange={(e) => setCfg(j.id, "title", e.target.value)}
-                            className="border rounded-lg px-2 py-1.5 text-xs font-medium text-gray-700">
+                            className="border rounded px-2 py-1.5 text-xs font-medium text-gray-700">
                             {JUDGE_TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
                           </select>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 우: 입금 확인 체크박스 */}
-                    <label className={`flex flex-col items-center gap-1 cursor-pointer flex-shrink-0 px-2 py-1 rounded-lg transition ${cfg.paid ? "bg-green-100" : "bg-gray-50 hover:bg-gray-100"}`}>
-                      <input type="checkbox" className="w-4 h-4 accent-green-600" checked={cfg.paid}
-                        onChange={(e) => setPaid(j.id, e.target.checked)} />
-                      <span className={`text-xs font-medium ${cfg.paid ? "text-green-700" : "text-gray-400"}`}>
-                        {cfg.paid ? "입금✓" : "미확인"}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              );
-            })}
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-green-200">
@@ -851,22 +915,42 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         </div>
       )}
 
-      {/* 배정된 심사위원 목록 (전체 종목) */}
+      {/* 배정된 심사위원 목록 (전체 종목) — 테이블 */}
       {allAssignments.length > 0 && (
-        <div className="bg-white rounded-xl border p-4">
-          <h4 className="text-sm font-semibold text-gray-700 mb-3">배정 완료 심사위원 ({allAssignments.length}명)</h4>
-          <div className="space-y-2">
-            {allAssignments.map((a) => (
-              <div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-gray-800 text-sm">{a.users?.name ?? "(이름 없음)"}</span>
-                  <span className="text-xs text-gray-400">{a.users?.email}</span>
-                  {a.title && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{a.title}</span>}
-                  {a.category_name && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{a.category_name}</span>}
-                </div>
-                <button onClick={() => removeJudge(a.id)} className="text-xs text-red-400 hover:text-red-600 ml-2">해제</button>
-              </div>
-            ))}
+        <div className="bg-white rounded-xl border overflow-hidden">
+          <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-700">배정 완료 심사위원</span>
+            <span className="text-xs text-gray-400">{allAssignments.length}명</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-xs text-gray-500 border-b">
+                  <th className="px-3 py-2 text-left font-medium">종목</th>
+                  <th className="px-3 py-2 text-left font-medium">이름</th>
+                  <th className="px-3 py-2 text-left font-medium">이메일</th>
+                  <th className="px-3 py-2 text-left font-medium">직책</th>
+                  <th className="px-3 py-2 text-center w-12 font-medium">해제</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {allAssignments.map((a) => (
+                  <tr key={a.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-xs">
+                      {a.category_name && <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap">{a.category_name}</span>}
+                    </td>
+                    <td className="px-3 py-2 font-medium text-gray-800 whitespace-nowrap">{a.users?.name ?? "(이름 없음)"}</td>
+                    <td className="px-3 py-2 text-xs text-gray-400 whitespace-nowrap">{a.users?.email}</td>
+                    <td className="px-3 py-2 text-xs">
+                      {a.title && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{a.title}</span>}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <button onClick={() => removeJudge(a.id)} className="text-xs text-red-400 hover:text-red-600">해제</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
