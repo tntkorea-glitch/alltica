@@ -314,6 +314,9 @@ export default function AdminPage() {
             <p className="text-xs text-gray-500 truncate">세미나 신청 및 문의 현황 관리</p>
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/judge/admin" className="text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors px-3 py-1.5 rounded-lg font-medium">
+              ⚖️ 심사관리
+            </Link>
             <Link href="/" className="text-sm text-gray-500 hover:text-brand transition-colors px-2">
               사이트로
             </Link>

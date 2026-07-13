@@ -460,7 +460,10 @@ export default function JudgeAdminPage() {
             <h1 className="text-2xl font-bold text-gray-900">⚖️ 심사 관리</h1>
             <p className="text-sm text-gray-500 mt-0.5">IBC 온라인 심사 시스템</p>
           </div>
-          <a href="/judge/result" className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">결과 확인 →</a>
+          <div className="flex gap-2">
+            <a href="/admin" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">← 관리자</a>
+            <a href="/judge/result" className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">결과 확인 →</a>
+          </div>
         </div>
 
         {msg && (
