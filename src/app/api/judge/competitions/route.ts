@@ -20,14 +20,14 @@ export async function POST(request: NextRequest) {
   if (!ctx) return NextResponse.json({ error: "권한 없음" }, { status: 403 });
 
   const body = await request.json();
-  const { title, description, date_display, status, allow_contestant_upload } = body;
+  const { title, description, date_display, status, allow_contestant_upload, contest_slug } = body;
 
   if (!title) return NextResponse.json({ error: "대회명 필수" }, { status: 400 });
 
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("competitions")
-    .insert({ title, description, date_display, status: status ?? "open", allow_contestant_upload: allow_contestant_upload ?? false })
+    .insert({ title, description, date_display, status: status ?? "open", allow_contestant_upload: allow_contestant_upload ?? false, contest_slug: contest_slug ?? null })
     .select()
     .single();
 
