@@ -123,12 +123,16 @@ alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
 
 ## ⚠️ Next up when resuming (최우선)
 
-1. **Supabase SQL 확인**: `submissions` 테이블에 `user_email` 컬럼 추가 여부 확인:
-   ```sql
-   ALTER TABLE submissions ADD COLUMN IF NOT EXISTS user_email TEXT;
-   ```
-2. **조직위 신청 E2E 테스트**: 파일 업로드(한글파일명), 폼 제출, 어드민 패널 이름/연락처 표시 모두 확인
-3. **추가모집 마감 후 처리**: 6/29 이후 IBC 12th 상태 다시 `"마감"` 으로 되돌리기
+### /judge 심사 시스템 (2026-07-13 진행 중)
+→ 상세 현황: [[judge-system]]
+
+1. **채점항목(criteria) 설정 UI** — 사용자가 항목 정보 보내주면 구현
+2. **시상설정(awards) 설정 UI** — 사용자가 정보 보내주면 구현
+3. **실제 심사 화면** `/judge` — 심사위원이 선수별 점수 입력
+4. **결과 확인** 화면 — `/judge/admin` 결과 확인 버튼 연동
+
+### 기타
+- **추가모집 마감 후**: IBC 12th 상태 `"마감"` 복원 (이미 지났을 수 있음, 확인 필요)
 
 ## Phase 2 남은 백로그
 
