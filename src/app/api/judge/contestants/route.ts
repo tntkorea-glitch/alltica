@@ -6,15 +6,36 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const categoryId = request.nextUrl.searchParams.get("category_id");
-  if (!categoryId) return NextResponse.json({ error: "category_id 필수" }, { status: 400 });
+  const competitionId = request.nextUrl.searchParams.get("competition_id");
+  if (!categoryId && !competitionId) return NextResponse.json({ error: "category_id 또는 competition_id 필수" }, { status: 400 });
 
   const supabase = getSupabaseAdmin();
+
+  if (competitionId) {
+    // 대회 전체 선수: categories → contestants 조인
+    const { data: cats } = await supabase.from("categories").select("id, name").eq("competition_id", competitionId);
+    if (!cats || cats.length === 0) return NextResponse.json([]);
+
+    const catIds = cats.map((c) => c.id);
+    const catNameMap = Object.fromEntries(cats.map((c) => [c.id, c.name]));
+
+    const { data, error } = await supabase
+      .from("contestants")
+      .select("*, contestant_files(*)")
+      .in("category_id", catIds)
+      .order("category_id", { ascending: true })
+      .order("number", { ascending: true });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json((data ?? []).map((c) => ({ ...c, category_name: catNameMap[c.category_id] ?? "" })));
+  }
+
   const { data, error } = await supabase
     .from("contestants")
     .select("*, contestant_files(*)")
-    .eq("category_id", categoryId)
-    .order("display_order", { ascending: true })
-    .order("created_at", { ascending: true });
+    .eq("category_id", categoryId!)
+    .order("number", { ascending: true })
+    .order("display_order", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);

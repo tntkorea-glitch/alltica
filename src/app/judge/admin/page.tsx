@@ -255,7 +255,8 @@ function CompetitionsTab({
 
 // ─── ContestantsTab ───────────────────────────────────────────
 function ContestantsTab({ category, competition, categories, onMsg }: { category: Category | null; competition: Competition | null; categories: Category[]; onMsg: (m: string) => void }) {
-  const [contestants, setContestants] = useState<Contestant[]>([]);
+  const [allContestants, setAllContestants] = useState<(Contestant & { category_name?: string })[]>([]);
+  const [filterCatId, setFilterCatId] = useState<string>(""); // "" = 전체
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
@@ -267,16 +268,29 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   const [importAthletes, setImportAthletes] = useState<ImportAthlete[]>([]);
   const [showImport, setShowImport] = useState(false);
   const [selectedAthletes, setSelectedAthletes] = useState<Set<string>>(new Set());
-  const [catMap, setCatMap] = useState<Record<string, string>>({}); // division→categoryId
+  const [catMap, setCatMap] = useState<Record<string, string>>({});
   const [allDivisions, setAllDivisions] = useState<string[]>([]);
 
+  // 필터 적용한 선수 목록
+  const contestants = filterCatId
+    ? allContestants.filter((c) => c.category_id === filterCatId)
+    : allContestants;
+
   const load = useCallback(async () => {
-    if (!category) return;
-    try { const data = await api(`/api/judge/contestants?category_id=${category.id}`); setContestants(data); }
-    catch { /* ignore */ }
-  }, [category]);
+    if (!competition) return;
+    try {
+      const data = await api(`/api/judge/contestants?competition_id=${competition.id}`);
+      setAllContestants(data);
+    } catch { /* ignore */ }
+  }, [competition]);
 
   useEffect(() => { load(); }, [load]);
+
+  // 종목 탭 선택 시 필터 동기화
+  useEffect(() => {
+    if (category) setFilterCatId(category.id);
+    else setFilterCatId("");
+  }, [category]);
 
   const loadImportAthletes = async () => {
     if (!competition?.contest_slug) { onMsg("신청서와 연결된 대회가 아닙니다."); return; }
@@ -422,10 +436,10 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   };
 
   const addContestant = async () => {
-    if (!category || !newName.trim()) return;
+    if (!filterCatId || !newName.trim()) return;
     setLoading(true);
     try {
-      await api("/api/judge/contestants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category_id: category.id, name: newName.trim(), phone: newPhone.trim(), display_order: contestants.length }) });
+      await api("/api/judge/contestants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category_id: filterCatId, name: newName.trim(), phone: newPhone.trim() }) });
       setNewName(""); setNewPhone(""); await load();
     } catch (e: unknown) { onMsg((e as Error).message); }
     setLoading(false);
@@ -467,12 +481,31 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   // 미매핑 선수 수 계산
   const unmappedCount = importAthletes.filter((a) => selectedAthletes.has(a.id) && !a.divisions.some((d) => catMap[d])).length;
 
+  if (!competition) return <p className="text-sm text-gray-400 text-center py-8">대회·종목 탭에서 대회를 먼저 선택하세요.</p>;
+
   return (
     <div className="space-y-4">
+      {/* 종목 필터 탭 */}
+      {categories.length > 0 && (
+        <div className="flex gap-1 overflow-x-auto pb-1 flex-wrap">
+          <button onClick={() => setFilterCatId("")} className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${filterCatId === "" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+            전체 ({allContestants.length}명)
+          </button>
+          {categories.map((cat) => {
+            const cnt = allContestants.filter((c) => c.category_id === cat.id).length;
+            return (
+              <button key={cat.id} onClick={() => setFilterCatId(cat.id)} className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${filterCatId === cat.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                {cat.name} ({cnt})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* 액션 버튼들 */}
       <div className="flex gap-2 flex-wrap">
         {competition?.contest_slug && (
-          <button onClick={loadImportAthletes} disabled={!category} title={!category ? "종목을 먼저 선택하세요" : ""} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed">
+          <button onClick={loadImportAthletes} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
             📋 신청서에서 불러오기
           </button>
         )}
@@ -594,23 +627,26 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
         </div>
       )}
 
-      {/* 선수 추가 폼 (종목 선택 시에만) */}
-      {category && (
+      {/* 선수 추가 폼 (특정 종목 필터 시에만) */}
+      {filterCatId && (
         <div className="flex gap-2">
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="선수 이름 직접 추가" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addContestant()} />
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={`선수 직접 추가 → ${categories.find((c) => c.id === filterCatId)?.name}`} className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addContestant()} />
           <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="연락처" className="w-36 border rounded-lg px-3 py-2 text-sm" />
           <button onClick={addContestant} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">추가</button>
         </div>
       )}
 
-      {/* 선수 목록 (종목 선택 시에만) */}
-      {category && <div className="space-y-3">
+      {/* 선수 목록 */}
+      <div className="space-y-3">
         {contestants.map((c) => (
           <div key={c.id} className="bg-white border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {c.number && <span className="text-xs font-bold text-white bg-blue-500 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">{c.number}</span>}
                 <span className="font-semibold text-gray-900">{c.name}</span>
+                {(c as Contestant & { category_name?: string }).category_name && !filterCatId && (
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{(c as Contestant & { category_name?: string }).category_name}</span>
+                )}
                 {c.company && <span className="text-xs text-gray-500">{c.company}</span>}
                 {c.phone && <span className="text-xs text-gray-400">{c.phone}</span>}
                 {c.grade && <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{c.grade}</span>}
@@ -649,12 +685,12 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
             </div>
           </div>
         ))}
-          {contestants.length === 0 && <p className="text-sm text-gray-400">등록된 선수가 없습니다.</p>}
-      </div>}
-
-      {!category && !showDataFile && !showImport && (
-        <p className="text-center text-sm text-gray-400 py-4">← 대회·종목 탭에서 종목을 선택하면 선수 목록이 표시됩니다.</p>
-      )}
+          {contestants.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-6">
+              {allContestants.length === 0 ? "등록된 선수가 없습니다. 신청서 또는 단체접수 파일에서 불러오세요." : "이 종목에 등록된 선수가 없습니다."}
+            </p>
+          )}
+      </div>
     </div>
   );
 }
