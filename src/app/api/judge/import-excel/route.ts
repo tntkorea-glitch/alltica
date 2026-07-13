@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getJudgeAdminContext } from "@/lib/judge-auth";
 import path from "path";
 import fs from "fs";
+import * as XLSX from "xlsx";
 
 export const runtime = "nodejs";
 
@@ -41,21 +42,19 @@ export async function GET() {
   const xlsxFiles = fs.readdirSync(dataDir).filter((f) => /\.(xlsx|xls)$/i.test(f));
   if (xlsxFiles.length === 0) return NextResponse.json({ files: [] });
 
-  const XLSX = await import("xlsx");
   const files: Array<{ filename: string; rows: ReturnType<typeof parseIBCSheet>; divisions: string[] }> = [];
 
   for (const filename of xlsxFiles) {
     try {
       const wb = XLSX.readFile(path.join(dataDir, filename));
-      // 선수 시트만 처리
       const sheetName = wb.SheetNames.find((n) => n.includes("선수")) ?? wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];
       const rawRows = XLSX.utils.sheet_to_json<unknown[]>(ws, { defval: "", header: 1 });
       const rows = parseIBCSheet(rawRows);
       const divisions = [...new Set(rows.map((r) => r.division))].sort();
       files.push({ filename, rows, divisions });
-    } catch {
-      // 파싱 실패 skip
+    } catch (e) {
+      console.error(`[import-excel] 파싱 실패: ${filename}`, e);
     }
   }
 

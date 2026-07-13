@@ -413,7 +413,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
         const result = await api("/api/judge/import", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "excel-rows", rows: excelRows, category_map: map, fallback_category_id: category?.id }),
+          body: JSON.stringify({ action: "excel-rows", rows: excelRows, category_map: map, fallback_category_id: filterCatId || category?.id }),
         });
         onMsg(`IBC 서식에서 선수 ${result.inserted}명 등록 완료`);
       } else {
@@ -426,7 +426,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
         for (const row of rows) {
           const name = String(row[nameKey] ?? "").trim();
           if (!name) continue;
-          await api("/api/judge/contestants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category_id: category!.id, name, phone: phoneKey ? String(row[phoneKey] ?? "") : "" }) });
+          await api("/api/judge/contestants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category_id: filterCatId || category?.id, name, phone: phoneKey ? String(row[phoneKey] ?? "") : "" }) });
         }
         onMsg(`엑셀에서 선수 ${rows.filter((r) => r[nameKey]).length}명 등록 완료`);
       }
