@@ -1051,11 +1051,12 @@ function CriteriaTab({ category, onMsg }: { category: Category | null; onMsg: (m
 }
 
 // ─── AwardsTab ────────────────────────────────────────────────
-function AwardsTab({ category, onMsg }: { category: Category | null; onMsg: (m: string) => void }) {
+function AwardsTab({ category, competition, onMsg }: { category: Category | null; competition: Competition | null; onMsg: (m: string) => void }) {
   const [awards, setAwards] = useState<Award[]>([]);
   const [newName, setNewName] = useState("");
   const [newCount, setNewCount] = useState("1");
   const [loading, setLoading] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const load = useCallback(async () => {
     if (!category) return;
@@ -1064,6 +1065,30 @@ function AwardsTab({ category, onMsg }: { category: Category | null; onMsg: (m: 
   }, [category]);
 
   useEffect(() => { load(); }, [load]);
+
+  const seedCategory = async () => {
+    if (!category) return;
+    if (awards.length > 0 && !confirm(`"${category.name}"의 기존 시상 ${awards.length}개를 삭제하고 금상·은상·동상·장려상으로 교체합니다.`)) return;
+    setSeeding(true);
+    try {
+      await api("/api/judge/awards/seed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category_id: category.id }) });
+      onMsg(`✅ "${category.name}" 시상 설정 완료`);
+      await load();
+    } catch (e: unknown) { onMsg((e as Error).message); }
+    setSeeding(false);
+  };
+
+  const seedAllCategories = async () => {
+    if (!competition) return;
+    if (!confirm(`"${competition.title}"의 모든 종목에 금상·은상·동상·장려상을 일괄 적용합니다. 기존 시상이 있으면 교체됩니다.`)) return;
+    setSeeding(true);
+    try {
+      const res = await api("/api/judge/awards/seed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ competition_id: competition.id }) });
+      onMsg(`✅ ${res.count}개 종목 시상 일괄 설정 완료 (${res.applied_to.join(", ")})`);
+      await load();
+    } catch (e: unknown) { onMsg((e as Error).message); }
+    setSeeding(false);
+  };
 
   const addAward = async () => {
     if (!category || !newName.trim()) return;
@@ -1080,23 +1105,41 @@ function AwardsTab({ category, onMsg }: { category: Category | null; onMsg: (m: 
 
   if (!category) return <p className="text-sm text-gray-400">종목을 먼저 선택하세요.</p>;
 
+  const AWARD_COLORS: Record<string, string> = { "금상": "text-yellow-600", "은상": "text-gray-500", "동상": "text-orange-500", "장려상": "text-green-600" };
+
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-400">점수 상위 순서대로 시상이 배분됩니다.</p>
+      {/* 자동 설정 */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <p className="text-sm font-semibold text-amber-800 mb-3">자동 설정 — 금상·은상·동상·장려상 (각 1명)</p>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={seedCategory} disabled={seeding} className="px-4 py-1.5 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 disabled:opacity-50">
+            {seeding ? "설정 중..." : `"${category.name}" 이 종목만`}
+          </button>
+          {competition && (
+            <button onClick={seedAllCategories} disabled={seeding} className="px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 disabled:opacity-50">
+              {seeding ? "설정 중..." : "전체 종목 일괄 적용"}
+            </button>
+          )}
+          <span className="text-xs text-amber-600 self-center">기존 시상을 교체합니다</span>
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-400">점수 상위 순서대로 시상이 배분됩니다. 인원수는 직접 수정하세요.</p>
       <div className="space-y-2">
         {awards.map((a) => (
           <div key={a.id} className="flex items-center justify-between bg-white border rounded-lg px-4 py-3">
-            <span className="font-medium text-gray-800">{a.award_name}</span>
+            <span className={`font-semibold ${AWARD_COLORS[a.award_name] ?? "text-blue-600"}`}>{a.award_name}</span>
             <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">{a.count}명</span>
+              <span className="text-sm text-gray-600 font-medium">{a.count}명</span>
               <button onClick={() => deleteAward(a.id)} className="text-xs text-red-400 hover:text-red-600">삭제</button>
             </div>
           </div>
         ))}
-        {awards.length === 0 && <p className="text-sm text-gray-400">등록된 시상이 없습니다.</p>}
+        {awards.length === 0 && <p className="text-sm text-gray-400">등록된 시상이 없습니다. 위 자동 설정을 사용하거나 직접 추가하세요.</p>}
       </div>
       <div className="flex gap-2">
-        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="시상명 (예: 금상)" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addAward()} />
+        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="시상명 직접 추가 (예: 최우수상)" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addAward()} />
         <input value={newCount} onChange={(e) => setNewCount(e.target.value)} type="number" min="1" placeholder="인원" className="w-20 border rounded-lg px-3 py-2 text-sm" />
         <button onClick={addAward} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">추가</button>
       </div>
@@ -1187,7 +1230,7 @@ export default function JudgeAdminPage() {
           )}
 
           {activeTab === "criteria" && <CriteriaTab category={selectedCategory} onMsg={setMsg} />}
-          {activeTab === "awards" && <AwardsTab category={selectedCategory} onMsg={setMsg} />}
+          {activeTab === "awards" && <AwardsTab category={selectedCategory} competition={selectedCompetition} onMsg={setMsg} />}
         </div>
       </div>
     </div>
