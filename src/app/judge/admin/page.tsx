@@ -464,13 +464,6 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
     } catch (e: unknown) { onMsg((e as Error).message); }
   };
 
-  if (!category) return (
-    <div className="text-center py-8 space-y-2">
-      <p className="text-sm text-gray-400">종목을 먼저 선택하세요.</p>
-      <button onClick={loadDataFiles} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">📁 단체접수 파일에서 불러오기</button>
-    </div>
-  );
-
   // 미매핑 선수 수 계산
   const unmappedCount = importAthletes.filter((a) => selectedAthletes.has(a.id) && !a.divisions.some((d) => catMap[d])).length;
 
@@ -479,7 +472,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
       {/* 액션 버튼들 */}
       <div className="flex gap-2 flex-wrap">
         {competition?.contest_slug && (
-          <button onClick={loadImportAthletes} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
+          <button onClick={loadImportAthletes} disabled={!category} title={!category ? "종목을 먼저 선택하세요" : ""} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed">
             📋 신청서에서 불러오기
           </button>
         )}
@@ -517,7 +510,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
 
           <label className="flex items-center gap-2 text-xs text-purple-800 mb-3 cursor-pointer">
             <input type="checkbox" checked={fallbackToCurrent} onChange={(e) => setFallbackToCurrent(e.target.checked)} className="accent-purple-600" />
-            매핑 안 된 종목도 현재 선택 종목({category.name})에 등록
+            매핑 안 된 종목도 현재 선택 종목({category?.name ?? "미선택"})에 등록
           </label>
 
           {dataFiles.map((f) => (
@@ -561,7 +554,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
             ))}
             <label className="flex items-center gap-2 text-xs text-green-800 cursor-pointer mt-2">
               <input type="checkbox" checked={fallbackToCurrent} onChange={(e) => setFallbackToCurrent(e.target.checked)} className="accent-green-600" />
-              매핑 안 된 선수 ({unmappedCount}명)도 현재 종목({category.name})에 등록
+              매핑 안 된 선수 ({unmappedCount}명)도 현재 종목({category?.name ?? "미선택"})에 등록
             </label>
           </div>
 
@@ -582,7 +575,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                     <span className="font-medium text-gray-900">{a.name}</span>
                     <span className="text-gray-400 ml-2">{a.phone}</span>
                     {a.grade && <span className="ml-2 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{a.grade}</span>}
-                    {!isMapped && <span className="ml-2 text-yellow-600 text-xs">→ {category.name}</span>}
+                    {!isMapped && category && <span className="ml-2 text-yellow-600 text-xs">→ {category.name}</span>}
                     <div className="flex flex-wrap gap-1 mt-1">
                       {a.divisions.map((d) => (
                         <span key={d} className={`px-1.5 py-0.5 rounded text-xs ${catMap[d] ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>{d}</span>
@@ -601,15 +594,17 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
         </div>
       )}
 
-      {/* 선수 추가 폼 */}
-      <div className="flex gap-2">
-        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="선수 이름 직접 추가" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addContestant()} />
-        <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="연락처" className="w-36 border rounded-lg px-3 py-2 text-sm" />
-        <button onClick={addContestant} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">추가</button>
-      </div>
+      {/* 선수 추가 폼 (종목 선택 시에만) */}
+      {category && (
+        <div className="flex gap-2">
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="선수 이름 직접 추가" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addContestant()} />
+          <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="연락처" className="w-36 border rounded-lg px-3 py-2 text-sm" />
+          <button onClick={addContestant} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">추가</button>
+        </div>
+      )}
 
-      {/* 선수 목록 */}
-      <div className="space-y-3">
+      {/* 선수 목록 (종목 선택 시에만) */}
+      {category && <div className="space-y-3">
         {contestants.map((c) => (
           <div key={c.id} className="bg-white border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
@@ -654,8 +649,12 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
             </div>
           </div>
         ))}
-        {contestants.length === 0 && <p className="text-sm text-gray-400">등록된 선수가 없습니다.</p>}
-      </div>
+          {contestants.length === 0 && <p className="text-sm text-gray-400">등록된 선수가 없습니다.</p>}
+      </div>}
+
+      {!category && !showDataFile && !showImport && (
+        <p className="text-center text-sm text-gray-400 py-4">← 대회·종목 탭에서 종목을 선택하면 선수 목록이 표시됩니다.</p>
+      )}
     </div>
   );
 }
