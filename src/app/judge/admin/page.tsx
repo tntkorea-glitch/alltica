@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 interface Competition { id: string; title: string; description?: string; date_display?: string; status: string; allow_contestant_upload: boolean; }
 interface Category { id: string; competition_id: string; name: string; display_order: number; }
 interface Contestant { id: string; category_id: string; name: string; phone?: string; email?: string; display_order: number; contestant_files?: ContestantFile[]; }
-interface ContestantFile { id: string; contestant_id: string; storage_path: string; file_name: string; file_type: string; }
+interface ContestantFile { id: string; contestant_id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 interface Criterion { id: string; category_id: string; name: string; max_score: number; display_order: number; }
 interface Assignment { id: string; user_id: string; category_id: string; users: { email: string; name?: string; }; }
 interface Award { id: string; category_id: string; award_name: string; count: number | null; display_order: number; }
@@ -131,12 +131,19 @@ function CompetitionsTab({
   );
 }
 
+function getYouTubeId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
 function ContestantsTab({ category, onMsg }: { category: Category | null; onMsg: (m: string) => void }) {
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [ytInputId, setYtInputId] = useState<string | null>(null);
+  const [ytUrl, setYtUrl] = useState("");
 
   const load = useCallback(async () => {
     if (!category) return;
@@ -175,10 +182,19 @@ function ContestantsTab({ category, onMsg }: { category: Category | null; onMsg:
     setUploading(null);
   };
 
-  const deleteFile = async (fileId: string, storagePath: string) => {
+  const deleteFile = async (fileId: string, storagePath: string | null) => {
     if (!confirm("파일을 삭제하시겠습니까?")) return;
     try { await api("/api/judge/files", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: fileId, storage_path: storagePath }) }); await load(); }
     catch (e: unknown) { onMsg((e as Error).message); }
+  };
+
+  const addYouTubeUrl = async (contestantId: string) => {
+    const videoId = getYouTubeId(ytUrl.trim());
+    if (!videoId) { onMsg("유효한 YouTube URL을 입력하세요"); return; }
+    try {
+      await api("/api/judge/files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contestant_id: contestantId, video_url: ytUrl.trim(), file_name: `YouTube_${videoId}`, file_type: "youtube" }) });
+      setYtUrl(""); setYtInputId(null); await load(); onMsg("YouTube URL이 등록됐습니다.");
+    } catch (e: unknown) { onMsg((e as Error).message); }
   };
 
   if (!category) return <p className="text-sm text-gray-400">왼쪽 탭에서 종목을 먼저 선택하세요.</p>;
@@ -205,18 +221,33 @@ function ContestantsTab({ category, onMsg }: { category: Category | null; onMsg:
             <div className="flex flex-wrap gap-2 mb-2">
               {(c.contestant_files ?? []).map((f) => (
                 <div key={f.id} className="flex items-center gap-1 bg-gray-100 rounded-lg px-3 py-1 text-xs">
-                  {f.file_type.startsWith("video") ? "🎬" : "🖼️"}
-                  <span className="text-gray-700 max-w-[160px] truncate">{f.file_name}</span>
-                  <a href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/contestant-files/${f.storage_path}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline ml-1">보기</a>
+                  {f.file_type === "youtube" ? "▶️" : f.file_type.startsWith("video") ? "🎬" : "🖼️"}
+                  <span className="text-gray-700 max-w-[160px] truncate">{f.file_type === "youtube" ? `YouTube: ${getYouTubeId(f.video_url ?? "")}` : f.file_name}</span>
+                  {f.file_type === "youtube" && f.video_url
+                    ? <a href={f.video_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline ml-1">보기</a>
+                    : f.storage_path && <a href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/contestant-files/${f.storage_path}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline ml-1">보기</a>
+                  }
                   <button onClick={() => deleteFile(f.id, f.storage_path)} className="text-red-400 hover:text-red-600 ml-1">×</button>
                 </div>
               ))}
             </div>
 
-            <label className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${uploading === c.id ? "bg-gray-200 text-gray-400" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}>
-              {uploading === c.id ? "업로드 중..." : "+ 파일 추가"}
-              <input type="file" className="hidden" accept="image/*,video/*" disabled={uploading === c.id} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFile(c.id, file); e.target.value = ""; }} />
-            </label>
+            <div className="flex gap-2 flex-wrap">
+              <label className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${uploading === c.id ? "bg-gray-200 text-gray-400" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}>
+                {uploading === c.id ? "업로드 중..." : "+ 이미지/파일"}
+                <input type="file" className="hidden" accept="image/*,video/*" disabled={uploading === c.id} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFile(c.id, file); e.target.value = ""; }} />
+              </label>
+
+              {ytInputId === c.id ? (
+                <div className="flex gap-1 flex-1">
+                  <input autoFocus value={ytUrl} onChange={(e) => setYtUrl(e.target.value)} placeholder="https://youtu.be/... 또는 youtube.com/watch?v=..." className="flex-1 border rounded-lg px-3 py-1.5 text-xs min-w-0" onKeyDown={(e) => { if (e.key === "Enter") addYouTubeUrl(c.id); if (e.key === "Escape") { setYtInputId(null); setYtUrl(""); } }} />
+                  <button onClick={() => addYouTubeUrl(c.id)} className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700">등록</button>
+                  <button onClick={() => { setYtInputId(null); setYtUrl(""); }} className="px-2 py-1.5 text-gray-400 hover:text-gray-600 text-xs">취소</button>
+                </div>
+              ) : (
+                <button onClick={() => { setYtInputId(c.id); setYtUrl(""); }} className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-xs font-medium transition">▶ YouTube URL</button>
+              )}
+            </div>
           </div>
         ))}
         {contestants.length === 0 && <p className="text-sm text-gray-400">등록된 선수가 없습니다.</p>}

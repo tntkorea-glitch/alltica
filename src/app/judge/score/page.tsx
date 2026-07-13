@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 interface Category { id: string; name: string; competition_id: string; }
 interface Competition { id: string; title: string; }
 interface Contestant { id: string; name: string; phone?: string; contestant_files?: ContestantFile[]; }
-interface ContestantFile { id: string; storage_path: string; file_name: string; file_type: string; }
+interface ContestantFile { id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 interface Criterion { id: string; name: string; max_score: number; display_order: number; }
 interface ScoreMap { [contestantId: string]: { [criterionId: string]: { score: string; comment: string } } }
 interface SubmittedSet { [categoryId: string]: boolean }
@@ -18,7 +18,37 @@ const api = async (url: string, opts?: RequestInit) => {
   return res.json();
 };
 
+function getYouTubeId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
 function FileViewer({ file }: { file: ContestantFile }) {
+  // YouTube 임베드
+  if (file.file_type === "youtube" && file.video_url) {
+    const videoId = getYouTubeId(file.video_url);
+    if (videoId) {
+      return (
+        <div className="border rounded-lg overflow-hidden bg-black">
+          <div className="relative" style={{ paddingBottom: "56.25%" }}>
+            <iframe
+              src={`https://www.youtube.com/embed/${videoId}`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="absolute inset-0 w-full h-full"
+              title={file.file_name}
+            />
+          </div>
+        </div>
+      );
+    }
+    return (
+      <a href={file.video_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 text-sm text-red-600 hover:underline border rounded-lg">
+        ▶ YouTube 영상 보기
+      </a>
+    );
+  }
+
   const url = `${SUPABASE_URL}/storage/v1/object/public/contestant-files/${file.storage_path}`;
   const isVideo = file.file_type.startsWith("video");
   const isImage = file.file_type.startsWith("image");
