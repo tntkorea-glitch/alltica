@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { SCALE_LABELS, getScaleForCriterion } from "@/lib/judge-criteria-data";
 
 interface Category { id: string; name: string; competition_id: string; }
 interface Competition { id: string; title: string; }
-interface Contestant { id: string; name: string; phone?: string; contestant_files?: ContestantFile[]; }
+interface Contestant { id: string; name: string; phone?: string; company?: string; grade?: string; number?: number; contestant_files?: ContestantFile[]; }
 interface ContestantFile { id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 interface Criterion { id: string; name: string; max_score: number; display_order: number; }
 interface ScoreMap { [contestantId: string]: { [criterionId: string]: { score: string; comment: string } } }
@@ -75,7 +76,7 @@ function FileViewer({ file }: { file: ContestantFile }) {
 }
 
 function ScoreCard({
-  contestant, criteria, scores, submitted, categoryId,
+  contestant, criteria, scores, submitted, categoryId, categoryName,
   onChange, onSave,
 }: {
   contestant: Contestant;
@@ -83,6 +84,7 @@ function ScoreCard({
   scores: ScoreMap;
   submitted: boolean;
   categoryId: string;
+  categoryName: string;
   onChange: (contestantId: string, criterionId: string, field: "score" | "comment", value: string) => void;
   onSave: (contestantId: string, criterionId: string) => void;
 }) {
@@ -97,48 +99,101 @@ function ScoreCard({
     const v = scores[contestant.id]?.[c.id]?.score;
     return v !== undefined && v !== "";
   });
+  const filledCount = criteria.filter((c) => {
+    const v = scores[contestant.id]?.[c.id]?.score;
+    return v !== undefined && v !== "";
+  }).length;
 
   return (
-    <div className="bg-white border rounded-xl overflow-hidden">
+    <div className={`bg-white border rounded-xl overflow-hidden ${allFilled ? "border-green-300" : ""}`}>
       <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition">
         <div className="flex items-center gap-3">
-          <span className="font-semibold text-gray-900">{contestant.name}</span>
-          {contestant.phone && <span className="text-xs text-gray-400">{contestant.phone}</span>}
-          {allFilled && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">채점완료</span>}
+          {contestant.number && <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{contestant.number}</span>}
+          <div>
+            <span className="font-semibold text-gray-900">{contestant.name}</span>
+            {contestant.company && <span className="text-xs text-gray-400 ml-2">{contestant.company}</span>}
+          </div>
+          {allFilled
+            ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">채점완료</span>
+            : filledCount > 0 && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{filledCount}/{criteria.length}</span>
+          }
         </div>
         <div className="flex items-center gap-4">
           {allFilled && <span className="text-sm font-bold text-blue-600">{totalScore} / {totalMax}점</span>}
-          <span className="text-gray-400">{open ? "▲" : "▼"}</span>
+          <span className="text-gray-400 text-sm">{open ? "▲" : "▼"}</span>
         </div>
       </button>
 
       {open && (
-        <div className="border-t px-5 py-4 space-y-4">
+        <div className="border-t px-5 py-4 space-y-5">
           {/* 파일 뷰어 */}
-          {(contestant.contestant_files ?? []).length > 0 && (
+          {(contestant.contestant_files ?? []).length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(contestant.contestant_files ?? []).map((f) => (
                 <FileViewer key={f.id} file={f} />
               ))}
             </div>
-          )}
-          {(contestant.contestant_files ?? []).length === 0 && (
-            <p className="text-sm text-gray-400">등록된 작품 파일이 없습니다.</p>
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-3 bg-gray-50 rounded-lg">등록된 작품 파일이 없습니다.</p>
           )}
 
           {/* 채점 항목 */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             {criteria.map((c) => {
               const val = scores[contestant.id]?.[c.id] ?? { score: "", comment: "" };
               const scoreNum = parseFloat(val.score);
               const valid = !isNaN(scoreNum) && scoreNum >= 0 && scoreNum <= c.max_score;
+              // 대면/출품 모두 시도해서 scale 찾기
+              const scaleVals =
+                getScaleForCriterion(categoryName, c.name, "출품") ??
+                getScaleForCriterion(categoryName, c.name, "대면");
+
+              const selectScore = (v: number) => {
+                if (submitted) return;
+                onChange(contestant.id, c.id, "score", String(v));
+                setTimeout(() => onSave(contestant.id, c.id), 50);
+              };
+
               return (
-                <div key={c.id} className="space-y-1">
+                <div key={c.id} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-gray-700">{c.name} <span className="text-gray-400 font-normal">/ {c.max_score}점</span></label>
-                    {val.score !== "" && !valid && <span className="text-xs text-red-500">0~{c.max_score} 범위</span>}
+                    <label className="text-sm font-semibold text-gray-700">
+                      {c.name}
+                      <span className="text-gray-400 font-normal ml-1">/ {c.max_score}점</span>
+                    </label>
+                    {val.score !== "" && (
+                      <span className={`text-sm font-bold ${valid ? "text-blue-600" : "text-red-500"}`}>
+                        {valid ? `${val.score}점` : `범위 초과 (0~${c.max_score})`}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex gap-2">
+
+                  {scaleVals ? (
+                    /* 5단계 버튼 */
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {scaleVals.map((v, i) => {
+                        const selected = val.score === String(v);
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => selectScore(v)}
+                            disabled={submitted}
+                            className={`flex flex-col items-center py-2 px-1 rounded-lg border text-center transition text-xs leading-tight
+                              ${selected
+                                ? "bg-blue-600 border-blue-600 text-white font-bold"
+                                : submitted
+                                  ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
+                                  : "bg-white border-gray-200 text-gray-600 hover:border-blue-400 hover:bg-blue-50"
+                              }`}
+                          >
+                            <span className="font-bold text-sm">{v}</span>
+                            <span className={`mt-0.5 ${selected ? "text-blue-100" : "text-gray-400"}`} style={{ fontSize: "0.65rem" }}>{SCALE_LABELS[i]}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* fallback: 숫자 입력 */
                     <input
                       type="number"
                       min={0}
@@ -147,19 +202,20 @@ function ScoreCard({
                       disabled={submitted}
                       onChange={(e) => onChange(contestant.id, c.id, "score", e.target.value)}
                       onBlur={() => valid && onSave(contestant.id, c.id)}
-                      className={`w-24 border rounded-lg px-3 py-2 text-sm ${submitted ? "bg-gray-50 text-gray-400" : "focus:border-blue-400 focus:outline-none"}`}
-                      placeholder="점수"
+                      className={`w-32 border rounded-lg px-3 py-2 text-sm ${submitted ? "bg-gray-50 text-gray-400" : "focus:border-blue-400 focus:outline-none"}`}
+                      placeholder={`0 ~ ${c.max_score}`}
                     />
-                    <input
-                      type="text"
-                      value={val.comment}
-                      disabled={submitted}
-                      onChange={(e) => onChange(contestant.id, c.id, "comment", e.target.value)}
-                      onBlur={() => onSave(contestant.id, c.id)}
-                      className={`flex-1 border rounded-lg px-3 py-2 text-sm ${submitted ? "bg-gray-50 text-gray-400" : "focus:border-blue-400 focus:outline-none"}`}
-                      placeholder="코멘트 (선택)"
-                    />
-                  </div>
+                  )}
+
+                  <input
+                    type="text"
+                    value={val.comment}
+                    disabled={submitted}
+                    onChange={(e) => onChange(contestant.id, c.id, "comment", e.target.value)}
+                    onBlur={() => onSave(contestant.id, c.id)}
+                    className={`w-full border rounded-lg px-3 py-2 text-sm ${submitted ? "bg-gray-50 text-gray-400" : "focus:border-blue-400 focus:outline-none"}`}
+                    placeholder="코멘트 (선택)"
+                  />
                 </div>
               );
             })}
@@ -181,6 +237,13 @@ export default function JudgeScorePage() {
   const [msg, setMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const saveTimers = useRef<{ [key: string]: ReturnType<typeof setTimeout> }>({});
+  const scoresRef = useRef<ScoreMap>({});
+  const criteriaRef = useRef<Criterion[]>([]);
+  const selectedCategoryIdRef = useRef<string | null>(null);
+
+  useEffect(() => { scoresRef.current = scores; }, [scores]);
+  useEffect(() => { criteriaRef.current = criteria; }, [criteria]);
+  useEffect(() => { selectedCategoryIdRef.current = selectedCategoryId; }, [selectedCategoryId]);
 
   // 내 배정 목록 로드
   useEffect(() => {
@@ -233,20 +296,21 @@ export default function JudgeScorePage() {
   };
 
   const handleSave = useCallback(async (contestantId: string, criterionId: string) => {
-    if (!selectedCategoryId) return;
     const key = `${contestantId}_${criterionId}`;
     clearTimeout(saveTimers.current[key]);
     saveTimers.current[key] = setTimeout(async () => {
-      const val = scores[contestantId]?.[criterionId];
+      const categoryId = selectedCategoryIdRef.current;
+      if (!categoryId) return;
+      const val = scoresRef.current[contestantId]?.[criterionId];
       if (!val || val.score === "") return;
       const scoreNum = parseFloat(val.score);
-      const criterion = criteria.find((c) => c.id === criterionId);
+      const criterion = criteriaRef.current.find((c) => c.id === criterionId);
       if (!criterion || isNaN(scoreNum) || scoreNum < 0 || scoreNum > criterion.max_score) return;
       try {
-        await api("/api/judge/scores", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contestant_id: contestantId, criterion_id: criterionId, score: scoreNum, comment: val.comment, category_id: selectedCategoryId }) });
+        await api("/api/judge/scores", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contestant_id: contestantId, criterion_id: criterionId, score: scoreNum, comment: val.comment, category_id: categoryId }) });
       } catch (e: unknown) { setMsg((e as Error).message); }
     }, 600);
-  }, [selectedCategoryId, scores, criteria]);
+  }, []);
 
   const handleSubmit = async () => {
     if (!selectedCategoryId) return;
@@ -307,6 +371,7 @@ export default function JudgeScorePage() {
               scores={scores}
               submitted={isSubmitted}
               categoryId={selectedCategoryId ?? ""}
+              categoryName={selectedAssignment?.category.name ?? ""}
               onChange={handleChange}
               onSave={handleSave}
             />

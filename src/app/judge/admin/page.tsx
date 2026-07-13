@@ -970,6 +970,8 @@ function CriteriaTab({ category, onMsg }: { category: Category | null; onMsg: (m
   const [newName, setNewName] = useState("");
   const [newMax, setNewMax] = useState("100");
   const [loading, setLoading] = useState(false);
+  const [seedType, setSeedType] = useState<"출품" | "대면">("출품");
+  const [seeding, setSeeding] = useState(false);
 
   const load = useCallback(async () => {
     if (!category) return;
@@ -978,6 +980,18 @@ function CriteriaTab({ category, onMsg }: { category: Category | null; onMsg: (m
   }, [category]);
 
   useEffect(() => { load(); }, [load]);
+
+  const seedCriteria = async () => {
+    if (!category) return;
+    if (criteria.length > 0 && !confirm(`기존 채점 항목 ${criteria.length}개를 삭제하고 "${category.name}"의 ${seedType} 기준으로 새로 등록합니다. 계속하시겠습니까?`)) return;
+    setSeeding(true);
+    try {
+      const res = await api("/api/judge/criteria/seed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category_id: category.id, competition_type: seedType }) });
+      onMsg(`✅ "${res.category_name}" ${seedType} 기준 ${res.inserted}개 항목 등록 완료 (총 ${res.total}점)`);
+      await load();
+    } catch (e: unknown) { onMsg((e as Error).message); }
+    setSeeding(false);
+  };
 
   const addCriterion = async () => {
     if (!category || !newName.trim()) return;
@@ -998,6 +1012,22 @@ function CriteriaTab({ category, onMsg }: { category: Category | null; onMsg: (m
 
   return (
     <div className="space-y-4">
+      {/* 자동 설정 */}
+      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+        <p className="text-sm font-semibold text-indigo-800 mb-3">자동 설정 — IBC 심사기준표 기반</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex rounded-lg border border-indigo-300 overflow-hidden">
+            {(["출품", "대면"] as const).map((t) => (
+              <button key={t} onClick={() => setSeedType(t)} className={`px-4 py-1.5 text-sm font-medium transition ${seedType === t ? "bg-indigo-600 text-white" : "bg-white text-indigo-700 hover:bg-indigo-50"}`}>{t}대회</button>
+            ))}
+          </div>
+          <button onClick={seedCriteria} disabled={seeding} className="px-5 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
+            {seeding ? "등록 중..." : `"${category.name}" 자동 설정`}
+          </button>
+          <span className="text-xs text-indigo-500">기존 항목을 모두 교체합니다</span>
+        </div>
+      </div>
+
       {criteria.length > 0 && <div className="bg-blue-50 rounded-lg px-4 py-2 text-sm text-blue-700">총 배점: <strong>{total}점</strong></div>}
       <div className="space-y-2">
         {criteria.map((c) => (
@@ -1009,10 +1039,10 @@ function CriteriaTab({ category, onMsg }: { category: Category | null; onMsg: (m
             </div>
           </div>
         ))}
-        {criteria.length === 0 && <p className="text-sm text-gray-400">등록된 채점 항목이 없습니다.</p>}
+        {criteria.length === 0 && <p className="text-sm text-gray-400">등록된 채점 항목이 없습니다. 위 자동 설정을 사용하거나 직접 추가하세요.</p>}
       </div>
       <div className="flex gap-2">
-        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="항목명 (예: 기술력)" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addCriterion()} />
+        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="항목명 직접 추가 (예: 기술력)" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addCriterion()} />
         <input value={newMax} onChange={(e) => setNewMax(e.target.value)} type="number" min="1" placeholder="배점" className="w-20 border rounded-lg px-3 py-2 text-sm" />
         <button onClick={addCriterion} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">추가</button>
       </div>
