@@ -128,26 +128,83 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabaseAdmin();
 
   if (action === "athletes") {
-    const { category_map, athletes } = body as {
+    const { category_map, athletes, fallback_category_id } = body as {
       category_map: Record<string, string>;
-      athletes: Array<{ name: string; phone: string; email: string; divisions: string[] }>;
+      fallback_category_id?: string;
+      athletes: Array<{ name: string; phone: string; email: string; divisions: string[]; company?: string; grade?: string }>;
     };
 
-    const inserts: Array<{ category_id: string; name: string; phone: string; email: string; display_order: number }> = [];
-    let order = 0;
+    // 카테고리별 현재 최대 번호 조회
+    const catIds = [...new Set([...Object.values(category_map), fallback_category_id].filter(Boolean))] as string[];
+    const catCounters: Record<string, number> = {};
+    for (const catId of catIds) {
+      const { count } = await supabase.from("contestants").select("*", { count: "exact", head: true }).eq("category_id", catId);
+      catCounters[catId] = count ?? 0;
+    }
+
+    const inserts: Array<{ category_id: string; name: string; phone: string; email: string; display_order: number; number: number; company?: string; grade?: string }> = [];
+
     for (const athlete of athletes) {
-      for (const division of athlete.divisions) {
-        const categoryId = category_map[division];
-        if (!categoryId) continue;
-        inserts.push({ category_id: categoryId, name: athlete.name, phone: athlete.phone, email: athlete.email, display_order: order++ });
+      const mapped = athlete.divisions.map((d) => category_map[d]).filter(Boolean);
+      const targets = mapped.length > 0 ? mapped : (fallback_category_id ? [fallback_category_id] : []);
+
+      for (const categoryId of targets) {
+        catCounters[categoryId] = (catCounters[categoryId] ?? 0) + 1;
+        inserts.push({
+          category_id: categoryId,
+          name: athlete.name,
+          phone: athlete.phone,
+          email: athlete.email,
+          company: athlete.company,
+          grade: athlete.grade,
+          display_order: catCounters[categoryId],
+          number: catCounters[categoryId],
+        });
       }
     }
 
-    if (inserts.length === 0) return NextResponse.json({ error: "등록할 선수가 없습니다 (종목 매핑 확인)" }, { status: 400 });
+    if (inserts.length === 0) return NextResponse.json({ error: "등록할 선수가 없습니다 (종목 매핑 또는 현재 종목 선택 확인)" }, { status: 400 });
 
     const { data, error } = await supabase.from("contestants").insert(inserts).select();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ inserted: data?.length ?? 0 }, { status: 201 });
+  }
+
+  // 단체접수 엑셀 행 직접 등록 (1행 = 1종목 참가, IBC 서식)
+  if (action === "excel-rows") {
+    const { rows, category_map, fallback_category_id } = body as {
+      rows: Array<{ name: string; phone: string; company: string; grade: string; division: string }>;
+      category_map: Record<string, string>;
+      fallback_category_id?: string;
+    };
+
+    const catCounters: Record<string, number> = {};
+    const inserts: Array<{ category_id: string; name: string; phone: string; display_order: number; number: number; company?: string; grade?: string }> = [];
+    let skipped = 0;
+
+    for (const row of rows) {
+      const categoryId = category_map[row.division] ?? fallback_category_id;
+      if (!categoryId) { skipped++; continue; }
+      if (!catCounters[categoryId]) {
+        const { count } = await supabase.from("contestants").select("*", { count: "exact", head: true }).eq("category_id", categoryId);
+        catCounters[categoryId] = count ?? 0;
+      }
+      catCounters[categoryId]++;
+      inserts.push({
+        category_id: categoryId,
+        name: row.name,
+        phone: row.phone,
+        company: row.company,
+        grade: row.grade,
+        display_order: catCounters[categoryId],
+        number: catCounters[categoryId],
+      });
+    }
+
+    if (inserts.length === 0) return NextResponse.json({ error: "등록할 선수가 없습니다" }, { status: 400 });
+    const { data, error } = await supabase.from("contestants").insert(inserts).select();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ inserted: data?.length ?? 0, skipped });
   }
 
   if (action === "judges") {

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 // ─── Types ───────────────────────────────────────────────────
 interface Competition { id: string; title: string; description?: string; date_display?: string; status: string; contest_slug?: string; }
 interface Category { id: string; competition_id: string; name: string; display_order: number; }
-interface Contestant { id: string; category_id: string; name: string; phone?: string; email?: string; display_order: number; contestant_files?: ContestantFile[]; }
+interface Contestant { id: string; category_id: string; name: string; phone?: string; email?: string; company?: string; grade?: string; number?: number; display_order: number; contestant_files?: ContestantFile[]; }
 interface ContestantFile { id: string; contestant_id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 interface Criterion { id: string; category_id: string; name: string; max_score: number; display_order: number; }
 interface Assignment { id: string; user_id: string; category_id: string; title?: string; users: { email: string; name?: string; }; }
@@ -296,12 +296,68 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
     } catch (e: unknown) { onMsg((e as Error).message); }
   };
 
+  // data-file 폴더 불러오기
+  const [dataFiles, setDataFiles] = useState<Array<{ filename: string; rows: Array<{ name: string; phone: string; company: string; grade: string; mainCategory: string; division: string }>; divisions: string[] }>>([]);
+  const [showDataFile, setShowDataFile] = useState(false);
+  const [dataFileCatMap, setDataFileCatMap] = useState<Record<string, string>>({});
+  const [fallbackToCurrent, setFallbackToCurrent] = useState(true);
+
+  const loadDataFiles = async () => {
+    try {
+      const data = await api("/api/judge/import-excel");
+      setDataFiles(data.files);
+      // 자동 매핑
+      const allDivs = [...new Set(data.files.flatMap((f: { divisions: string[] }) => f.divisions))];
+      const map: Record<string, string> = {};
+      for (const div of allDivs as string[]) {
+        const matched = categories.find((c) => c.name === div || div.includes(c.name) || c.name.includes(div.split("(")[0]));
+        if (matched) map[div] = matched.id;
+      }
+      setDataFileCatMap(map);
+      setShowDataFile(true);
+    } catch (e: unknown) { onMsg((e as Error).message); }
+  };
+
+  const bulkImportDataFiles = async () => {
+    const allRows = dataFiles.flatMap((f) => f.rows);
+    if (allRows.length === 0) { onMsg("불러올 선수가 없습니다."); return; }
+    setLoading(true);
+    try {
+      const result = await api("/api/judge/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "excel-rows",
+          rows: allRows,
+          category_map: dataFileCatMap,
+          fallback_category_id: fallbackToCurrent && category ? category.id : undefined,
+        }),
+      });
+      onMsg(`단체접수 파일에서 선수 ${result.inserted}명 등록 완료${result.skipped > 0 ? ` (${result.skipped}건 종목 미매핑 제외)` : ""}`);
+      setShowDataFile(false);
+      await load();
+    } catch (e: unknown) { onMsg((e as Error).message); }
+    setLoading(false);
+  };
+
   const bulkImport = async () => {
     const selected = importAthletes.filter((a) => selectedAthletes.has(a.id));
     if (selected.length === 0) { onMsg("선택된 선수가 없습니다."); return; }
+    // 매핑된 선수 / 미매핑 선수 분리해서 미리 보여주기
+    const willRegister = selected.filter((a) => a.divisions.some((d) => catMap[d]) || (fallbackToCurrent && category));
+    if (willRegister.length === 0) { onMsg("등록될 선수가 없습니다. 종목 매핑을 확인하거나 '미매핑 → 현재 종목' 옵션을 켜세요."); return; }
     setLoading(true);
     try {
-      const result = await api("/api/judge/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "athletes", category_map: catMap, athletes: selected }) });
+      const result = await api("/api/judge/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "athletes",
+          category_map: catMap,
+          fallback_category_id: fallbackToCurrent && category ? category.id : undefined,
+          athletes: selected,
+        }),
+      });
       onMsg(`선수 ${result.inserted}명 등록 완료`);
       setShowImport(false);
       await load();
@@ -309,37 +365,57 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
     setLoading(false);
   };
 
-  // 엑셀 업로드
+  // 엑셀 업로드 (IBC 서식 자동 감지)
   const handleExcel = async (file: File) => {
     setLoading(true);
     try {
       const XLSX = await import("xlsx");
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws);
+      const sheetName = wb.SheetNames.find((n) => n.includes("선수")) ?? wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rawRows = XLSX.utils.sheet_to_json<(string | number)[]>(ws, { defval: "", header: 1 });
 
-      if (rows.length === 0) { onMsg("엑셀 데이터가 없습니다."); setLoading(false); return; }
+      // IBC 서식 감지: row[9][0]이 숫자(순번)인지 확인
+      const isIBCFormat = rawRows.length > 10 && typeof rawRows[10]?.[0] === "number";
 
-      // 헤더 자동 감지: 이름/name, 연락처/phone, 종목/division
-      const nameKey = Object.keys(rows[0]).find((k) => /이름|name/i.test(k)) ?? "";
-      const phoneKey = Object.keys(rows[0]).find((k) => /연락처|phone|tel/i.test(k)) ?? "";
-      const divKey = Object.keys(rows[0]).find((k) => /종목|division|부문/i.test(k)) ?? "";
-
-      if (!nameKey) { onMsg("엑셀에서 이름 컬럼을 찾을 수 없습니다."); setLoading(false); return; }
-
-      // category가 선택된 경우 그 카테고리로만 등록
-      const inserts = rows.map((row, i) => ({
-        category_id: category!.id,
-        name: String(row[nameKey] ?? "").trim(),
-        phone: phoneKey ? String(row[phoneKey] ?? "").trim() : "",
-        display_order: contestants.length + i,
-      })).filter((r) => r.name);
-
-      for (const item of inserts) {
-        await api("/api/judge/contestants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(item) });
+      if (isIBCFormat) {
+        // IBC 단체접수 서식
+        const excelRows: Array<{ name: string; phone: string; company: string; grade: string; division: string }> = [];
+        for (let i = 10; i < rawRows.length; i++) {
+          const row = rawRows[i];
+          if (!row[0] || isNaN(Number(row[0]))) continue;
+          const name = String(row[1] ?? "").trim();
+          const division = String(row[10] ?? "").trim();
+          if (!name || !division) continue;
+          excelRows.push({ name, phone: String(row[5] ?? "").trim(), company: String(row[2] ?? "").trim(), grade: String(row[8] ?? "").trim(), division });
+        }
+        const divs = [...new Set(excelRows.map((r) => r.division))];
+        const map: Record<string, string> = {};
+        for (const div of divs) {
+          const matched = categories.find((c) => c.name === div || div.includes(c.name));
+          if (matched) map[div] = matched.id;
+        }
+        const result = await api("/api/judge/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "excel-rows", rows: excelRows, category_map: map, fallback_category_id: category?.id }),
+        });
+        onMsg(`IBC 서식에서 선수 ${result.inserted}명 등록 완료`);
+      } else {
+        // 일반 서식
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws);
+        if (rows.length === 0) { onMsg("엑셀 데이터가 없습니다."); setLoading(false); return; }
+        const nameKey = Object.keys(rows[0]).find((k) => /이름|name/i.test(k)) ?? "";
+        const phoneKey = Object.keys(rows[0]).find((k) => /연락처|phone|tel/i.test(k)) ?? "";
+        if (!nameKey) { onMsg("엑셀에서 이름 컬럼을 찾을 수 없습니다."); setLoading(false); return; }
+        for (const row of rows) {
+          const name = String(row[nameKey] ?? "").trim();
+          if (!name) continue;
+          await api("/api/judge/contestants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category_id: category!.id, name, phone: phoneKey ? String(row[phoneKey] ?? "") : "" }) });
+        }
+        onMsg(`엑셀에서 선수 ${rows.filter((r) => r[nameKey]).length}명 등록 완료`);
       }
-      onMsg(`엑셀에서 선수 ${inserts.length}명 등록 완료`);
       await load();
     } catch (e: unknown) { onMsg((e as Error).message); }
     setLoading(false);
@@ -389,15 +465,14 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   };
 
   if (!category) return (
-    <div className="text-center py-8">
-      <p className="text-sm text-gray-400 mb-2">종목을 먼저 선택하세요.</p>
-      {competition?.contest_slug && (
-        <button onClick={loadImportAthletes} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
-          📋 신청서에서 선수 전체 불러오기 (종목별 매핑)
-        </button>
-      )}
+    <div className="text-center py-8 space-y-2">
+      <p className="text-sm text-gray-400">종목을 먼저 선택하세요.</p>
+      <button onClick={loadDataFiles} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">📁 단체접수 파일에서 불러오기</button>
     </div>
   );
+
+  // 미매핑 선수 수 계산
+  const unmappedCount = importAthletes.filter((a) => selectedAthletes.has(a.id) && !a.divisions.some((d) => catMap[d])).length;
 
   return (
     <div className="space-y-4">
@@ -408,23 +483,72 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
             📋 신청서에서 불러오기
           </button>
         )}
+        <button onClick={loadDataFiles} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">
+          📁 단체접수 파일
+        </button>
         <label className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 cursor-pointer">
-          📊 엑셀 파일 업로드
+          📊 엑셀 업로드
           <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleExcel(f); e.target.value = ""; }} />
         </label>
       </div>
+
+      {/* data-file 폴더 Import UI */}
+      {showDataFile && (
+        <div className="border border-purple-200 rounded-xl bg-purple-50 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-purple-800">단체접수 파일 ({dataFiles.length}개 / 총 {dataFiles.reduce((s, f) => s + f.rows.length, 0)}행)</p>
+            <button onClick={() => setShowDataFile(false)} className="text-xs text-gray-400 hover:text-gray-600">닫기</button>
+          </div>
+
+          {/* 종목 매핑 */}
+          <div className="mb-3 bg-white rounded-lg p-3 space-y-2">
+            <p className="text-xs font-medium text-gray-700">세부종목 → 등록 종목 매핑:</p>
+            {[...new Set(dataFiles.flatMap((f) => f.divisions))].sort().map((div) => (
+              <div key={div} className="flex items-center gap-2 text-xs">
+                <span className="flex-1 text-gray-700 truncate">{div}</span>
+                <span className="text-gray-400">→</span>
+                <select value={dataFileCatMap[div] ?? ""} onChange={(e) => setDataFileCatMap((m) => ({ ...m, [div]: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                  <option value="">등록 안 함</option>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          <label className="flex items-center gap-2 text-xs text-purple-800 mb-3 cursor-pointer">
+            <input type="checkbox" checked={fallbackToCurrent} onChange={(e) => setFallbackToCurrent(e.target.checked)} className="accent-purple-600" />
+            매핑 안 된 종목도 현재 선택 종목({category.name})에 등록
+          </label>
+
+          {dataFiles.map((f) => (
+            <div key={f.filename} className="mb-2 text-xs bg-white rounded-lg px-3 py-2 border">
+              <span className="font-medium text-gray-800">{f.filename}</span>
+              <span className="text-gray-400 ml-2">{f.rows.length}명</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {f.rows.slice(0, 5).map((r, i) => <span key={i} className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">{r.name}</span>)}
+                {f.rows.length > 5 && <span className="text-gray-400">+{f.rows.length - 5}명</span>}
+              </div>
+            </div>
+          ))}
+
+          <button onClick={bulkImportDataFiles} disabled={loading}
+            className="w-full py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 mt-2">
+            {loading ? "등록 중..." : `전체 ${dataFiles.reduce((s, f) => s + f.rows.length, 0)}행 등록`}
+          </button>
+        </div>
+      )}
 
       {/* 신청서 Import UI */}
       {showImport && (
         <div className="border border-green-200 rounded-xl bg-green-50 p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-green-800">신청서 선수 목록 ({importAthletes.length}명) — 종목 매핑 후 등록</p>
+            <p className="text-sm font-semibold text-green-800">신청서 선수 목록 ({importAthletes.length}명)</p>
             <button onClick={() => setShowImport(false)} className="text-xs text-gray-400 hover:text-gray-600">닫기</button>
           </div>
 
           {/* 종목 매핑 */}
-          <div className="mb-4 bg-white rounded-lg p-3 space-y-2">
-            <p className="text-xs font-medium text-gray-700 mb-2">종목 매핑 (신청 종목 → 등록된 종목):</p>
+          <div className="mb-3 bg-white rounded-lg p-3 space-y-2">
+            <p className="text-xs font-medium text-gray-700">신청 종목 → 등록된 종목 매핑:</p>
             {allDivisions.map((div) => (
               <div key={div} className="flex items-center gap-2 text-xs">
                 <span className="flex-1 text-gray-700 truncate">{div}</span>
@@ -435,6 +559,10 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                 </select>
               </div>
             ))}
+            <label className="flex items-center gap-2 text-xs text-green-800 cursor-pointer mt-2">
+              <input type="checkbox" checked={fallbackToCurrent} onChange={(e) => setFallbackToCurrent(e.target.checked)} className="accent-green-600" />
+              매핑 안 된 선수 ({unmappedCount}명)도 현재 종목({category.name})에 등록
+            </label>
           </div>
 
           {/* 선수 목록 */}
@@ -442,24 +570,28 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
             <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
               <input type="checkbox" checked={selectedAthletes.size === importAthletes.length}
                 onChange={(e) => setSelectedAthletes(e.target.checked ? new Set(importAthletes.map((a) => a.id)) : new Set())} />
-              전체 선택
+              전체 선택 ({importAthletes.length}명)
             </div>
-            {importAthletes.map((a) => (
-              <div key={a.id} className={`flex items-start gap-2 bg-white rounded-lg px-3 py-2 text-xs border ${selectedAthletes.has(a.id) ? "border-green-300" : "border-gray-200"}`}>
-                <input type="checkbox" className="mt-0.5" checked={selectedAthletes.has(a.id)}
-                  onChange={(e) => { const s = new Set(selectedAthletes); e.target.checked ? s.add(a.id) : s.delete(a.id); setSelectedAthletes(s); }} />
-                <div className="flex-1 min-w-0">
-                  <span className="font-medium text-gray-900">{a.name}</span>
-                  <span className="text-gray-400 ml-2">{a.phone}</span>
-                  {a.grade && <span className="ml-2 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{a.grade}</span>}
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {a.divisions.map((d) => (
-                      <span key={d} className={`px-1.5 py-0.5 rounded text-xs ${catMap[d] ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{d}</span>
-                    ))}
+            {importAthletes.map((a) => {
+              const isMapped = a.divisions.some((d) => catMap[d]);
+              return (
+                <div key={a.id} className={`flex items-start gap-2 bg-white rounded-lg px-3 py-2 text-xs border ${selectedAthletes.has(a.id) ? (isMapped ? "border-green-300" : "border-yellow-300") : "border-gray-200"}`}>
+                  <input type="checkbox" className="mt-0.5" checked={selectedAthletes.has(a.id)}
+                    onChange={(e) => { const s = new Set(selectedAthletes); e.target.checked ? s.add(a.id) : s.delete(a.id); setSelectedAthletes(s); }} />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-gray-900">{a.name}</span>
+                    <span className="text-gray-400 ml-2">{a.phone}</span>
+                    {a.grade && <span className="ml-2 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{a.grade}</span>}
+                    {!isMapped && <span className="ml-2 text-yellow-600 text-xs">→ {category.name}</span>}
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {a.divisions.map((d) => (
+                        <span key={d} className={`px-1.5 py-0.5 rounded text-xs ${catMap[d] ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>{d}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <button onClick={bulkImport} disabled={loading || selectedAthletes.size === 0}
@@ -481,9 +613,12 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
         {contestants.map((c) => (
           <div key={c.id} className="bg-white border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <div>
+              <div className="flex items-center gap-2">
+                {c.number && <span className="text-xs font-bold text-white bg-blue-500 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">{c.number}</span>}
                 <span className="font-semibold text-gray-900">{c.name}</span>
-                {c.phone && <span className="text-xs text-gray-400 ml-2">{c.phone}</span>}
+                {c.company && <span className="text-xs text-gray-500">{c.company}</span>}
+                {c.phone && <span className="text-xs text-gray-400">{c.phone}</span>}
+                {c.grade && <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{c.grade}</span>}
               </div>
               <button onClick={() => deleteContestant(c.id)} className="text-xs text-red-400 hover:text-red-600">삭제</button>
             </div>
@@ -526,23 +661,29 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
 }
 
 // ─── JudgesTab ────────────────────────────────────────────────
-function JudgesTab({ category, competition, categories, onMsg }: { category: Category | null; competition: Competition | null; categories: Category[]; onMsg: (m: string) => void }) {
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+function JudgesTab({ competition, categories, onMsg }: { category: Category | null; competition: Competition | null; categories: Category[]; onMsg: (m: string) => void }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // 신청서 import
   const [importJudges, setImportJudges] = useState<ImportJudge[]>([]);
   const [showImport, setShowImport] = useState(false);
+  // { judgeId → { paid, categoryId, title } }
   const [judgeConfig, setJudgeConfig] = useState<Record<string, { paid: boolean; categoryId: string; title: string }>>({});
+  // 배정 완료된 심사위원 목록 (전체 카테고리)
+  const [allAssignments, setAllAssignments] = useState<(Assignment & { category_name?: string })[]>([]);
 
-  const load = useCallback(async () => {
-    if (!category) return;
-    try { const data = await api(`/api/judge/assignments?category_id=${category.id}`); setAssignments(data); }
-    catch { /* ignore */ }
-  }, [category]);
+  const loadAssignments = useCallback(async () => {
+    // 모든 카테고리의 배정 목록 합산
+    const results: (Assignment & { category_name?: string })[] = [];
+    for (const cat of categories) {
+      try {
+        const data = await api(`/api/judge/assignments?category_id=${cat.id}`);
+        results.push(...data.map((a: Assignment) => ({ ...a, category_name: cat.name })));
+      } catch { /* ignore */ }
+    }
+    setAllAssignments(results);
+  }, [categories]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (categories.length > 0) loadAssignments(); }, [loadAssignments, categories]);
 
   const loadImportJudges = async () => {
     if (!competition?.contest_slug) { onMsg("신청서와 연결된 대회가 아닙니다."); return; }
@@ -551,140 +692,154 @@ function JudgesTab({ category, competition, categories, onMsg }: { category: Cat
       setImportJudges(data.judges);
       const config: Record<string, { paid: boolean; categoryId: string; title: string }> = {};
       for (const j of data.judges as ImportJudge[]) {
-        // 기본 종목 매핑: 첫 번째 심사종목과 이름이 일치하는 카테고리
         const firstCat = j.categories[0] ?? "";
-        const matched = categories.find((c) => c.name === firstCat || firstCat.startsWith(c.name));
-        config[j.id] = { paid: false, categoryId: matched?.id ?? "", title: "심사위원" };
+        const matched = categories.find((c) => c.name === firstCat || firstCat.startsWith(c.name) || c.name.startsWith(firstCat.split("(")[0]));
+        config[j.id] = { paid: false, categoryId: matched?.id ?? (categories[0]?.id ?? ""), title: j.title || "심사위원" };
       }
       setJudgeConfig(config);
       setShowImport(true);
     } catch (e: unknown) { onMsg((e as Error).message); }
   };
 
+  const setPaid = (id: string, paid: boolean) =>
+    setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], paid } }));
+  const setCfg = (id: string, field: "categoryId" | "title", val: string) =>
+    setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
+
   const bulkAssign = async () => {
     const toAssign = importJudges.filter((j) => judgeConfig[j.id]?.paid && judgeConfig[j.id]?.categoryId);
     if (toAssign.length === 0) { onMsg("입금 확인 + 종목 선택된 심사위원이 없습니다."); return; }
     setLoading(true);
     try {
-      const assignments = toAssign.map((j) => ({ email: j.email, category_id: judgeConfig[j.id].categoryId, title: judgeConfig[j.id].title }));
-      const result = await api("/api/judge/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "judges", assignments }) });
-      const errMsg = result.errors?.length > 0 ? ` (미등록: ${result.errors.join(", ")})` : "";
+      const list = toAssign.map((j) => ({ email: j.email, category_id: judgeConfig[j.id].categoryId, title: judgeConfig[j.id].title }));
+      const result = await api("/api/judge/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "judges", assignments: list }) });
+      const errMsg = result.errors?.length > 0 ? ` (미배정: ${result.errors.length}명)` : "";
       onMsg(`심사위원 ${result.inserted}명 배정 완료${errMsg}`);
       setShowImport(false);
-      await load();
+      await loadAssignments();
     } catch (e: unknown) { onMsg((e as Error).message); }
     setLoading(false);
   };
 
-  const addJudge = async () => {
-    if (!category || !email.trim()) return;
+  const addJudgeDirect = async () => {
+    if (!email.trim() || categories.length === 0) return;
     setLoading(true);
-    try { await api("/api/judge/assignments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim(), category_id: category.id }) }); setEmail(""); await load(); }
-    catch (e: unknown) { onMsg((e as Error).message); }
+    try {
+      await api("/api/judge/assignments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim(), category_id: categories[0].id }) });
+      setEmail(""); await loadAssignments();
+    } catch (e: unknown) { onMsg((e as Error).message); }
     setLoading(false);
   };
 
   const removeJudge = async (id: string) => {
-    try { await api("/api/judge/assignments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }); await load(); }
+    try { await api("/api/judge/assignments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }); await loadAssignments(); }
     catch (e: unknown) { onMsg((e as Error).message); }
   };
 
-  if (!category) return (
-    <div className="text-center py-8">
-      <p className="text-sm text-gray-400 mb-2">종목을 선택하거나 신청서에서 전체 불러오기</p>
-      {competition?.contest_slug && (
-        <button onClick={loadImportJudges} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">📋 심사위원 신청서 불러오기</button>
-      )}
-    </div>
-  );
+  const paidCount = Object.values(judgeConfig).filter((c) => c.paid).length;
 
   return (
     <div className="space-y-4">
       {competition?.contest_slug && (
-        <button onClick={loadImportJudges} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">📋 신청서에서 불러오기</button>
+        <button onClick={loadImportJudges} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
+          📋 신청서에서 불러오기
+        </button>
       )}
 
-      {/* 신청서 Import UI */}
+      {/* 신청서 Import UI — 결제 확인 우선 흐름 */}
       {showImport && (
         <div className="border border-green-200 rounded-xl bg-green-50 p-4">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-semibold text-green-800">심사위원 신청서 목록 ({importJudges.length}명)</p>
             <button onClick={() => setShowImport(false)} className="text-xs text-gray-400 hover:text-gray-600">닫기</button>
           </div>
-          <p className="text-xs text-gray-500 mb-3">입금 확인 후 ✓ 체크 → 종목·직책 선택 → 일괄 배정</p>
+          <p className="text-xs text-gray-500 mb-4">오른쪽 <strong>입금 확인</strong> 체크 → 종목·직책 선택 → 일괄 배정</p>
 
-          <div className="space-y-2 mb-4 max-h-96 overflow-y-auto">
+          <div className="space-y-2 mb-4 max-h-[480px] overflow-y-auto pr-1">
             {importJudges.map((j) => {
               const cfg = judgeConfig[j.id] ?? { paid: false, categoryId: "", title: "심사위원" };
               return (
-                <div key={j.id} className={`bg-white rounded-xl border p-3 ${cfg.paid ? "border-green-300" : "border-gray-200"}`}>
-                  <div className="flex items-start gap-3">
-                    <input type="checkbox" className="mt-1 w-4 h-4 accent-green-600" checked={cfg.paid}
-                      onChange={(e) => setJudgeConfig((prev) => ({ ...prev, [j.id]: { ...cfg, paid: e.target.checked } }))} />
+                <div key={j.id} className={`bg-white rounded-xl border transition ${cfg.paid ? "border-green-400 shadow-sm" : "border-gray-200"}`}>
+                  <div className="flex items-start gap-3 p-3">
+                    {/* 좌: 심사위원 정보 */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-gray-900">{j.name}</span>
                         <span className="text-xs text-gray-400">{j.phone}</span>
                         <span className="text-xs text-gray-400">{j.email}</span>
                         {j.title && <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{j.title}</span>}
                       </div>
                       {j.categories.length > 0 && (
-                        <div className="flex gap-1 flex-wrap mb-1">
+                        <div className="flex gap-1 flex-wrap mt-1">
                           {j.categories.map((c) => <span key={c} className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{c}</span>)}
                         </div>
                       )}
-                      {j.career && <p className="text-xs text-gray-400 truncate">{j.career}</p>}
+                      {j.career && <p className="text-xs text-gray-400 mt-1 line-clamp-1">{j.career}</p>}
+
+                      {/* 입금 확인 시에만 배정 옵션 표시 */}
                       {cfg.paid && (
                         <div className="flex gap-2 mt-2 flex-wrap">
-                          <select value={cfg.categoryId} onChange={(e) => setJudgeConfig((prev) => ({ ...prev, [j.id]: { ...cfg, categoryId: e.target.value } }))}
-                            className="border rounded px-2 py-1 text-xs">
+                          <select value={cfg.categoryId} onChange={(e) => setCfg(j.id, "categoryId", e.target.value)}
+                            className="border rounded-lg px-2 py-1.5 text-xs font-medium text-gray-700">
                             <option value="">종목 선택</option>
                             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
-                          <select value={cfg.title} onChange={(e) => setJudgeConfig((prev) => ({ ...prev, [j.id]: { ...cfg, title: e.target.value } }))}
-                            className="border rounded px-2 py-1 text-xs">
+                          <select value={cfg.title} onChange={(e) => setCfg(j.id, "title", e.target.value)}
+                            className="border rounded-lg px-2 py-1.5 text-xs font-medium text-gray-700">
                             {JUDGE_TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
                           </select>
                         </div>
                       )}
                     </div>
-                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${cfg.paid ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                      {cfg.paid ? "입금✓" : "미확인"}
-                    </div>
+
+                    {/* 우: 입금 확인 체크박스 */}
+                    <label className={`flex flex-col items-center gap-1 cursor-pointer flex-shrink-0 px-2 py-1 rounded-lg transition ${cfg.paid ? "bg-green-100" : "bg-gray-50 hover:bg-gray-100"}`}>
+                      <input type="checkbox" className="w-4 h-4 accent-green-600" checked={cfg.paid}
+                        onChange={(e) => setPaid(j.id, e.target.checked)} />
+                      <span className={`text-xs font-medium ${cfg.paid ? "text-green-700" : "text-gray-400"}`}>
+                        {cfg.paid ? "입금✓" : "미확인"}
+                      </span>
+                    </label>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">입금 확인: {Object.values(judgeConfig).filter((c) => c.paid).length}명</span>
-            <button onClick={bulkAssign} disabled={loading}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
-              {loading ? "배정 중..." : "선택된 심사위원 일괄 배정"}
+          <div className="flex items-center justify-between pt-2 border-t border-green-200">
+            <span className="text-xs text-gray-600">입금 확인: <strong className="text-green-700">{paidCount}명</strong> / {importJudges.length}명</span>
+            <button onClick={bulkAssign} disabled={loading || paidCount === 0}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50">
+              {loading ? "배정 중..." : `입금확인 ${paidCount}명 일괄 배정`}
             </button>
           </div>
         </div>
       )}
 
-      {/* 현재 배정 목록 */}
-      <div className="space-y-2">
-        {assignments.map((a) => (
-          <div key={a.id} className="flex items-center justify-between bg-white border rounded-lg px-4 py-3">
-            <div>
-              <span className="font-medium text-gray-800">{a.users?.name ?? "(이름 없음)"}</span>
-              <span className="text-xs text-gray-400 ml-2">{a.users?.email}</span>
-              {a.title && <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{a.title}</span>}
-            </div>
-            <button onClick={() => removeJudge(a.id)} className="text-xs text-red-400 hover:text-red-600">배정 해제</button>
+      {/* 배정된 심사위원 목록 (전체 종목) */}
+      {allAssignments.length > 0 && (
+        <div className="bg-white rounded-xl border p-4">
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">배정 완료 심사위원 ({allAssignments.length}명)</h4>
+          <div className="space-y-2">
+            {allAssignments.map((a) => (
+              <div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-gray-800 text-sm">{a.users?.name ?? "(이름 없음)"}</span>
+                  <span className="text-xs text-gray-400">{a.users?.email}</span>
+                  {a.title && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{a.title}</span>}
+                  {a.category_name && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{a.category_name}</span>}
+                </div>
+                <button onClick={() => removeJudge(a.id)} className="text-xs text-red-400 hover:text-red-600 ml-2">해제</button>
+              </div>
+            ))}
           </div>
-        ))}
-        {assignments.length === 0 && <p className="text-sm text-gray-400">배정된 심사위원이 없습니다.</p>}
-      </div>
+        </div>
+      )}
+      {allAssignments.length === 0 && !showImport && <p className="text-sm text-gray-400">배정된 심사위원이 없습니다.</p>}
 
       <div className="flex gap-2 pt-2 border-t">
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일로 직접 추가" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addJudge()} />
-        <button onClick={addJudge} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">배정</button>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일로 직접 추가 (첫 번째 종목에 배정)" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addJudgeDirect()} />
+        <button onClick={addJudgeDirect} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">배정</button>
       </div>
     </div>
   );
@@ -881,6 +1036,7 @@ export default function JudgeAdminPage() {
           {activeTab === "judges" && (
             <JudgesTab category={selectedCategory} competition={selectedCompetition} categories={categories} onMsg={setMsg} />
           )}
+
           {activeTab === "criteria" && <CriteriaTab category={selectedCategory} onMsg={setMsg} />}
           {activeTab === "awards" && <AwardsTab category={selectedCategory} onMsg={setMsg} />}
         </div>

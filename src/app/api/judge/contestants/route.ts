@@ -30,9 +30,17 @@ export async function POST(request: NextRequest) {
   if (!category_id || !name) return NextResponse.json({ error: "category_id, name 필수" }, { status: 400 });
 
   const supabase = getSupabaseAdmin();
+
+  // 카테고리 내 다음 참가번호 자동 부여
+  const { count } = await supabase
+    .from("contestants")
+    .select("*", { count: "exact", head: true })
+    .eq("category_id", category_id);
+  const number = (count ?? 0) + 1;
+
   const { data, error } = await supabase
     .from("contestants")
-    .insert({ category_id, name, phone, email, display_order: display_order ?? 0 })
+    .insert({ category_id, name, phone, email, display_order: display_order ?? number, number })
     .select()
     .single();
 
