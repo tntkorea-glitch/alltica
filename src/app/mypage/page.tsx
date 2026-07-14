@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { formatPrice } from "@/lib/seminars";
+import JudgeNoticePopup from "./JudgeNoticePopup";
 
 export const dynamic = "force-dynamic";
 
@@ -65,11 +66,35 @@ export default async function MyPage() {
     .like("form_slug", "contest-%")
     .order("submitted_at", { ascending: false });
 
+  // 심사위원 배정 조회
+  const { data: judgeUser } = await supabase
+    .from("users")
+    .select("id, name")
+    .eq("email", session.user.email)
+    .maybeSingle();
+
+  let judgeAssignments: { categories: unknown }[] = [];
+  if (judgeUser) {
+    const { data } = await supabase
+      .from("judge_assignments")
+      .select("categories(name, major_category)")
+      .eq("user_id", judgeUser.id)
+      .eq("commission_only", false);
+    judgeAssignments = (data ?? []) as { categories: unknown }[];
+  }
+
+  const isJudge = judgeAssignments.length > 0;
+  const judgeCategories = judgeAssignments
+    .map((a) => (a.categories as { name: string } | null | undefined)?.name)
+    .filter(Boolean) as string[];
+  const judgeName = judgeUser?.name || session.user.name || "";
+
   const apps = applications ?? [];
   const contests = contestSubs ?? [];
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
+      {isJudge && <JudgeNoticePopup judgeName={judgeName} categories={judgeCategories} />}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">마이페이지</h1>
@@ -168,7 +193,8 @@ export default async function MyPage() {
           ) : (
             <ul className="divide-y divide-gray-100">
               {contests.map((c) => {
-                const type = c.form_slug?.endsWith("-committee") ? "조직위원" : c.form_slug?.endsWith("-judge") ? "심사위원" : "선수";
+                const isJudgeEntry = c.form_slug?.endsWith("-judge");
+                const type = c.form_slug?.endsWith("-committee") ? "조직위원" : isJudgeEntry ? "심사위원" : "선수";
                 return (
                   <li key={c.id} className="py-3 flex items-center justify-between gap-4">
                     <div className="min-w-0">
@@ -177,9 +203,19 @@ export default async function MyPage() {
                         {c.submitted_at ? formatKST(c.submitted_at) : "-"} · {type}
                       </div>
                     </div>
-                    <span className="shrink-0 text-xs font-medium px-2 py-1 rounded border bg-blue-50 text-blue-700 border-blue-200">
-                      접수완료
-                    </span>
+                    <div className="shrink-0 flex items-center gap-2">
+                      {isJudgeEntry && isJudge && (
+                        <Link
+                          href="/judge"
+                          className="text-xs font-semibold px-3 py-1 rounded border bg-purple-600 text-white border-purple-600 hover:bg-purple-700 transition"
+                        >
+                          심사하러가기
+                        </Link>
+                      )}
+                      <span className="text-xs font-medium px-2 py-1 rounded border bg-blue-50 text-blue-700 border-blue-200">
+                        접수완료
+                      </span>
+                    </div>
                   </li>
                 );
               })}
