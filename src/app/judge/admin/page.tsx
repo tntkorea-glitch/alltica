@@ -1395,7 +1395,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
   const [importJudges, setImportJudges] = useState<ImportJudge[]>([]);
   const [showImport, setShowImport] = useState(false);
   // { judgeId → { paid, majorCategory, title } }
-  const [judgeConfig, setJudgeConfig] = useState<Record<string, { paid: boolean; selectedMajors: string[]; title: string }>>({});
+  const [judgeConfig, setJudgeConfig] = useState<Record<string, { paid: boolean; unpaid?: boolean; selectedMajors: string[]; title: string }>>({});
   // 배정 완료된 심사위원 목록 (전체 카테고리)
   const [allAssignments, setAllAssignments] = useState<(Assignment & { category_name?: string; major_category?: string })[]>([]);
   // 정렬 상태
@@ -1447,6 +1447,8 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
 
   const setPaid = (id: string, paid: boolean) =>
     setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], paid } }));
+  const setUnpaid = (id: string, unpaid: boolean) =>
+    setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], unpaid } }));
   const setTitle = (id: string, val: string) =>
     setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], title: val } }));
   const toggleMajor = (judgeId: string, major: string, checked: boolean) =>
@@ -1538,7 +1540,8 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
 
   // 이미 배정 완료된 심사위원 이름 set (목록에서 제외)
   const assignedJudgeNames = new Set(allAssignments.map((a) => a.judge_name).filter(Boolean) as string[]);
-  const unassignedJudges = importJudges.filter((j) => !assignedJudgeNames.has(j.name));
+  const unpaidJudges = importJudges.filter((j) => judgeConfig[j.id]?.unpaid);
+  const unassignedJudges = importJudges.filter((j) => !assignedJudgeNames.has(j.name) && !judgeConfig[j.id]?.unpaid);
 
   const paidCount = unassignedJudges.filter((j) => judgeConfig[j.id]?.paid).length;
 
@@ -1679,11 +1682,12 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                   <th className="px-3 py-2 text-left font-medium">신청종목 (체크=배정)</th>
                   <th className="px-3 py-2 text-left font-medium max-w-[180px]">경력</th>
                   <th className="px-3 py-2 text-center font-medium w-24">입금확인 / 직책</th>
+                  <th className="px-3 py-2 text-center font-medium w-16">미입금</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
                 {unassignedJudges.map((j) => {
-                  const cfg = judgeConfig[j.id] ?? { paid: false, selectedMajors: [], title: "심사위원" };
+                  const cfg = judgeConfig[j.id] ?? { paid: false, unpaid: false, selectedMajors: [], title: "심사위원" };
                   return (
                     <tr key={j.id} className={`align-top hover:bg-gray-50 transition ${cfg.paid ? "bg-green-50" : ""}`}>
                       <td className="px-3 py-2.5 whitespace-nowrap">
@@ -1779,6 +1783,16 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                           </select>
                         )}
                       </td>
+                      {/* 미입금 체크박스 */}
+                      <td className="px-3 py-2.5 text-center">
+                        <label className={`inline-flex flex-col items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition ${cfg.unpaid ? "bg-red-100" : "bg-gray-50 hover:bg-gray-100"}`}>
+                          <input type="checkbox" className="w-4 h-4 accent-red-500" checked={cfg.unpaid ?? false}
+                            onChange={(e) => setUnpaid(j.id, e.target.checked)} />
+                          <span className={`text-xs font-medium whitespace-nowrap ${cfg.unpaid ? "text-red-600" : "text-gray-400"}`}>
+                            {cfg.unpaid ? "미입금" : "-"}
+                          </span>
+                        </label>
+                      </td>
                     </tr>
                   );
                 })}
@@ -1793,6 +1807,57 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
               {loading ? "배정 중..." : `입금확인 ${paidCount}명 일괄 배정`}
             </button>
           </div>
+
+          {/* 미입금자 리스트 */}
+          {unpaidJudges.length > 0 && (
+            <div className="mt-4 border border-red-200 rounded-xl bg-red-50 overflow-hidden">
+              <div className="px-4 py-2 bg-red-100 border-b border-red-200 flex items-center gap-2">
+                <span className="text-sm font-semibold text-red-800">미입금자 리스트</span>
+                <span className="text-xs text-red-600">{unpaidJudges.length}명</span>
+                <span className="text-xs text-red-400">(목록에서 제외됨)</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-red-50 text-xs text-red-700 border-b border-red-100">
+                      <th className="px-3 py-2 text-center w-8 font-medium">#</th>
+                      <th className="px-3 py-2 text-left font-medium">이름</th>
+                      <th className="px-3 py-2 text-left font-medium">연락처</th>
+                      <th className="px-3 py-2 text-left font-medium">직책</th>
+                      <th className="px-3 py-2 text-left font-medium">신청종목</th>
+                      <th className="px-3 py-2 text-center font-medium w-16">복원</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-red-50 bg-white">
+                    {unpaidJudges.map((j, idx) => (
+                      <tr key={j.id} className="hover:bg-red-50/40 align-top">
+                        <td className="px-3 py-2.5 text-center text-xs text-gray-400">{idx + 1}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="font-semibold text-gray-900">{j.name}</div>
+                          <div className="text-xs text-gray-400">{j.email}</div>
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">{j.phone}</td>
+                        <td className="px-3 py-2.5 text-xs">
+                          {j.title && <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded whitespace-nowrap">{j.title}</span>}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex flex-wrap gap-1">
+                            {j.categories.map((c) => <span key={c} className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded whitespace-nowrap">{c}</span>)}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <button onClick={() => setUnpaid(j.id, false)}
+                            className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 px-2 py-1 rounded transition">
+                            복원
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2006,7 +2071,15 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                     <div>
                       {majorOrder.map(major => {
                         const majorAssignIds = new Set(allAssignments.filter(a => a.major_category === major && !pm.get(a.user_id)?.commissionOnly).map(a => a.user_id));
-                        const group = applySortPersons(scorePersons.filter(p => majorAssignIds.has(p.userId)));
+                        const group = (() => {
+                          const filtered = scorePersons.filter(p => majorAssignIds.has(p.userId));
+                          return [...filtered].sort((a, b) => {
+                            const ta = TITLE_ORDER.indexOf(a.titles[0] ?? "");
+                            const tb = TITLE_ORDER.indexOf(b.titles[0] ?? "");
+                            const ti = (ta === -1 ? 999 : ta) - (tb === -1 ? 999 : tb);
+                            return ti !== 0 ? ti : a.name.localeCompare(b.name, "ko");
+                          });
+                        })();
                         if (group.length === 0) return null;
                         return (
                           <div key={major} className="border-t">
