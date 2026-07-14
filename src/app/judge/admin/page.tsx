@@ -1495,7 +1495,11 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     catch (e: unknown) { onMsg((e as Error).message); }
   };
 
-  const paidCount = Object.values(judgeConfig).filter((c) => c.paid).length;
+  // 이미 배정 완료된 심사위원 이름 set (목록에서 제외)
+  const assignedJudgeNames = new Set(allAssignments.map((a) => a.judge_name).filter(Boolean) as string[]);
+  const unassignedJudges = importJudges.filter((j) => !assignedJudgeNames.has(j.name));
+
+  const paidCount = unassignedJudges.filter((j) => judgeConfig[j.id]?.paid).length;
 
   const handleJudgeExcel = async (file: File) => {
     setLoading(true);
@@ -1619,7 +1623,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
       {showImport && (
         <div className="border border-green-200 rounded-xl bg-green-50 p-4">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-semibold text-green-800">심사위원 신청서 목록 ({importJudges.length}명)</p>
+            <p className="text-sm font-semibold text-green-800">심사위원 신청서 목록 ({unassignedJudges.length}명 미배정 / 전체 {importJudges.length}명)</p>
             <button onClick={() => setShowImport(false)} className="text-xs text-gray-400 hover:text-gray-600">닫기</button>
           </div>
           <p className="text-xs text-gray-500 mb-4">오른쪽 <strong>입금 확인</strong> 체크 → 종목·직책 선택 → 일괄 배정</p>
@@ -1637,7 +1641,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
-                {importJudges.map((j) => {
+                {unassignedJudges.map((j) => {
                   const cfg = judgeConfig[j.id] ?? { paid: false, selectedMajors: [], title: "심사위원" };
                   return (
                     <tr key={j.id} className={`align-top hover:bg-gray-50 transition ${cfg.paid ? "bg-green-50" : ""}`}>
@@ -1735,7 +1739,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-green-200">
-            <span className="text-xs text-gray-600">입금 확인: <strong className="text-green-700">{paidCount}명</strong> / {importJudges.length}명</span>
+            <span className="text-xs text-gray-600">입금 확인: <strong className="text-green-700">{paidCount}명</strong> / {unassignedJudges.length}명</span>
             <button onClick={bulkAssign} disabled={loading || paidCount === 0}
               className="px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50">
               {loading ? "배정 중..." : `입금확인 ${paidCount}명 일괄 배정`}
