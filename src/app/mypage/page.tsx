@@ -77,7 +77,7 @@ export default async function MyPage() {
   if (judgeUser) {
     const { data } = await supabase
       .from("judge_assignments")
-      .select("categories(name, major_category)")
+      .select("title, categories(name, major_category)")
       .eq("user_id", judgeUser.id)
       .eq("commission_only", false);
     judgeAssignments = (data ?? []) as { categories: unknown }[];
@@ -91,6 +91,7 @@ export default async function MyPage() {
         .filter(Boolean) as string[]
     ),
   ];
+  const judgeTitle = (judgeAssignments[0] as { title?: string } | undefined)?.title ?? "";
   const judgeName = judgeUser?.name || session.user.name || "";
 
   const apps = applications ?? [];
@@ -98,7 +99,7 @@ export default async function MyPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
-      {isJudge && <JudgeNoticePopup judgeName={judgeName} categories={judgeCategories} />}
+      {isJudge && <JudgeNoticePopup judgeName={judgeName} judgeTitle={judgeTitle} categories={judgeCategories} />}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">마이페이지</h1>

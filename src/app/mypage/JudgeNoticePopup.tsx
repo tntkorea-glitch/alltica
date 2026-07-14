@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const POPUP_KEY = "ibc_judge_notice_dismissed";
 
-export default function JudgeNoticePopup({ judgeName, categories }: { judgeName: string; categories: string[] }) {
+export default function JudgeNoticePopup({ judgeName, judgeTitle, categories }: { judgeName: string; judgeTitle: string; categories: string[] }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -32,7 +32,9 @@ export default function JudgeNoticePopup({ judgeName, categories }: { judgeName:
 
         {/* 내용 */}
         <div className="px-6 py-5 space-y-4">
-          <p className="text-gray-800 font-semibold">{judgeName} 심사위원님,</p>
+          <p className="text-gray-800 font-semibold">
+            {judgeName} {categories[0] ?? ""} {judgeTitle}님,
+          </p>
           <p className="text-sm text-gray-600 leading-relaxed">
             온라인 심사 시스템에 오신 것을 환영합니다.<br />
             아래 배정 종목을 확인하시고 심사를 진행해주세요.
