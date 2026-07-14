@@ -1342,32 +1342,57 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                     <th className="px-3 py-2 text-left font-medium">이름</th>
                     <th className="px-3 py-2 text-left font-medium">이메일</th>
                     <th className="px-3 py-2 text-left font-medium">직책</th>
-                    <th className="px-3 py-2 text-left font-medium">배정 종목</th>
+                    <th className="px-3 py-2 text-left font-medium w-28">대종목</th>
+                    <th className="px-3 py-2 text-left font-medium">세부종목</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {persons.map((p) => (
-                    <tr key={p.email} className="hover:bg-gray-50 align-top">
-                      <td className="px-3 py-2.5 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
-                      <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">{p.email}</td>
-                      <td className="px-3 py-2.5 text-xs whitespace-nowrap">
-                        {p.titles.map((t) => (
-                          <span key={t} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap mr-1">{t}</span>
-                        ))}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex flex-wrap gap-1">
-                          {p.cats.map((a) => (
-                            <span key={a.id} className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
-                              {a.major_category && <span className="text-purple-400 text-[10px]">[{a.major_category}]</span>}
-                              {a.category_name ?? a.category_id}
-                              <button onClick={() => removeJudge(a.id)} className="text-purple-300 hover:text-red-500 ml-0.5 leading-none" title="배정 해제">×</button>
-                            </span>
+                  {persons.map((p) => {
+                    // 대종목별 그룹화
+                    const majorGroups: { major: string; cats: typeof p.cats }[] = [];
+                    for (const a of p.cats) {
+                      const major = a.major_category ?? "(미분류)";
+                      const g = majorGroups.find((x) => x.major === major);
+                      if (g) g.cats.push(a);
+                      else majorGroups.push({ major, cats: [a] });
+                    }
+                    return (
+                      <tr key={p.email} className="hover:bg-gray-50 align-top">
+                        <td className="px-3 py-2.5 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                        <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">{p.email}</td>
+                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                          {p.titles.map((t) => (
+                            <span key={t} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap mr-1">{t}</span>
                           ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        {/* 대종목 */}
+                        <td className="px-3 py-2.5 align-top">
+                          <div className="space-y-2">
+                            {majorGroups.map((g) => (
+                              <div key={g.major} className="py-0.5">
+                                <span className="inline-block bg-purple-600 text-white text-[11px] font-bold px-2 py-0.5 rounded whitespace-nowrap">{g.major}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        {/* 세부종목 */}
+                        <td className="px-3 py-2.5 align-top">
+                          <div className="space-y-2">
+                            {majorGroups.map((g) => (
+                              <div key={g.major} className="flex flex-wrap gap-1">
+                                {g.cats.map((a) => (
+                                  <span key={a.id} className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
+                                    {a.category_name ?? a.category_id}
+                                    <button onClick={() => removeJudge(a.id)} className="text-purple-300 hover:text-red-500 ml-0.5 leading-none" title="배정 해제">×</button>
+                                  </span>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
