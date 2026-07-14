@@ -888,22 +888,46 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
           {allContestants.length === 0 ? "등록된 선수가 없습니다. 신청서 또는 단체접수 파일에서 불러오세요." : "이 종목에 등록된 선수가 없습니다."}
         </p>
       ) : (() => {
-        const groups: Array<{ catName: string; catId: string; rows: typeof contestants }> = [];
+        // 세부종목별 그룹
+        const subGroups = new Map<string, { catName: string; catId: string; major: string; rows: typeof contestants }>();
         if (filterCatId) {
-          groups.push({ catName: categories.find((c) => c.id === filterCatId)?.name ?? "", catId: filterCatId, rows: contestants });
+          const cat = categories.find((c) => c.id === filterCatId);
+          subGroups.set(filterCatId, { catName: cat?.name ?? "", catId: filterCatId, major: cat?.major_category ?? "", rows: contestants });
         } else {
-          const grouped = new Map<string, { catName: string; catId: string; rows: typeof contestants }>();
           for (const c of contestants) {
             const catId = c.category_id;
-            const catName = (c as Contestant & { category_name?: string }).category_name ?? "미분류";
-            if (!grouped.has(catId)) grouped.set(catId, { catName, catId, rows: [] });
-            grouped.get(catId)!.rows.push(c);
+            const cat = categories.find((x) => x.id === catId);
+            const catName = (c as Contestant & { category_name?: string }).category_name ?? cat?.name ?? "미분류";
+            const major = cat?.major_category ?? "기타";
+            if (!subGroups.has(catId)) subGroups.set(catId, { catName, catId, major, rows: [] });
+            subGroups.get(catId)!.rows.push(c);
           }
-          grouped.forEach((v) => groups.push(v));
         }
+        // 대종목별로 묶기 (CATEGORY_HIERARCHY 순서)
+        const majorOrder = CATEGORY_HIERARCHY.map((g) => g.major);
+        const majorGroups = new Map<string, { major: string; subs: typeof subGroups extends Map<string, infer V> ? V[] : never }>();
+        for (const [, sg] of subGroups) {
+          if (!majorGroups.has(sg.major)) majorGroups.set(sg.major, { major: sg.major, subs: [] });
+          majorGroups.get(sg.major)!.subs.push(sg);
+        }
+        const sortedMajorGroups = [...majorGroups.values()].sort((a, b) => {
+          const ai = majorOrder.indexOf(a.major); const bi = majorOrder.indexOf(b.major);
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        });
+
         return (
-          <div className="space-y-5">
-            {groups.map(({ catName, catId, rows }) => (
+          <div className="space-y-6">
+            {sortedMajorGroups.map(({ major, subs }) => (
+              <div key={major}>
+                {/* 대종목 헤더 */}
+                {!filterCatId && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-bold text-white bg-purple-600 rounded px-2.5 py-1">대종목 · {major}</span>
+                    <span className="text-xs text-gray-400">{subs.reduce((s, g) => s + g.rows.length, 0)}명</span>
+                  </div>
+                )}
+                <div className="space-y-3 ml-0">
+                  {subs.map(({ catName, catId, rows }) => (
               <div key={catId} className="bg-white rounded-xl border overflow-hidden">
                 {catName && (
                   <div className="px-4 py-2 bg-purple-50 border-b flex items-center gap-2">
@@ -1031,6 +1055,9 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+                  ))}
                 </div>
               </div>
             ))}
