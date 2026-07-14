@@ -195,6 +195,16 @@ export default function JudgeScorePage() {
   const selectedAssignment = assignments.find((a) => a.category.id === selectedCategoryId);
   const isSubmitted = selectedCategoryId ? !!submitted[selectedCategoryId] : false;
 
+  // 종목별 파일 존재 여부
+  const hasPhotos = contestants.some((c) =>
+    (c.contestant_files ?? []).some((f) => f.file_type.startsWith("image") && f.storage_path)
+  );
+  const hasVideos = contestants.some((c) =>
+    (c.contestant_files ?? []).some((f) =>
+      (f.file_type === "youtube" && f.video_url) || (f.file_type.startsWith("video") && f.storage_path)
+    )
+  );
+
   // 등수 계산 (총점 기준 내림차순)
   const maxTotal = criteria.reduce((s, cr) => s + cr.max_score, 0);
   const totals = contestants.map((c) => ({
@@ -308,8 +318,8 @@ export default function JudgeScorePage() {
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
                       <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap w-14">번호</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">작품사진</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">영상</th>
+                      {hasPhotos && <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">작품사진</th>}
+                      {hasVideos && <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">영상</th>}
                       {criteria.map((cr) => (
                         <th key={cr.id} className="px-2 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
                           {cr.name}
@@ -339,14 +349,18 @@ export default function JudgeScorePage() {
                           </td>
 
                           {/* 작품사진 */}
-                          <td className="px-3 py-3">
-                            <PhotoCell files={c.contestant_files ?? []} onSelect={setPreviewPhoto} activeUrl={previewPhoto} />
-                          </td>
+                          {hasPhotos && (
+                            <td className="px-3 py-3">
+                              <PhotoCell files={c.contestant_files ?? []} onSelect={setPreviewPhoto} activeUrl={previewPhoto} />
+                            </td>
+                          )}
 
                           {/* 영상 */}
-                          <td className="px-3 py-3 text-center">
-                            <VideoCell files={c.contestant_files ?? []} />
-                          </td>
+                          {hasVideos && (
+                            <td className="px-3 py-3 text-center">
+                              <VideoCell files={c.contestant_files ?? []} />
+                            </td>
+                          )}
 
                           {/* 채점 항목들 */}
                           {criteria.length > 0 ? criteria.map((cr) => {
