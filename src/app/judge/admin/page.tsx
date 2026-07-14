@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CATEGORY_HIERARCHY } from "@/lib/judge-categories";
+import { CATEGORY_HIERARCHY, normalizeMajorLabel } from "@/lib/judge-categories";
 import { resolveCategory } from "@/lib/judge-category-matcher";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -1076,7 +1076,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
   const [importJudges, setImportJudges] = useState<ImportJudge[]>([]);
   const [showImport, setShowImport] = useState(false);
   // { judgeId → { paid, majorCategory, title } }
-  const [judgeConfig, setJudgeConfig] = useState<Record<string, { paid: boolean; selectedCategoryIds: string[]; title: string }>>({});
+  const [judgeConfig, setJudgeConfig] = useState<Record<string, { paid: boolean; selectedMajors: string[]; title: string }>>({});
   // 배정 완료된 심사위원 목록 (전체 카테고리)
   const [allAssignments, setAllAssignments] = useState<(Assignment & { category_name?: string; major_category?: string })[]>([]);
 
@@ -1103,15 +1103,15 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     try {
       const data = await api(`/api/judge/import?action=data&contest_slug=${competition.contest_slug}`);
       setImportJudges(data.judges);
-      const config: Record<string, { paid: boolean; selectedCategoryIds: string[]; title: string }> = {};
+      const config: Record<string, { paid: boolean; selectedMajors: string[]; title: string }> = {};
       for (const j of data.judges as ImportJudge[]) {
-        // 신청 종목명 → 등록된 category ID 자동 매핑
-        const selectedCategoryIds: string[] = [];
+        // 신청 종목명 → 대종목명 자동 매핑 (정확히 일치하는 것만)
+        const selectedMajors: string[] = [];
         for (const catName of j.categories) {
-          const catId = resolveCategory(catName, categories);
-          if (catId) selectedCategoryIds.push(catId);
+          const major = CATEGORY_HIERARCHY.find((g) => g.major === catName || g.judgeLabel === catName)?.major;
+          if (major) selectedMajors.push(major);
         }
-        config[j.id] = { paid: false, selectedCategoryIds, title: j.title || "심사위원" };
+        config[j.id] = { paid: false, selectedMajors, title: j.title || "심사위원" };
       }
       setJudgeConfig(config);
       setShowImport(true);
@@ -1122,28 +1122,31 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], paid } }));
   const setTitle = (id: string, val: string) =>
     setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], title: val } }));
-  const toggleCategoryId = (judgeId: string, catId: string, checked: boolean) =>
+  const toggleMajor = (judgeId: string, major: string, checked: boolean) =>
     setJudgeConfig((prev) => {
       const curr = prev[judgeId];
-      const ids = checked
-        ? [...new Set([...(curr.selectedCategoryIds ?? []), catId])]
-        : (curr.selectedCategoryIds ?? []).filter((id) => id !== catId);
-      return { ...prev, [judgeId]: { ...curr, selectedCategoryIds: ids } };
+      const majors = checked
+        ? [...new Set([...(curr.selectedMajors ?? []), major])]
+        : (curr.selectedMajors ?? []).filter((m) => m !== major);
+      return { ...prev, [judgeId]: { ...curr, selectedMajors: majors } };
     });
 
   const bulkAssign = async () => {
-    const toAssign = importJudges.filter((j) => judgeConfig[j.id]?.paid && (judgeConfig[j.id]?.selectedCategoryIds?.length ?? 0) > 0);
-    if (toAssign.length === 0) { onMsg("입금 확인 + 배정 종목이 선택된 심사위원이 없습니다."); return; }
+    const toAssign = importJudges.filter((j) => judgeConfig[j.id]?.paid && (judgeConfig[j.id]?.selectedMajors?.length ?? 0) > 0);
+    if (toAssign.length === 0) { onMsg("입금 확인 + 배정 대종목이 선택된 심사위원이 없습니다."); return; }
     setLoading(true);
     try {
       const assignments: Array<{ email: string; category_id: string; title: string }> = [];
       for (const j of toAssign) {
-        const { selectedCategoryIds, title } = judgeConfig[j.id];
-        for (const catId of selectedCategoryIds) {
-          assignments.push({ email: j.email, category_id: catId, title });
+        const { selectedMajors, title } = judgeConfig[j.id];
+        for (const major of selectedMajors) {
+          const subCats = categories.filter((c) => c.major_category === major);
+          for (const cat of subCats) {
+            assignments.push({ email: j.email, category_id: cat.id, title });
+          }
         }
       }
-      if (assignments.length === 0) { onMsg("배정할 종목이 없습니다. 종목을 선택해주세요."); setLoading(false); return; }
+      if (assignments.length === 0) { onMsg("배정할 세부종목이 없습니다. 대종목을 먼저 등록해주세요."); setLoading(false); return; }
       const result = await api("/api/judge/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "judges", assignments }) });
       const errMsg = result.errors?.length > 0 ? ` (오류: ${result.errors.length}건)` : "";
       onMsg(`심사위원 ${result.inserted}건 배정 완료 (${toAssign.length}명 × 세부종목)${errMsg}`);
@@ -1204,7 +1207,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
                 {importJudges.map((j) => {
-                  const cfg = judgeConfig[j.id] ?? { paid: false, selectedCategoryIds: [], title: "심사위원" };
+                  const cfg = judgeConfig[j.id] ?? { paid: false, selectedMajors: [], title: "심사위원" };
                   return (
                     <tr key={j.id} className={`align-top hover:bg-gray-50 transition ${cfg.paid ? "bg-green-50" : ""}`}>
                       <td className="px-3 py-2.5 whitespace-nowrap">
@@ -1215,56 +1218,58 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                       <td className="px-3 py-2.5 text-xs">
                         {j.title && <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded whitespace-nowrap">{j.title}</span>}
                       </td>
-                      {/* 신청종목 — 입금확인 시 체크박스로 전환 */}
+                      {/* 신청종목 — 입금확인 시 대종목 체크박스로 전환 */}
                       <td className="px-3 py-2.5">
                         {cfg.paid ? (
                           <div className="flex flex-wrap gap-1">
-                            {j.categories.map((catName) => {
-                              const catId = resolveCategory(catName, categories);
-                              const cat = catId ? categories.find((c) => c.id === catId) : null;
-                              if (!cat) {
-                                return (
-                                  <div key={catName} className="flex items-center gap-1 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5 text-xs">
-                                    <span className="text-orange-500">?{catName}</span>
-                                    <select defaultValue="" onChange={(e) => { if (e.target.value) toggleCategoryId(j.id, e.target.value, true); }}
-                                      className="border rounded px-1 py-0.5 text-xs max-w-[110px]">
-                                      <option value="">종목선택</option>
-                                      {sortedMajors.map((major) => {
-                                        const majorCats = categories.filter((c) => c.major_category === major);
-                                        if (majorCats.length === 0) return null;
-                                        return (
-                                          <optgroup key={major} label={major}>
-                                            {majorCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                          </optgroup>
-                                        );
-                                      })}
-                                    </select>
-                                  </div>
-                                );
-                              }
-                              const isSelected = cfg.selectedCategoryIds.includes(cat.id);
-                              return (
-                                <label key={catName} className={`inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5 cursor-pointer border transition select-none ${isSelected ? "bg-green-100 text-green-800 border-green-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}>
-                                  <input type="checkbox" checked={isSelected}
-                                    onChange={(e) => toggleCategoryId(j.id, cat.id, e.target.checked)}
-                                    className="w-3 h-3 accent-green-600" />
-                                  {cat.name}
-                                </label>
+                            {/* 신청 종목에서 매핑된 대종목 */}
+                            {(() => {
+                              // 신청종목 → 대종목 (정확히 일치하는 것만)
+                              const appliedMajors = [...new Set(
+                                j.categories
+                                  .map((cn) => CATEGORY_HIERARCHY.find((g) => g.major === cn || g.judgeLabel === cn)?.major)
+                                  .filter(Boolean) as string[]
+                              )];
+                              // 못 찾은 항목 (수동 선택 필요)
+                              const unmapped = j.categories.filter(
+                                (cn) => !CATEGORY_HIERARCHY.find((g) => g.major === cn || g.judgeLabel === cn)
                               );
-                            })}
-                            <select defaultValue="" onChange={(e) => { if (e.target.value) { toggleCategoryId(j.id, e.target.value, true); (e.target as HTMLSelectElement).value = ""; } }}
-                              className="border rounded px-1.5 py-0.5 text-xs text-gray-500 max-w-[90px]">
-                              <option value="">+추가</option>
-                              {sortedMajors.map((major) => {
-                                const majorCats = categories.filter((c) => c.major_category === major && !cfg.selectedCategoryIds.includes(c.id) && !j.categories.some((cn) => resolveCategory(cn, categories) === c.id));
-                                if (majorCats.length === 0) return null;
-                                return (
-                                  <optgroup key={major} label={major}>
-                                    {majorCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                  </optgroup>
-                                );
-                              })}
-                            </select>
+                              return (
+                                <>
+                                  {appliedMajors.map((major) => {
+                                    const isRegistered = sortedMajors.includes(major);
+                                    const isSelected = cfg.selectedMajors.includes(major);
+                                    if (!isRegistered) {
+                                      return <span key={major} className="text-xs bg-orange-50 border border-orange-200 text-orange-600 px-2 py-0.5 rounded-full">{major} (미등록)</span>;
+                                    }
+                                    return (
+                                      <label key={major} className={`inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5 cursor-pointer border transition select-none ${isSelected ? "bg-green-100 text-green-800 border-green-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}>
+                                        <input type="checkbox" checked={isSelected}
+                                          onChange={(e) => toggleMajor(j.id, major, e.target.checked)}
+                                          className="w-3 h-3 accent-green-600" />
+                                        {major}
+                                      </label>
+                                    );
+                                  })}
+                                  {unmapped.map((cn) => (
+                                    <div key={cn} className="flex items-center gap-1 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5 text-xs">
+                                      <span className="text-orange-500">?{cn}</span>
+                                      <select defaultValue="" onChange={(e) => { if (e.target.value) { toggleMajor(j.id, e.target.value, true); (e.target as HTMLSelectElement).value = ""; } }}
+                                        className="border rounded px-1 py-0.5 text-xs max-w-[90px]">
+                                        <option value="">선택</option>
+                                        {sortedMajors.filter((m) => !cfg.selectedMajors.includes(m)).map((m) => <option key={m} value={m}>{m}</option>)}
+                                      </select>
+                                    </div>
+                                  ))}
+                                  {/* 추가 대종목 수동 선택 */}
+                                  <select defaultValue="" onChange={(e) => { if (e.target.value) { toggleMajor(j.id, e.target.value, true); (e.target as HTMLSelectElement).value = ""; } }}
+                                    className="border rounded px-1.5 py-0.5 text-xs text-gray-500 max-w-[80px]">
+                                    <option value="">+추가</option>
+                                    {sortedMajors.filter((m) => !cfg.selectedMajors.includes(m)).map((m) => <option key={m} value={m}>{m}</option>)}
+                                  </select>
+                                </>
+                              );
+                            })()}
                           </div>
                         ) : (
                           <div className="flex gap-1 flex-wrap">
