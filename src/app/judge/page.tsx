@@ -93,13 +93,18 @@ export default async function JudgePage() {
         {/* 환영 카드 */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6 text-white">
-            <p className="text-blue-200 text-sm mb-1">IBC 국제뷰티스트챔피언십 2026</p>
-            <h1 className="text-2xl font-bold">{judgeName}</h1>
-            {judgeTitle && (
-              <span className="inline-block mt-2 bg-white/20 backdrop-blur text-white text-xs font-semibold px-3 py-1 rounded-full">
-                {judgeTitle}
-              </span>
-            )}
+            <p className="text-blue-200 text-sm mb-1">제 12회 IBC 국제뷰티스트챔피언십 in 2026</p>
+            <h1 className="text-2xl font-bold">
+              {judgeName}
+              {(() => {
+                const majors = [...new Set(
+                  [...compMap.values()].flatMap((comp) => [...comp.majors.keys()])
+                )];
+                return majors.length > 0
+                  ? ` ${majors.join(" / ")} ${judgeTitle}`
+                  : judgeTitle ? ` ${judgeTitle}` : "";
+              })()}
+            </h1>
           </div>
 
           <div className="px-8 py-6 space-y-5">
