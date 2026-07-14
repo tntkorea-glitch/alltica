@@ -1530,7 +1530,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
       for (let i = startRow; i < rawRows.length; i++) {
         const row = rawRows[i];
         const name = String(row[colName] ?? "").trim();
-        if (!name || name === "이름" || name === "성명") continue;
+        if (!name || /^이름|^성명/.test(name)) continue;
         const phone = String(row[colPhone] ?? "").trim();
         const email = String(row[colEmail] ?? "").trim();
         const title = String(row[colTitle] ?? "").trim() || "심사위원";
