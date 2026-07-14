@@ -22,30 +22,23 @@ function getYouTubeId(url: string): string | null {
   return m ? m[1] : null;
 }
 
-function PhotoCell({ files }: { files: ContestantFile[] }) {
+function PhotoCell({ files, onSelect, activeUrl }: { files: ContestantFile[]; onSelect: (url: string) => void; activeUrl: string | null }) {
   const images = files.filter((f) => f.file_type.startsWith("image") && f.storage_path);
-  const [enlarged, setEnlarged] = useState<string | null>(null);
   if (images.length === 0) return <span className="text-gray-300 text-xs">-</span>;
   return (
-    <>
-      <div className="flex gap-1 flex-wrap">
-        {images.map((f) => {
-          const url = `${SUPABASE_URL}/storage/v1/object/public/contestant-files/${f.storage_path}`;
-          return (
-            <button key={f.id} onClick={() => setEnlarged(url)} className="shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={f.file_name} className="w-16 h-16 object-cover rounded border border-gray-200 hover:opacity-80 transition" />
-            </button>
-          );
-        })}
-      </div>
-      {enlarged && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setEnlarged(null)}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={enlarged} alt="확대" className="max-w-full max-h-full rounded-lg object-contain" />
-        </div>
-      )}
-    </>
+    <div className="flex gap-1 flex-wrap">
+      {images.map((f) => {
+        const url = `${SUPABASE_URL}/storage/v1/object/public/contestant-files/${f.storage_path}`;
+        const isActive = activeUrl === url;
+        return (
+          <button key={f.id} onClick={() => onSelect(isActive ? "" : url)} className="shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt={f.file_name}
+              className={`w-14 h-14 object-cover rounded border-2 transition ${isActive ? "border-blue-500 ring-2 ring-blue-300" : "border-gray-200 hover:border-blue-300 hover:opacity-80"}`} />
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -91,90 +84,6 @@ function VideoCell({ files }: { files: ContestantFile[] }) {
   );
 }
 
-function ScoreRow({
-  contestant, criteria, scores, submitted, onChange, onSave,
-}: {
-  contestant: Contestant;
-  criteria: Criterion[];
-  scores: ScoreMap;
-  submitted: boolean;
-  onChange: (cid: string, crId: string, v: string) => void;
-  onSave: (cid: string, crId: string) => void;
-}) {
-  const files = contestant.contestant_files ?? [];
-  const total = criteria.reduce((sum, cr) => {
-    const v = parseFloat(scores[contestant.id]?.[cr.id]?.score ?? "");
-    return sum + (isNaN(v) ? 0 : v);
-  }, 0);
-  const maxTotal = criteria.reduce((sum, cr) => sum + cr.max_score, 0);
-
-  return (
-    <tr className="border-b border-gray-100 hover:bg-blue-50/30 transition">
-      {/* 번호 */}
-      <td className="px-3 py-3 text-center">
-        <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white text-sm font-bold">
-          {contestant.number}
-        </span>
-      </td>
-
-      {/* 이름/단체 */}
-      <td className="px-3 py-3">
-        <div className="font-semibold text-gray-900 text-sm whitespace-nowrap">{contestant.name}</div>
-        {contestant.company && <div className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">{contestant.company}</div>}
-      </td>
-
-      {/* 작품사진 */}
-      <td className="px-3 py-3">
-        <PhotoCell files={files} />
-      </td>
-
-      {/* 영상 */}
-      <td className="px-3 py-3 text-center">
-        <VideoCell files={files} />
-      </td>
-
-      {/* 채점 항목들 */}
-      {criteria.length > 0 ? (
-        criteria.map((cr) => {
-          const val = scores[contestant.id]?.[cr.id]?.score ?? "";
-          const num = parseFloat(val);
-          const valid = !isNaN(num) && num >= 0 && num <= cr.max_score;
-          return (
-            <td key={cr.id} className="px-2 py-3 text-center">
-              <input
-                type="number"
-                min={0}
-                max={cr.max_score}
-                value={val}
-                disabled={submitted}
-                onChange={(e) => onChange(contestant.id, cr.id, e.target.value)}
-                onBlur={() => valid && onSave(contestant.id, cr.id)}
-                className={`w-16 text-center border rounded-lg px-1 py-1.5 text-sm font-medium
-                  ${submitted ? "bg-gray-50 text-gray-400 border-gray-200"
-                    : valid && val !== "" ? "border-blue-400 bg-blue-50 text-blue-800"
-                    : val !== "" && !valid ? "border-red-400 bg-red-50"
-                    : "border-gray-300 focus:border-blue-400 focus:outline-none"}`}
-                placeholder={`/${cr.max_score}`}
-              />
-            </td>
-          );
-        })
-      ) : (
-        <td className="px-3 py-3 text-center text-xs text-gray-400">채점항목<br/>미설정</td>
-      )}
-
-      {/* 총점 */}
-      <td className="px-3 py-3 text-center">
-        {criteria.length > 0 ? (
-          <div className={`text-lg font-bold ${total > 0 ? "text-blue-700" : "text-gray-300"}`}>
-            {total}
-            <div className="text-xs font-normal text-gray-400">/{maxTotal}</div>
-          </div>
-        ) : <span className="text-gray-300">-</span>}
-      </td>
-    </tr>
-  );
-}
 
 export default function JudgeScorePage() {
   const [assignments, setAssignments] = useState<{ id: string; category: Category & { competitions: Competition } }[]>([]);
@@ -187,6 +96,7 @@ export default function JudgeScorePage() {
   const [catLoading, setCatLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string>("");
   const saveTimers = useRef<{ [key: string]: ReturnType<typeof setTimeout> }>({});
   const scoresRef = useRef<ScoreMap>({});
   const criteriaRef = useRef<Criterion[]>([]);
@@ -372,129 +282,141 @@ export default function JudgeScorePage() {
         ) : contestants.length === 0 ? (
           <div className="text-center py-16 text-gray-400">등록된 선수가 없습니다.</div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap w-14">번호</th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">이름/단체</th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">작품사진</th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">영상</th>
-                    {criteria.map((cr) => (
-                      <th key={cr.id} className="px-2 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
-                        {cr.name}
-                        <div className="text-gray-400 font-normal">/{cr.max_score}</div>
-                      </th>
-                    ))}
-                    {criteria.length === 0 && (
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500">채점</th>
-                    )}
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
-                      총점{maxTotal > 0 ? `/${maxTotal}` : ""}
-                    </th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">등수</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {contestants.map((c) => {
-                    const rank = rankMap[c.id];
-                    return (
-                      <tr key={c.id} className="border-b border-gray-100 hover:bg-blue-50/30 transition">
-                        {/* 번호 */}
-                        <td className="px-3 py-3 text-center">
-                          <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white text-sm font-bold">
-                            {c.number}
-                          </span>
-                        </td>
+          <div className={`flex gap-4 items-start`}>
 
-                        {/* 이름/단체 */}
-                        <td className="px-3 py-3">
-                          <div className="font-semibold text-gray-900 whitespace-nowrap">{c.name}</div>
-                          {c.company && <div className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">{c.company}</div>}
-                        </td>
-
-                        {/* 작품사진 */}
-                        <td className="px-3 py-3">
-                          <PhotoCell files={c.contestant_files ?? []} />
-                        </td>
-
-                        {/* 영상 */}
-                        <td className="px-3 py-3 text-center">
-                          <VideoCell files={c.contestant_files ?? []} />
-                        </td>
-
-                        {/* 채점 항목들 */}
-                        {criteria.length > 0 ? criteria.map((cr) => {
-                          const val = scores[c.id]?.[cr.id]?.score ?? "";
-                          const num = parseFloat(val);
-                          const valid = !isNaN(num) && num >= 0 && num <= cr.max_score;
-                          return (
-                            <td key={cr.id} className="px-2 py-3 text-center">
-                              <input
-                                type="number"
-                                min={0}
-                                max={cr.max_score}
-                                value={val}
-                                disabled={isSubmitted}
-                                onChange={(e) => handleChange(c.id, cr.id, e.target.value)}
-                                onBlur={() => valid && handleSave(c.id, cr.id)}
-                                className={`w-16 text-center border rounded-lg px-1 py-1.5 text-sm font-medium
-                                  ${isSubmitted ? "bg-gray-50 text-gray-400 border-gray-200"
-                                    : valid && val !== "" ? "border-blue-400 bg-blue-50 text-blue-800"
-                                    : val !== "" && !valid ? "border-red-400 bg-red-50"
-                                    : "border-gray-300 focus:border-blue-400 focus:outline-none"}`}
-                                placeholder={`/${cr.max_score}`}
-                              />
-                            </td>
-                          );
-                        }) : (
-                          <td className="px-3 py-3 text-center text-xs text-gray-400">채점항목<br/>미설정</td>
-                        )}
-
-                        {/* 총점 */}
-                        <td className="px-3 py-3 text-center">
-                          {criteria.length > 0 ? (
-                            <div className={`text-xl font-bold ${totals.find((t) => t.id === c.id)!.total > 0 ? "text-blue-700" : "text-gray-300"}`}>
-                              {totals.find((t) => t.id === c.id)!.total}
-                            </div>
-                          ) : <span className="text-gray-300">-</span>}
-                        </td>
-
-                        {/* 등수 */}
-                        <td className="px-3 py-3 text-center">
-                          {rank ? (
-                            <span className={`inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold
-                              ${rank === 1 ? "bg-yellow-400 text-yellow-900"
-                                : rank === 2 ? "bg-gray-300 text-gray-800"
-                                : rank === 3 ? "bg-amber-600 text-white"
-                                : "bg-gray-100 text-gray-600"}`}>
-                              {rank}등
-                            </span>
-                          ) : <span className="text-gray-300">-</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* 하단 제출 */}
-            {!isSubmitted && criteria.length > 0 && (
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  채점 완료: <strong className="text-blue-600">{totalFilled} / {contestants.length}명</strong>
-                </p>
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || totalFilled < contestants.length}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                  {submitting ? "제출 중..." : "채점 제출"}
-                </button>
+            {/* 왼쪽: 사진 확대 패널 */}
+            {previewPhoto && (
+              <div className="sticky top-20 shrink-0 w-80 xl:w-96">
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
+                    <span className="text-xs text-gray-500 font-medium">작품 사진</span>
+                    <button onClick={() => setPreviewPhoto("")} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={previewPhoto} alt="작품사진" className="w-full object-contain max-h-[70vh]" />
+                </div>
               </div>
             )}
+
+            {/* 오른쪽: 채점 테이블 */}
+            <div className="flex-1 min-w-0 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap w-14">번호</th>
+                      <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">작품사진</th>
+                      <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">영상</th>
+                      {criteria.map((cr) => (
+                        <th key={cr.id} className="px-2 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
+                          {cr.name}
+                          <div className="text-gray-400 font-normal">/{cr.max_score}</div>
+                        </th>
+                      ))}
+                      {criteria.length === 0 && (
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500">채점</th>
+                      )}
+                      <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
+                        총점{maxTotal > 0 ? `/${maxTotal}` : ""}
+                      </th>
+                      <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">등수</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contestants.map((c) => {
+                      const rank = rankMap[c.id];
+                      const cTotal = totals.find((t) => t.id === c.id)!.total;
+                      return (
+                        <tr key={c.id} className="border-b border-gray-100 hover:bg-blue-50/20 transition">
+                          {/* 번호 */}
+                          <td className="px-3 py-3 text-center">
+                            <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white text-sm font-bold">
+                              {c.number}
+                            </span>
+                          </td>
+
+                          {/* 작품사진 */}
+                          <td className="px-3 py-3">
+                            <PhotoCell files={c.contestant_files ?? []} onSelect={setPreviewPhoto} activeUrl={previewPhoto} />
+                          </td>
+
+                          {/* 영상 */}
+                          <td className="px-3 py-3 text-center">
+                            <VideoCell files={c.contestant_files ?? []} />
+                          </td>
+
+                          {/* 채점 항목들 */}
+                          {criteria.length > 0 ? criteria.map((cr) => {
+                            const val = scores[c.id]?.[cr.id]?.score ?? "";
+                            const num = parseFloat(val);
+                            const valid = !isNaN(num) && num >= 0 && num <= cr.max_score;
+                            return (
+                              <td key={cr.id} className="px-2 py-3 text-center">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={cr.max_score}
+                                  value={val}
+                                  disabled={isSubmitted}
+                                  onChange={(e) => handleChange(c.id, cr.id, e.target.value)}
+                                  onBlur={() => valid && handleSave(c.id, cr.id)}
+                                  className={`w-16 text-center border rounded-lg px-1 py-1.5 text-sm font-medium
+                                    ${isSubmitted ? "bg-gray-50 text-gray-400 border-gray-200"
+                                      : valid && val !== "" ? "border-blue-400 bg-blue-50 text-blue-800"
+                                      : val !== "" && !valid ? "border-red-400 bg-red-50"
+                                      : "border-gray-300 focus:border-blue-400 focus:outline-none"}`}
+                                  placeholder={`/${cr.max_score}`}
+                                />
+                              </td>
+                            );
+                          }) : (
+                            <td className="px-3 py-3 text-center text-xs text-gray-400">채점항목<br/>미설정</td>
+                          )}
+
+                          {/* 총점 */}
+                          <td className="px-3 py-3 text-center">
+                            {criteria.length > 0 ? (
+                              <div className={`text-xl font-bold ${cTotal > 0 ? "text-blue-700" : "text-gray-300"}`}>
+                                {cTotal}
+                              </div>
+                            ) : <span className="text-gray-300">-</span>}
+                          </td>
+
+                          {/* 등수 */}
+                          <td className="px-3 py-3 text-center">
+                            {rank ? (
+                              <span className={`inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold
+                                ${rank === 1 ? "bg-yellow-400 text-yellow-900"
+                                  : rank === 2 ? "bg-gray-300 text-gray-800"
+                                  : rank === 3 ? "bg-amber-600 text-white"
+                                  : "bg-gray-100 text-gray-600"}`}>
+                                {rank}등
+                              </span>
+                            ) : <span className="text-gray-300">-</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 하단 제출 */}
+              {!isSubmitted && criteria.length > 0 && (
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    채점 완료: <strong className="text-blue-600">{totalFilled} / {contestants.length}명</strong>
+                  </p>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={submitting || totalFilled < contestants.length}
+                    className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    {submitting ? "제출 중..." : "채점 제출"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
