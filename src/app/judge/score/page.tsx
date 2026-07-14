@@ -282,17 +282,27 @@ export default function JudgeScorePage() {
                   </div>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  {groupTabs.map((tab) => (
-                    <button key={tab.key} onClick={() => setSelectedTabKey(tab.key)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
-                        selectedTabKey === tab.key ? "bg-blue-600 text-white shadow" : "bg-white border text-gray-700 hover:border-blue-300"
-                      }`}>
-                      {tab.displayName}
-                      {tab.categoryIds.length > 0 && tab.categoryIds.every((id) => submitted[id]) && (
-                        <span className="ml-1.5 text-xs opacity-75">✓</span>
-                      )}
-                    </button>
-                  ))}
+                  {groupTabs.map((tab) => {
+                    const isActive = selectedTabKey === tab.key;
+                    const allSubmitted = tab.categoryIds.length > 0 && tab.categoryIds.every((id) => submitted[id]);
+                    const someSubmitted = !allSubmitted && tab.categoryIds.some((id) => submitted[id]);
+                    return (
+                      <button key={tab.key} onClick={() => setSelectedTabKey(tab.key)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                          isActive
+                            ? "bg-blue-600 text-white shadow"
+                            : allSubmitted
+                              ? "bg-green-100 border border-green-400 text-green-800 hover:bg-green-200"
+                              : someSubmitted
+                                ? "bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100"
+                                : "bg-white border text-gray-700 hover:border-blue-300"
+                        }`}>
+                        {tab.displayName}
+                        {allSubmitted && <span className="ml-1.5 text-xs">✅</span>}
+                        {someSubmitted && <span className="ml-1.5 text-xs">⏳</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
