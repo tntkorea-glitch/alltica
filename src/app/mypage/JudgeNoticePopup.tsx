@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 export default function JudgeNoticePopup({ judgeName, judgeTitle, categories }: { judgeName: string; judgeTitle: string; categories: string[] }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const prevPathname = useRef<string | null>(null);
+
+  useEffect(() => {
+    // 마운트 또는 /mypage 재진입 시마다 팝업 열기
+    if (prevPathname.current !== pathname) {
+      setOpen(true);
+      prevPathname.current = pathname;
+    }
+  }, [pathname]);
 
   const dismiss = () => setOpen(false);
 
