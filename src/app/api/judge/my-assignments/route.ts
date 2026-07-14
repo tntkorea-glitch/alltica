@@ -12,7 +12,7 @@ export async function GET() {
 
   const { data: assignments, error } = await supabase
     .from("judge_assignments")
-    .select("id, category_id, categories(id, name, competition_id, competitions(id, title))")
+    .select("id, category_id, category:categories(id, name, competition_id, competitions(id, title))")
     .eq("user_id", ctx.userId)
     .eq("commission_only", false)
     .order("created_at");
