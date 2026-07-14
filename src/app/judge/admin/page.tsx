@@ -2052,7 +2052,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                 <div className="px-4 py-1.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
                   <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wide">위촉</span>
                   <span className="text-xs text-amber-600">{commPersons.length}명</span>
-                  <span className="text-xs text-amber-500">(심사 미배정 — 위촉장 발급 대상)</span>
+                  <span className="text-xs text-amber-500">(위촉장+위촉패 수여 명단)</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -2078,12 +2078,12 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex flex-wrap gap-1">
-                              {p.cats.map(a => (
-                                <span key={a.id} className="inline-flex items-center gap-0.5 bg-amber-50 border border-amber-200 text-amber-800 px-1.5 py-0.5 rounded-full text-xs whitespace-nowrap">
-                                  {a.category_name ?? a.category_id}
-                                  <button onClick={() => removeJudge(a.id)} className="text-amber-300 hover:text-red-500 ml-0.5">×</button>
-                                </span>
+                              {[...new Set(p.cats.map(a => a.major_category).filter(Boolean))].map(major => (
+                                <span key={major} className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">{major}</span>
                               ))}
+                              {p.cats.some(a => !a.major_category) && (
+                                <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-xs">미분류</span>
+                              )}
                             </div>
                           </td>
                           <FlagTd p={p} />
