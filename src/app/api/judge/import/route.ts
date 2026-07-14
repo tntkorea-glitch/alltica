@@ -243,9 +243,13 @@ export async function POST(request: NextRequest) {
     const errors: string[] = [];
 
     for (const a of assignments) {
-      // 이메일이 없으면 전화번호 기반 임시 이메일 생성 (Excel 단체접수 심사위원)
+      // 이메일 없으면 이름+전화번호 기반 임시 이메일 (같은 번호 여러 명 구분)
       const phone = (a.phone ?? "").replace(/\D/g, "");
-      const email = a.email?.trim() || (phone ? `judge-${phone}@ibc.local` : "");
+      const nameSlug = (a.name ?? "").trim().replace(/\s+/g, "");
+      const email = a.email?.trim() ||
+        (phone && nameSlug ? `judge-${phone}-${nameSlug}@ibc.local` :
+         phone ? `judge-${phone}@ibc.local` :
+         nameSlug ? `judge-${nameSlug}@ibc.local` : "");
       if (!email) { errors.push(`${a.name ?? "??"}: 이메일/연락처 없음`); continue; }
 
       // 유저 조회 → 없으면 자동 생성 (role은 CHECK 제약 내 값 사용)
