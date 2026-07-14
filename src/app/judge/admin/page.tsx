@@ -318,6 +318,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   const [ytInputId, setYtInputId] = useState<string | null>(null);
   const [ytUrl, setYtUrl] = useState("");
   const [editCompany, setEditCompany] = useState<{ id: string; value: string } | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
 
   // 신청서 import state
   const [importAthletes, setImportAthletes] = useState<ImportAthlete[]>([]);
@@ -555,6 +556,17 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
       await api(`/api/judge/contestants/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ company: value }) });
       setEditCompany(null);
       setAllContestants((prev) => prev.map((c) => c.id === id ? { ...c, company: value } : c));
+    } catch (e: unknown) { onMsg((e as Error).message); }
+  };
+
+  const moveContestant = async (id: string, newCategoryId: string) => {
+    if (!newCategoryId) return;
+    const newCat = categories.find((c) => c.id === newCategoryId);
+    try {
+      await api(`/api/judge/contestants/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category_id: newCategoryId }) });
+      setMovingId(null);
+      setAllContestants((prev) => prev.map((c) => c.id === id ? { ...c, category_id: newCategoryId, category_name: newCat?.name } : c));
+      onMsg(`종목 변경 완료 → ${newCat?.name}`);
     } catch (e: unknown) { onMsg((e as Error).message); }
   };
 
@@ -826,14 +838,28 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {p.entries.map((e) => (
-                            <span key={e.id} className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs group">
-                              {e.category_name}
-                              {e.number != null && <span className="bg-purple-200 text-purple-900 rounded-full px-1.5 font-bold">{e.number}</span>}
-                              <button
-                                onClick={() => { if (confirm(`"${e.category_name}" 접수를 취소하시겠습니까?`)) deleteContestant(e.id, true); }}
-                                className="ml-0.5 text-purple-400 hover:text-red-600 hover:bg-red-50 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none"
-                                title={`${e.category_name} 접수 취소`}
-                              >×</button>
+                            <span key={e.id} className="inline-flex flex-col gap-0.5">
+                              <span className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs">
+                                {e.category_name}
+                                {e.number != null && <span className="bg-purple-200 text-purple-900 rounded-full px-1.5 font-bold">{e.number}</span>}
+                                <button onClick={() => setMovingId(movingId === e.id ? null : e.id)} className="ml-0.5 text-purple-400 hover:text-blue-600 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center" title="종목 변경">✎</button>
+                                <button onClick={() => { if (confirm(`"${e.category_name}" 접수를 취소하시겠습니까?`)) deleteContestant(e.id, true); }} className="text-purple-400 hover:text-red-600 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center" title="접수 취소">×</button>
+                              </span>
+                              {movingId === e.id && (
+                                <select autoFocus defaultValue="" onChange={(e2) => { if (e2.target.value) moveContestant(e.id, e2.target.value); }}
+                                  className="text-xs border rounded px-1.5 py-1 bg-white max-w-[180px]">
+                                  <option value="">종목 선택</option>
+                                  {CATEGORY_HIERARCHY.map((group) => {
+                                    const groupCats = categories.filter((cat) => cat.major_category === group.major);
+                                    if (groupCats.length === 0) return null;
+                                    return (
+                                      <optgroup key={group.major} label={group.major}>
+                                        {groupCats.map((cat) => <option key={cat.id} value={cat.id} disabled={cat.id === e.category_id}>{cat.name}{cat.id === e.category_id ? " (현재)" : ""}</option>)}
+                                      </optgroup>
+                                    );
+                                  })}
+                                </select>
+                              )}
                             </span>
                           ))}
                         </div>
@@ -907,7 +933,29 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                               <span className="text-xs font-bold text-white bg-blue-500 rounded-full w-6 h-6 inline-flex items-center justify-center">{c.number}</span>
                             )}
                           </td>
-                          <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">{c.name}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            <div className="font-medium text-gray-900">{c.name}</div>
+                            {movingId === c.id ? (
+                              <div className="flex items-center gap-1 mt-1">
+                                <select autoFocus defaultValue="" onChange={(e) => { if (e.target.value) moveContestant(c.id, e.target.value); }}
+                                  className="text-xs border rounded px-1.5 py-1 bg-white max-w-[180px]">
+                                  <option value="">종목 선택</option>
+                                  {CATEGORY_HIERARCHY.map((group) => {
+                                    const groupCats = categories.filter((cat) => cat.major_category === group.major);
+                                    if (groupCats.length === 0) return null;
+                                    return (
+                                      <optgroup key={group.major} label={group.major}>
+                                        {groupCats.map((cat) => <option key={cat.id} value={cat.id} disabled={cat.id === c.category_id}>{cat.name}{cat.id === c.category_id ? " (현재)" : ""}</option>)}
+                                      </optgroup>
+                                    );
+                                  })}
+                                </select>
+                                <button onClick={() => setMovingId(null)} className="text-xs text-gray-400 hover:text-gray-600">취소</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setMovingId(c.id)} className="text-[10px] text-blue-400 hover:text-blue-600 mt-0.5">종목 변경</button>
+                            )}
+                          </td>
                           <td className="px-3 py-2.5 text-center">
                             <label className="inline-flex flex-col items-center gap-0.5 cursor-pointer">
                               <input
