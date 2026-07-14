@@ -1076,7 +1076,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
   const [importJudges, setImportJudges] = useState<ImportJudge[]>([]);
   const [showImport, setShowImport] = useState(false);
   // { judgeId → { paid, majorCategory, title } }
-  const [judgeConfig, setJudgeConfig] = useState<Record<string, { paid: boolean; majorCategory: string; title: string }>>({});
+  const [judgeConfig, setJudgeConfig] = useState<Record<string, { paid: boolean; selectedCategoryIds: string[]; title: string }>>({});
   // 배정 완료된 심사위원 목록 (전체 카테고리)
   const [allAssignments, setAllAssignments] = useState<(Assignment & { category_name?: string; major_category?: string })[]>([]);
 
@@ -1103,15 +1103,15 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     try {
       const data = await api(`/api/judge/import?action=data&contest_slug=${competition.contest_slug}`);
       setImportJudges(data.judges);
-      const config: Record<string, { paid: boolean; majorCategory: string; title: string }> = {};
+      const config: Record<string, { paid: boolean; selectedCategoryIds: string[]; title: string }> = {};
       for (const j of data.judges as ImportJudge[]) {
-        // 신청서의 첫 번째 심사종목으로 대종목 자동 매핑
-        const firstCat = j.categories[0] ?? "";
-        const group = CATEGORY_HIERARCHY.find((g) =>
-          g.major === firstCat || g.judgeLabel === firstCat ||
-          firstCat.includes(g.major) || g.subs.some((s) => firstCat.includes(s.split("(")[0]))
-        );
-        config[j.id] = { paid: false, majorCategory: group?.major ?? sortedMajors[0] ?? "", title: j.title || "심사위원" };
+        // 신청 종목명 → 등록된 category ID 자동 매핑
+        const selectedCategoryIds: string[] = [];
+        for (const catName of j.categories) {
+          const catId = resolveCategory(catName, categories);
+          if (catId) selectedCategoryIds.push(catId);
+        }
+        config[j.id] = { paid: false, selectedCategoryIds, title: j.title || "심사위원" };
       }
       setJudgeConfig(config);
       setShowImport(true);
@@ -1120,24 +1120,30 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
 
   const setPaid = (id: string, paid: boolean) =>
     setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], paid } }));
-  const setCfg = (id: string, field: "majorCategory" | "title", val: string) =>
-    setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
+  const setTitle = (id: string, val: string) =>
+    setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], title: val } }));
+  const toggleCategoryId = (judgeId: string, catId: string, checked: boolean) =>
+    setJudgeConfig((prev) => {
+      const curr = prev[judgeId];
+      const ids = checked
+        ? [...new Set([...(curr.selectedCategoryIds ?? []), catId])]
+        : (curr.selectedCategoryIds ?? []).filter((id) => id !== catId);
+      return { ...prev, [judgeId]: { ...curr, selectedCategoryIds: ids } };
+    });
 
   const bulkAssign = async () => {
-    const toAssign = importJudges.filter((j) => judgeConfig[j.id]?.paid && judgeConfig[j.id]?.majorCategory);
-    if (toAssign.length === 0) { onMsg("입금 확인 + 대종목 선택된 심사위원이 없습니다."); return; }
+    const toAssign = importJudges.filter((j) => judgeConfig[j.id]?.paid && (judgeConfig[j.id]?.selectedCategoryIds?.length ?? 0) > 0);
+    if (toAssign.length === 0) { onMsg("입금 확인 + 배정 종목이 선택된 심사위원이 없습니다."); return; }
     setLoading(true);
     try {
-      // 대종목 → 해당하는 모든 세부종목 카테고리 ID에 배정
       const assignments: Array<{ email: string; category_id: string; title: string }> = [];
       for (const j of toAssign) {
-        const { majorCategory, title } = judgeConfig[j.id];
-        const subCats = categories.filter((c) => c.major_category === majorCategory);
-        for (const cat of subCats) {
-          assignments.push({ email: j.email, category_id: cat.id, title });
+        const { selectedCategoryIds, title } = judgeConfig[j.id];
+        for (const catId of selectedCategoryIds) {
+          assignments.push({ email: j.email, category_id: catId, title });
         }
       }
-      if (assignments.length === 0) { onMsg("선택된 대종목에 세부종목이 없습니다. 종목을 먼저 등록해주세요."); setLoading(false); return; }
+      if (assignments.length === 0) { onMsg("배정할 종목이 없습니다. 종목을 선택해주세요."); setLoading(false); return; }
       const result = await api("/api/judge/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "judges", assignments }) });
       const errMsg = result.errors?.length > 0 ? ` (오류: ${result.errors.length}건)` : "";
       onMsg(`심사위원 ${result.inserted}건 배정 완료 (${toAssign.length}명 × 세부종목)${errMsg}`);
@@ -1200,7 +1206,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
                 {importJudges.map((j) => {
-                  const cfg = judgeConfig[j.id] ?? { paid: false, categoryId: "", title: "심사위원" };
+                  const cfg = judgeConfig[j.id] ?? { paid: false, selectedCategoryIds: [], title: "심사위원" };
                   return (
                     <tr key={j.id} className={`align-top hover:bg-gray-50 transition ${cfg.paid ? "bg-green-50" : ""}`}>
                       <td className="px-3 py-2.5 whitespace-nowrap">
@@ -1228,20 +1234,61 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                           </span>
                         </label>
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-2.5 min-w-[180px]">
                         {cfg.paid && (
-                          <select value={cfg.majorCategory} onChange={(e) => setCfg(j.id, "majorCategory", e.target.value)}
-                            className="border rounded px-2 py-1.5 text-xs font-medium text-gray-700 w-full min-w-[120px]">
-                            <option value="">대종목 선택</option>
-                            {sortedMajors.map((m) => (
-                              <option key={m} value={m}>{m} ({categories.filter((c) => c.major_category === m).length}종목)</option>
-                            ))}
-                          </select>
+                          <div className="flex flex-wrap gap-1">
+                            {j.categories.map((catName) => {
+                              const catId = resolveCategory(catName, categories);
+                              const cat = catId ? categories.find((c) => c.id === catId) : null;
+                              if (!cat) {
+                                return (
+                                  <div key={catName} className="flex items-center gap-1 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5 text-xs">
+                                    <span className="text-orange-600 line-through">{catName}</span>
+                                    <select defaultValue="" onChange={(e) => { if (e.target.value) toggleCategoryId(j.id, e.target.value, true); }}
+                                      className="border rounded px-1 py-0.5 text-xs text-gray-600 max-w-[120px]">
+                                      <option value="">수동선택</option>
+                                      {sortedMajors.map((major) => {
+                                        const majorCats = categories.filter((c) => c.major_category === major);
+                                        if (majorCats.length === 0) return null;
+                                        return (
+                                          <optgroup key={major} label={major}>
+                                            {majorCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                          </optgroup>
+                                        );
+                                      })}
+                                    </select>
+                                  </div>
+                                );
+                              }
+                              const isSelected = cfg.selectedCategoryIds.includes(cat.id);
+                              return (
+                                <label key={catName} className={`inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5 cursor-pointer border transition ${isSelected ? "bg-green-100 text-green-800 border-green-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}>
+                                  <input type="checkbox" checked={isSelected}
+                                    onChange={(e) => toggleCategoryId(j.id, cat.id, e.target.checked)}
+                                    className="w-3 h-3 accent-green-600" />
+                                  {cat.name}
+                                </label>
+                              );
+                            })}
+                            <select defaultValue="" onChange={(e) => { if (e.target.value) { toggleCategoryId(j.id, e.target.value, true); (e.target as HTMLSelectElement).value = ""; } }}
+                              className="border rounded px-1.5 py-0.5 text-xs text-gray-500 max-w-[100px]">
+                              <option value="">+추가</option>
+                              {sortedMajors.map((major) => {
+                                const majorCats = categories.filter((c) => c.major_category === major && !cfg.selectedCategoryIds.includes(c.id) && !j.categories.some((cn) => resolveCategory(cn, categories) === c.id));
+                                if (majorCats.length === 0) return null;
+                                return (
+                                  <optgroup key={major} label={major}>
+                                    {majorCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                  </optgroup>
+                                );
+                              })}
+                            </select>
+                          </div>
                         )}
                       </td>
                       <td className="px-3 py-2.5">
                         {cfg.paid && (
-                          <select value={cfg.title} onChange={(e) => setCfg(j.id, "title", e.target.value)}
+                          <select value={cfg.title} onChange={(e) => setTitle(j.id, e.target.value)}
                             className="border rounded px-2 py-1.5 text-xs font-medium text-gray-700">
                             {JUDGE_TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
                           </select>
