@@ -29,11 +29,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "데이터 조회 실패" }, { status: 500 });
   }
 
-  // 심사위원 이름 조회
-  const judgeIds = (submissions ?? []).map((s) => s.judge_id);
-  const { data: judgeUsers } = judgeIds.length > 0
-    ? await supabase.from("users").select("id, name").in("id", judgeIds)
+  // 배정된 심사위원 전체 조회
+  const { data: assignments } = await supabase
+    .from("judge_assignments")
+    .select("user_id")
+    .eq("category_id", categoryId)
+    .eq("commission_only", false);
+
+  const assignedIds = (assignments ?? []).map((a) => a.user_id);
+  const submittedIds = new Set((submissions ?? []).map((s) => s.judge_id));
+
+  const { data: allJudgeUsers } = assignedIds.length > 0
+    ? await supabase.from("users").select("id, name").in("id", assignedIds)
     : { data: [] };
+
+  const submittedJudges = (allJudgeUsers ?? []).filter((u) => submittedIds.has(u.id));
+  const pendingJudges = (allJudgeUsers ?? []).filter((u) => !submittedIds.has(u.id));
 
   // 선수별 × 항목별 평균 점수 계산
   const results = contestants.map((contestant) => {
@@ -90,6 +101,7 @@ export async function GET(request: NextRequest) {
     criteria: criteria ?? [],
     awards: awards ?? [],
     submitted_judge_count: submittedJudgeCount,
-    judges: judgeUsers ?? [],
+    judges: submittedJudges,
+    pending_judges: pendingJudges,
   });
 }

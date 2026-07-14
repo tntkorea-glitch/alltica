@@ -47,6 +47,7 @@ export default function JudgeResultPage() {
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [awards, setAwards] = useState<Award[]>([]);
   const [judges, setJudges] = useState<Judge[]>([]);
+  const [pendingJudges, setPendingJudges] = useState<Judge[]>([]);
   const [submittedJudgeCount, setSubmittedJudgeCount] = useState(0);
   const [gradeTab, setGradeTab] = useState<GradeTab>("전체");
   const [loading, setLoading] = useState(false);
@@ -83,6 +84,7 @@ export default function JudgeResultPage() {
       setCriteria(data.criteria);
       setAwards(data.awards);
       setJudges(data.judges ?? []);
+      setPendingJudges(data.pending_judges ?? []);
       setSubmittedJudgeCount(data.submitted_judge_count);
       setGradeTab("전체");
     } catch (e: unknown) { setMsg((e as Error).message); }
@@ -199,9 +201,9 @@ export default function JudgeResultPage() {
         {selectedCategory && (
           <>
             {/* 심사위원 + 시상 정보 */}
-            <div className="mb-4 flex items-start gap-4 flex-wrap">
+            <div className="mb-4 space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-gray-500">제출 완료 심사위원:</span>
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5 whitespace-nowrap">✅ 제출완료</span>
                 {judges.length > 0 ? (
                   judges.map((j) => (
                     <span key={j.id} className="text-sm font-semibold text-gray-800 bg-white border border-gray-200 rounded-full px-3 py-0.5">
@@ -209,9 +211,19 @@ export default function JudgeResultPage() {
                     </span>
                   ))
                 ) : (
-                  <span className="text-sm text-gray-400">{submittedJudgeCount}명 (이름 미확인)</span>
+                  <span className="text-sm text-gray-400">{submittedJudgeCount > 0 ? `${submittedJudgeCount}명` : "없음"}</span>
                 )}
               </div>
+              {pendingJudges.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-2 py-0.5 whitespace-nowrap">⏳ 미제출</span>
+                  {pendingJudges.map((j) => (
+                    <span key={j.id} className="text-sm text-red-500 bg-white border border-red-200 rounded-full px-3 py-0.5">
+                      {j.name}
+                    </span>
+                  ))}
+                </div>
+              )}
               {awards.length > 0 && (
                 <div className="flex gap-1.5 flex-wrap">
                   {awards.map((a) => <span key={a.id} className={`text-xs px-2 py-0.5 rounded-full border font-medium ${awardBadgeClass(a.award_name)}`}>{a.award_name} {a.count}명</span>)}
