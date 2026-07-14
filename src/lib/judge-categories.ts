@@ -14,7 +14,7 @@ export const CATEGORY_HIERARCHY: CategoryGroup[] = [
   { major: "반영구",    judgeLabel: "PMU (반영구)",  subs: ["그라데이션(머신)", "그라데이션(수지)", "그라데이션(콤보)", "엠보기본", "엠보응용", "립아트", "아이라인", "풀조화"] },
   { major: "타투",      judgeLabel: "타투",          subs: ["레터링", "미니타투"] },
   { major: "속눈썹",    judgeLabel: "속눈썹",        subs: ["볼륨연장", "클래식연장"] },
-  { major: "LED속눈썹", judgeLabel: "LED속눈썹",     subs: ["볼륨연장", "클래식연장"] },
+  { major: "LED속눈썹", judgeLabel: "LED속눈썹",     subs: ["LED볼륨연장", "LED클래식연장"] },
   { major: "속눈썹펌",  judgeLabel: "속눈썹펌",      subs: ["속눈썹펌"] },
   { major: "슈가링왁싱",judgeLabel: "슈가링왁싱",    subs: ["바디(S)", "페이스(S)"] },
   { major: "왁싱",      judgeLabel: "왁싱",          subs: ["바디(W)", "페이스(W)"] },
