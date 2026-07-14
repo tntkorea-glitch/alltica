@@ -1502,25 +1502,27 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
       const ws = wb.Sheets[sheetName];
       const rawRows = XLSX.utils.sheet_to_json<(string | number)[]>(ws, { defval: "", header: 1 });
 
-      // 헤더 행 찾기 (이름/name 포함된 행)
+      // 헤더 행 찾기 (이름(한글) / 이름 / 성명 포함된 행)
       let headerIdx = -1;
-      let colName = 1, colPhone = 2, colEmail = 3, colTitle = 4, colCategory = 5, colCareer = 6;
+      let colName = 1, colCompany = 2, colPhone = 5, colEmail = -1, colTitle = -1, colCategory = 7, colCareer = 6;
       for (let i = 0; i < Math.min(15, rawRows.length); i++) {
         const row = rawRows[i].map((c) => String(c ?? "").trim());
-        const nameCol = row.findIndex((c) => c === "이름" || c === "성명");
+        const nameCol = row.findIndex((c) => /^이름|^성명/.test(c));
         if (nameCol >= 0) {
           headerIdx = i;
           colName = nameCol;
-          colPhone = row.findIndex((c) => /연락처|전화/.test(c));
-          colEmail = row.findIndex((c) => /이메일|email/i.test(c));
-          colTitle = row.findIndex((c) => /직책|직위|title/i.test(c));
-          colCategory = row.findIndex((c) => /종목|카테고리|분야/.test(c));
-          colCareer = row.findIndex((c) => /경력|career/i.test(c));
-          if (colPhone < 0) colPhone = nameCol + 1;
-          if (colEmail < 0) colEmail = nameCol + 2;
-          if (colTitle < 0) colTitle = nameCol + 3;
-          if (colCategory < 0) colCategory = nameCol + 4;
-          if (colCareer < 0) colCareer = nameCol + 5;
+          const phoneCol = row.findIndex((c) => /연락처|전화/.test(c));
+          const emailCol = row.findIndex((c) => /이메일|email/i.test(c));
+          const titleCol = row.findIndex((c) => /직책|직위|title/i.test(c));
+          const catCol = row.findIndex((c) => /종목|카테고리|분야/.test(c));
+          const careerCol = row.findIndex((c) => /경력|career/i.test(c));
+          const companyCol = row.findIndex((c) => /상호|기관|단체/.test(c));
+          if (phoneCol >= 0) colPhone = phoneCol;
+          if (emailCol >= 0) colEmail = emailCol;
+          if (titleCol >= 0) colTitle = titleCol;
+          if (catCol >= 0) colCategory = catCol;
+          if (careerCol >= 0) colCareer = careerCol;
+          if (companyCol >= 0) colCompany = companyCol;
           break;
         }
       }
@@ -1530,13 +1532,15 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
       for (let i = startRow; i < rawRows.length; i++) {
         const row = rawRows[i];
         const name = String(row[colName] ?? "").trim();
-        if (!name || /^이름|^성명/.test(name)) continue;
+        if (!name || /^이름|^성명/.test(name) || isNaN(Number(row[0])) && String(row[0]).trim() === "") continue;
+        if (!name) continue;
+        const company = String(row[colCompany] ?? "").trim();
         const phone = String(row[colPhone] ?? "").trim();
-        const email = String(row[colEmail] ?? "").trim();
-        const title = String(row[colTitle] ?? "").trim() || "심사위원";
+        const email = colEmail >= 0 ? String(row[colEmail] ?? "").trim() : "";
+        const title = colTitle >= 0 ? String(row[colTitle] ?? "").trim() || "심사위원" : "심사위원";
         const categoryRaw = String(row[colCategory] ?? "").trim();
         const categories = categoryRaw ? categoryRaw.split(/[,，、]/).map((c) => c.trim()).filter(Boolean) : [];
-        const career = String(row[colCareer] ?? "").trim();
+        const career = company ? `${company} | ${String(row[colCareer] ?? "").trim()}`.replace(/ \| $/, "") : String(row[colCareer] ?? "").trim();
         parsed.push({ id: `excel-${i}`, name, phone, email, title, categories, career });
       }
 
