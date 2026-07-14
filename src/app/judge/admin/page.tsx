@@ -596,6 +596,15 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
     } catch (e: unknown) { onMsg((e as Error).message); }
   };
 
+  const calcFee = (grade: string | undefined, count: number): string => {
+    if (count === 0) return "";
+    const isStudent = grade?.includes("학생");
+    const table = isStudent ? [4, 7, 10] : [10, 18, 26]; // 만원 단위
+    const perExtra = isStudent ? 3 : 8;
+    const fee = count <= 3 ? table[count - 1] : table[2] + (count - 3) * perExtra;
+    return `${fee}만원`;
+  };
+
   const togglePaid = async (id: string, current: boolean) => {
     try {
       await api(`/api/judge/contestants/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paid: !current }) });
@@ -853,7 +862,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                   <tr className="bg-gray-50 text-xs text-gray-500 border-b">
                     <th className="px-3 py-2 text-center w-8 font-medium">#</th>
                     <th className="px-3 py-2 text-left font-medium">이름</th>
-                    <th className="px-3 py-2 text-center w-10 font-medium">입금</th>
+                    <th className="px-3 py-2 text-center font-medium">입금 / 금액</th>
                     <th className="px-3 py-2 text-left font-medium">연락처</th>
                     <th className="px-3 py-2 text-left font-medium">단체명</th>
                     <th className="px-3 py-2 text-left font-medium">부문</th>
@@ -870,12 +879,17 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                         {(() => {
                           const allPaid = p.entries.every((e) => e.paid);
                           return (
-                            <input type="checkbox" checked={allPaid}
-                              onChange={async () => {
-                                const target = !allPaid;
-                                for (const e of p.entries) if ((e.paid ?? false) !== target) await togglePaid(e.id, e.paid ?? false);
-                              }}
-                              className="w-4 h-4 accent-green-500 cursor-pointer" />
+                            <div className="flex items-center justify-center gap-1.5">
+                              <input type="checkbox" checked={allPaid}
+                                onChange={async () => {
+                                  const target = !allPaid;
+                                  for (const e of p.entries) if ((e.paid ?? false) !== target) await togglePaid(e.id, e.paid ?? false);
+                                }}
+                                className="w-4 h-4 accent-green-500 cursor-pointer" />
+                              <span className={`text-xs font-medium whitespace-nowrap ${allPaid ? "text-green-600" : "text-gray-400"}`}>
+                                {calcFee(p.grade, p.entries.length)}
+                              </span>
+                            </div>
                           );
                         })()}
                       </td>
@@ -963,7 +977,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                         <tr className="bg-gray-50 text-xs text-gray-500 border-b">
                           <th className="px-3 py-2 text-center w-8 font-medium">#</th>
                           <th className="px-3 py-2 text-left font-medium">이름</th>
-                          <th className="px-3 py-2 text-center w-10 font-medium">입금</th>
+                          <th className="px-3 py-2 text-center font-medium">입금 / 금액</th>
                           <th className="px-3 py-2 text-left font-medium">연락처</th>
                           <th className="px-3 py-2 text-left font-medium">부문</th>
                           <th className="px-3 py-2 text-left font-medium">접수 종목 (참가번호)</th>
@@ -979,12 +993,17 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                               {(() => {
                                 const allPaid = p.entries.every((e) => e.paid);
                                 return (
-                                  <input type="checkbox" checked={allPaid}
-                                    onChange={async () => {
-                                      const target = !allPaid;
-                                      for (const e of p.entries) if ((e.paid ?? false) !== target) await togglePaid(e.id, e.paid ?? false);
-                                    }}
-                                    className="w-4 h-4 accent-green-500 cursor-pointer" />
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <input type="checkbox" checked={allPaid}
+                                      onChange={async () => {
+                                        const target = !allPaid;
+                                        for (const e of p.entries) if ((e.paid ?? false) !== target) await togglePaid(e.id, e.paid ?? false);
+                                      }}
+                                      className="w-4 h-4 accent-green-500 cursor-pointer" />
+                                    <span className={`text-xs font-medium whitespace-nowrap ${allPaid ? "text-green-600" : "text-gray-400"}`}>
+                                      {calcFee(p.grade, p.entries.length)}
+                                    </span>
+                                  </div>
                                 );
                               })()}
                             </td>
