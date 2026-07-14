@@ -2061,12 +2061,13 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                         <th className="px-3 py-1.5 text-left font-medium w-24">이름</th>
                         <th className="px-3 py-1.5 text-left font-medium">이메일</th>
                         <th className="px-3 py-1.5 text-left font-medium w-28">직책</th>
+                        <th className="px-3 py-1.5 text-left font-medium">종목</th>
                         <th className="px-3 py-1.5 text-center font-medium w-24">위촉/심사배정</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-amber-50">
                       {applySortPersons(commPersons).map(p => (
-                        <tr key={p.userId} className="bg-amber-50/20 hover:bg-amber-50/50">
+                        <tr key={p.userId} className="bg-amber-50/20 hover:bg-amber-50/50 align-top">
                           <td className="px-3 py-2 whitespace-nowrap">
                             <div className="font-semibold text-gray-900">{p.name}</div>
                             <button onClick={() => removeAllJudge(p.userId, p.name)} className="text-[10px] text-red-400 hover:text-red-600 mt-0.5">배정취소</button>
@@ -2074,6 +2075,16 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                           <EmailTd p={p} />
                           <td className="px-3 py-2 whitespace-nowrap">
                             {p.titles.map(t => <span key={t} className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs mr-1">{t}</span>)}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex flex-wrap gap-1">
+                              {p.cats.map(a => (
+                                <span key={a.id} className="inline-flex items-center gap-0.5 bg-amber-50 border border-amber-200 text-amber-800 px-1.5 py-0.5 rounded-full text-xs whitespace-nowrap">
+                                  {a.category_name ?? a.category_id}
+                                  <button onClick={() => removeJudge(a.id)} className="text-amber-300 hover:text-red-500 ml-0.5">×</button>
+                                </span>
+                              ))}
+                            </div>
                           </td>
                           <FlagTd p={p} />
                         </tr>
