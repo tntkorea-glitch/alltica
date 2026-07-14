@@ -596,13 +596,17 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
     } catch (e: unknown) { onMsg((e as Error).message); }
   };
 
-  const calcFee = (grade: string | undefined, count: number): string => {
-    if (count === 0) return "";
+  const calcFeeNum = (grade: string | undefined, count: number): number => {
+    if (count === 0) return 0;
     const isStudent = grade?.includes("학생");
-    const table = isStudent ? [4, 7, 10] : [10, 18, 26]; // 만원 단위
+    const table = isStudent ? [4, 7, 10] : [10, 18, 26];
     const perExtra = isStudent ? 3 : 8;
-    const fee = count <= 3 ? table[count - 1] : table[2] + (count - 3) * perExtra;
-    return `${fee}만원`;
+    return count <= 3 ? table[count - 1] : table[2] + (count - 3) * perExtra;
+  };
+
+  const calcFee = (grade: string | undefined, count: number): string => {
+    const fee = calcFeeNum(grade, count);
+    return fee === 0 ? "" : `${fee}만원`;
   };
 
   const togglePaid = async (id: string, current: boolean) => {
@@ -965,11 +969,13 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                 ? [...persons.values()].sort((a, b) => a.name.localeCompare(b.name, "ko"))
                 : [...persons.values()];
               const totalEntries = personList.reduce((s, p) => s + p.entries.length, 0);
+              const totalFee = personList.reduce((s, p) => s + calcFeeNum(p.grade, p.entries.length), 0);
               return (
                 <div key={company} className="bg-white rounded-xl border overflow-hidden">
                   <div className="px-4 py-2 bg-indigo-50 border-b flex items-center gap-2">
                     <span className="text-sm font-bold text-indigo-800">{company}</span>
                     <span className="text-xs text-gray-400">{personList.length}명 · {totalEntries}건</span>
+                    {totalFee > 0 && <span className="text-xs font-semibold text-indigo-600 ml-1">· 총 {totalFee}만원</span>}
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
