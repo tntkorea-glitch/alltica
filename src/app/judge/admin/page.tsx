@@ -505,8 +505,8 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
     setLoading(false);
   };
 
-  const deleteContestant = async (id: string) => {
-    if (!confirm("선수를 삭제하시겠습니까?")) return;
+  const deleteContestant = async (id: string, skipConfirm = false) => {
+    if (!skipConfirm && !confirm("선수를 삭제하시겠습니까?")) return;
     try { await api(`/api/judge/contestants/${id}`, { method: "DELETE" }); await load(); }
     catch (e: unknown) { onMsg((e as Error).message); }
   };
@@ -810,6 +810,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                     <th className="px-3 py-2 text-left font-medium">단체명</th>
                     <th className="px-3 py-2 text-left font-medium">부문</th>
                     <th className="px-3 py-2 text-left font-medium">접수 종목 (참가번호)</th>
+                    <th className="px-3 py-2 text-center w-12 font-medium">삭제</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -825,12 +826,26 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {p.entries.map((e) => (
-                            <span key={e.id} className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs">
+                            <span key={e.id} className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs group">
                               {e.category_name}
                               {e.number != null && <span className="bg-purple-200 text-purple-900 rounded-full px-1.5 font-bold">{e.number}</span>}
+                              <button
+                                onClick={() => { if (confirm(`"${e.category_name}" 접수를 취소하시겠습니까?`)) deleteContestant(e.id, true); }}
+                                className="ml-0.5 text-purple-400 hover:text-red-600 hover:bg-red-50 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none"
+                                title={`${e.category_name} 접수 취소`}
+                              >×</button>
                             </span>
                           ))}
                         </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`${p.name} 선수의 전체 접수(${p.entries.length}개 종목)를 삭제하시겠습니까?`)) return;
+                            for (const e of p.entries) await deleteContestant(e.id, true);
+                          }}
+                          className="text-xs text-red-400 hover:text-red-600"
+                        >전체삭제</button>
                       </td>
                     </tr>
                   ))}
