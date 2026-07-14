@@ -970,12 +970,15 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                 : [...persons.values()];
               const totalEntries = personList.reduce((s, p) => s + p.entries.length, 0);
               const totalFee = personList.reduce((s, p) => s + calcFeeNum(p.grade, p.entries.length), 0);
+              const paidCount = personList.filter(p => p.entries.every(e => e.paid)).length;
+              const paidRate = personList.length > 0 ? Math.round(paidCount / personList.length * 100) : 0;
               return (
                 <div key={company} className="bg-white rounded-xl border overflow-hidden">
                   <div className="px-4 py-2 bg-indigo-50 border-b flex items-center gap-2">
                     <span className="text-sm font-bold text-indigo-800">{company}</span>
                     <span className="text-xs text-gray-400">{personList.length}명 · {totalEntries}건</span>
                     {totalFee > 0 && <span className="text-xs font-semibold text-indigo-600 ml-1">· 총 {totalFee}만원</span>}
+                    <span className={`ml-auto text-xs font-bold ${paidRate === 100 ? "text-green-600" : paidRate >= 50 ? "text-amber-500" : "text-gray-400"}`}>{paidRate}%</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
