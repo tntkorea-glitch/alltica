@@ -84,9 +84,13 @@ export default async function MyPage() {
   }
 
   const isJudge = judgeAssignments.length > 0;
-  const judgeCategories = judgeAssignments
-    .map((a) => (a.categories as { name: string } | null | undefined)?.name)
-    .filter(Boolean) as string[];
+  const judgeCategories = [
+    ...new Set(
+      judgeAssignments
+        .map((a) => (a.categories as { major_category?: string } | null | undefined)?.major_category)
+        .filter(Boolean) as string[]
+    ),
+  ];
   const judgeName = judgeUser?.name || session.user.name || "";
 
   const apps = applications ?? [];

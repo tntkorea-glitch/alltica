@@ -27,7 +27,7 @@ export default function JudgeNoticePopup({ judgeName, categories }: { judgeName:
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-5 text-white">
           <div className="text-2xl mb-2">⚖️</div>
           <h2 className="text-lg font-bold">심사위원 안내</h2>
-          <p className="text-blue-100 text-sm mt-1">IBC 국제뷰티스트챔피언십 2026</p>
+          <p className="text-blue-100 text-sm mt-1">제 12회 IBC 국제뷰티스트챔피언십 in 2026</p>
         </div>
 
         {/* 내용 */}
