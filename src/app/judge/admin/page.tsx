@@ -1418,10 +1418,8 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     if (!competition?.contest_slug) { onMsg("신청서와 연결된 대회가 아닙니다."); return; }
     try {
       const data = await api(`/api/judge/import?action=data&contest_slug=${competition.contest_slug}`);
-      setImportJudges(data.judges);
       const config: Record<string, { paid: boolean; selectedMajors: string[]; title: string }> = {};
       for (const j of data.judges as ImportJudge[]) {
-        // 신청 종목명 → 대종목명 자동 매핑 (정확히 일치하는 것만)
         const selectedMajors: string[] = [];
         for (const catName of j.categories) {
           const major = CATEGORY_HIERARCHY.find((g) => g.major === catName || g.judgeLabel === catName)?.major;
@@ -1429,7 +1427,13 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         }
         config[j.id] = { paid: false, selectedMajors, title: j.title || "심사위원" };
       }
-      setJudgeConfig(config);
+      // 기존 Excel 데이터에 MERGE (이름+전화 기준 중복 제거)
+      setImportJudges((prev) => {
+        const existingKeys = new Set(prev.map((j) => `${j.name}||${j.phone.replace(/\D/g, "")}`));
+        const fresh = (data.judges as ImportJudge[]).filter((j) => !existingKeys.has(`${j.name}||${j.phone.replace(/\D/g, "")}`));
+        return [...prev, ...fresh];
+      });
+      setJudgeConfig((prev) => ({ ...prev, ...config }));
       setShowImport(true);
     } catch (e: unknown) { onMsg((e as Error).message); }
   };
@@ -1452,19 +1456,20 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     if (toAssign.length === 0) { onMsg("입금 확인 + 배정 대종목이 선택된 심사위원이 없습니다."); return; }
     setLoading(true);
     try {
-      const assignments: Array<{ email: string; category_id: string; title: string; name: string }> = [];
+      const assignments: Array<{ email: string; category_id: string; title: string; name: string; phone?: string }> = [];
       for (const j of toAssign) {
         const { selectedMajors, title } = judgeConfig[j.id];
         for (const major of selectedMajors) {
           const subCats = categories.filter((c) => c.major_category === major);
           for (const cat of subCats) {
-            assignments.push({ email: j.email, category_id: cat.id, title, name: j.name });
+            assignments.push({ email: j.email, category_id: cat.id, title, name: j.name, phone: j.phone });
           }
         }
       }
       if (assignments.length === 0) { onMsg("배정할 세부종목이 없습니다. 대종목을 먼저 등록해주세요 (대회·종목 탭 → 전체 종목 일괄 생성)."); setLoading(false); return; }
       const result = await api("/api/judge/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "judges", assignments }) });
-      const errorDetails = result.errors?.length > 0 ? ` | 미등록: ${result.errors.map((e: string) => e.split(":")[0]).join(", ")}` : "";
+      const errorNames = result.errors?.length > 0 ? [...new Set<string>(result.errors.map((e: string) => e.split(":")[0]))] : [];
+      const errorDetails = errorNames.length > 0 ? ` | 미등록: ${errorNames.join(", ")}` : "";
       onMsg(`✅ 심사위원 ${result.inserted}건 배정 완료 (${toAssign.length}명 × 세부종목)${errorDetails}`);
       setShowImport(false);
       await loadAssignments();
@@ -1555,10 +1560,15 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         }
         config[j.id] = { paid: false, selectedMajors, title: j.title || "심사위원" };
       }
-      setImportJudges(parsed);
-      setJudgeConfig(config);
+      // 기존 신청서 데이터에 MERGE (이름+전화 기준 중복 제거)
+      setImportJudges((prev) => {
+        const existingKeys = new Set(prev.map((j) => `${j.name}||${j.phone.replace(/\D/g, "")}`));
+        const fresh = parsed.filter((j) => !existingKeys.has(`${j.name}||${j.phone.replace(/\D/g, "")}`));
+        return [...prev, ...fresh];
+      });
+      setJudgeConfig((prev) => ({ ...prev, ...config }));
       setShowImport(true);
-      onMsg(`📁 ${sheetName} 시트에서 심사위원 ${parsed.length}명 불러옴`);
+      onMsg(`📁 ${sheetName} 시트에서 심사위원 ${parsed.length}명 불러옴 (중복 자동 제외)`);
     } catch (e: unknown) { onMsg((e as Error).message); }
     setLoading(false);
   };

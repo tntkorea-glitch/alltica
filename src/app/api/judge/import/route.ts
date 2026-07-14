@@ -236,21 +236,42 @@ export async function POST(request: NextRequest) {
 
   if (action === "judges") {
     const { assignments } = body as {
-      assignments: Array<{ email: string; category_id: string; title: string; name?: string }>;
+      assignments: Array<{ email: string; category_id: string; title: string; name?: string; phone?: string }>;
     };
 
     let inserted = 0;
     const errors: string[] = [];
 
     for (const a of assignments) {
-      const { data: user } = await supabase.from("users").select("id").eq("email", a.email).maybeSingle();
-      if (!user) { errors.push(`${a.email}: 회원 없음`); continue; }
+      // 이메일이 없으면 전화번호 기반 임시 이메일 생성 (Excel 단체접수 심사위원)
+      const phone = (a.phone ?? "").replace(/\D/g, "");
+      const email = a.email?.trim() || (phone ? `judge-${phone}@ibc.local` : "");
+      if (!email) { errors.push(`${a.name ?? "??"}: 이메일/연락처 없음`); continue; }
+
+      // 유저 조회 → 없으면 자동 생성 (role은 CHECK 제약 내 값 사용)
+      let { data: user } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
+      if (!user) {
+        const { data: created, error: createErr } = await supabase
+          .from("users")
+          .insert({ email, name: a.name ?? "", phone: a.phone ?? "", role: "user" })
+          .select("id")
+          .maybeSingle();
+        if (createErr) {
+          // 유니크 충돌 시 재조회
+          const { data: retry } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
+          user = retry ?? null;
+          if (!user) { errors.push(`${email}: 유저 생성 실패 (${createErr.message})`); continue; }
+        } else {
+          user = created;
+        }
+      }
+      if (!user) { errors.push(`${email}: 유저 생성 실패`); continue; }
 
       const { error } = await supabase
         .from("judge_assignments")
         .upsert({ user_id: user.id, category_id: a.category_id, assigned_by: ctx.userId, title: a.title, judge_name: a.name ?? null }, { onConflict: "user_id,category_id" });
 
-      if (error) errors.push(`${a.email}: ${error.message}`);
+      if (error) errors.push(`${email}: ${error.message}`);
       else inserted++;
     }
 
