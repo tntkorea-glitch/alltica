@@ -252,7 +252,7 @@ export default function JudgeScorePage() {
           return (
             <div className={`mb-6 ${isMultiGroup ? "space-y-2" : ""}`}>
               {[...groups.entries()].map(([major, items]) => (
-                <div key={major} className={isMultiGroup ? "flex items-center gap-2 overflow-x-auto pb-1" : "flex gap-2 overflow-x-auto pb-1"}>
+                <div key={major} className={isMultiGroup ? "flex items-start gap-2 flex-wrap" : "flex gap-2 flex-wrap"}>
                   {isMultiGroup && (
                     <span className="shrink-0 text-xs font-bold text-white bg-purple-600 px-2.5 py-1 rounded-full whitespace-nowrap">
                       {major}
