@@ -1197,11 +1197,9 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                   <th className="px-3 py-2 text-left font-medium">이름</th>
                   <th className="px-3 py-2 text-left font-medium">연락처</th>
                   <th className="px-3 py-2 text-left font-medium">직책</th>
-                  <th className="px-3 py-2 text-left font-medium">신청종목</th>
+                  <th className="px-3 py-2 text-left font-medium">신청종목 (체크=배정)</th>
                   <th className="px-3 py-2 text-left font-medium max-w-[180px]">경력</th>
-                  <th className="px-3 py-2 text-center font-medium w-20">입금확인</th>
-                  <th className="px-3 py-2 text-left font-medium">배정종목</th>
-                  <th className="px-3 py-2 text-left font-medium">배정직책</th>
+                  <th className="px-3 py-2 text-center font-medium w-24">입금확인 / 직책</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
@@ -1217,25 +1215,9 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                       <td className="px-3 py-2.5 text-xs">
                         {j.title && <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded whitespace-nowrap">{j.title}</span>}
                       </td>
+                      {/* 신청종목 — 입금확인 시 체크박스로 전환 */}
                       <td className="px-3 py-2.5">
-                        <div className="flex gap-1 flex-wrap">
-                          {j.categories.map((c) => <span key={c} className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded whitespace-nowrap">{c}</span>)}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 text-xs text-gray-400 max-w-[180px]">
-                        <span className="line-clamp-2">{j.career}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        <label className={`inline-flex flex-col items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition ${cfg.paid ? "bg-green-100" : "bg-gray-50 hover:bg-gray-100"}`}>
-                          <input type="checkbox" className="w-4 h-4 accent-green-600" checked={cfg.paid}
-                            onChange={(e) => setPaid(j.id, e.target.checked)} />
-                          <span className={`text-xs font-medium whitespace-nowrap ${cfg.paid ? "text-green-700" : "text-gray-400"}`}>
-                            {cfg.paid ? "입금✓" : "미확인"}
-                          </span>
-                        </label>
-                      </td>
-                      <td className="px-3 py-2.5 min-w-[180px]">
-                        {cfg.paid && (
+                        {cfg.paid ? (
                           <div className="flex flex-wrap gap-1">
                             {j.categories.map((catName) => {
                               const catId = resolveCategory(catName, categories);
@@ -1243,10 +1225,10 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                               if (!cat) {
                                 return (
                                   <div key={catName} className="flex items-center gap-1 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5 text-xs">
-                                    <span className="text-orange-600 line-through">{catName}</span>
+                                    <span className="text-orange-500">?{catName}</span>
                                     <select defaultValue="" onChange={(e) => { if (e.target.value) toggleCategoryId(j.id, e.target.value, true); }}
-                                      className="border rounded px-1 py-0.5 text-xs text-gray-600 max-w-[120px]">
-                                      <option value="">수동선택</option>
+                                      className="border rounded px-1 py-0.5 text-xs max-w-[110px]">
+                                      <option value="">종목선택</option>
                                       {sortedMajors.map((major) => {
                                         const majorCats = categories.filter((c) => c.major_category === major);
                                         if (majorCats.length === 0) return null;
@@ -1262,7 +1244,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                               }
                               const isSelected = cfg.selectedCategoryIds.includes(cat.id);
                               return (
-                                <label key={catName} className={`inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5 cursor-pointer border transition ${isSelected ? "bg-green-100 text-green-800 border-green-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}>
+                                <label key={catName} className={`inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5 cursor-pointer border transition select-none ${isSelected ? "bg-green-100 text-green-800 border-green-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}>
                                   <input type="checkbox" checked={isSelected}
                                     onChange={(e) => toggleCategoryId(j.id, cat.id, e.target.checked)}
                                     className="w-3 h-3 accent-green-600" />
@@ -1271,7 +1253,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                               );
                             })}
                             <select defaultValue="" onChange={(e) => { if (e.target.value) { toggleCategoryId(j.id, e.target.value, true); (e.target as HTMLSelectElement).value = ""; } }}
-                              className="border rounded px-1.5 py-0.5 text-xs text-gray-500 max-w-[100px]">
+                              className="border rounded px-1.5 py-0.5 text-xs text-gray-500 max-w-[90px]">
                               <option value="">+추가</option>
                               {sortedMajors.map((major) => {
                                 const majorCats = categories.filter((c) => c.major_category === major && !cfg.selectedCategoryIds.includes(c.id) && !j.categories.some((cn) => resolveCategory(cn, categories) === c.id));
@@ -1284,12 +1266,27 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                               })}
                             </select>
                           </div>
+                        ) : (
+                          <div className="flex gap-1 flex-wrap">
+                            {j.categories.map((c) => <span key={c} className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded whitespace-nowrap">{c}</span>)}
+                          </div>
                         )}
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-2.5 text-xs text-gray-400 max-w-[180px]">
+                        <span className="line-clamp-2">{j.career}</span>
+                      </td>
+                      {/* 입금확인 + 직책 통합 */}
+                      <td className="px-3 py-2.5 text-center">
+                        <label className={`inline-flex flex-col items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition ${cfg.paid ? "bg-green-100" : "bg-gray-50 hover:bg-gray-100"}`}>
+                          <input type="checkbox" className="w-4 h-4 accent-green-600" checked={cfg.paid}
+                            onChange={(e) => setPaid(j.id, e.target.checked)} />
+                          <span className={`text-xs font-medium whitespace-nowrap ${cfg.paid ? "text-green-700" : "text-gray-400"}`}>
+                            {cfg.paid ? "입금✓" : "미확인"}
+                          </span>
+                        </label>
                         {cfg.paid && (
                           <select value={cfg.title} onChange={(e) => setTitle(j.id, e.target.value)}
-                            className="border rounded px-2 py-1.5 text-xs font-medium text-gray-700">
+                            className="mt-1 border rounded px-1.5 py-1 text-xs font-medium text-gray-700 w-full">
                             {JUDGE_TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
                           </select>
                         )}
