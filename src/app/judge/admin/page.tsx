@@ -1387,6 +1387,16 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   );
 }
 
+// ─── 미입금 localStorage 헬퍼 ─────────────────────────────────
+const UNPAID_KEY = "ibc_judge_unpaid";
+const getStoredUnpaid = (): Set<string> => {
+  try { return new Set(JSON.parse(localStorage.getItem(UNPAID_KEY) ?? "[]") as string[]); }
+  catch { return new Set(); }
+};
+const saveStoredUnpaid = (ids: Set<string>) => {
+  localStorage.setItem(UNPAID_KEY, JSON.stringify([...ids]));
+};
+
 // ─── JudgesTab ────────────────────────────────────────────────
 function JudgesTab({ competition, categories, onMsg }: { category: Category | null; competition: Competition | null; categories: Category[]; onMsg: (m: string) => void }) {
   const [email, setEmail] = useState("");
@@ -1441,9 +1451,10 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         return [...prev, ...fresh];
       });
       setJudgeConfig((prev) => {
+        const storedUnpaid = getStoredUnpaid();
         const next = { ...prev };
         for (const [id, cfg] of Object.entries(config)) {
-          next[id] = { ...cfg, unpaid: prev[id]?.unpaid };
+          next[id] = { ...cfg, unpaid: prev[id]?.unpaid ?? storedUnpaid.has(id) };
         }
         return next;
       });
@@ -1453,8 +1464,12 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
 
   const setPaid = (id: string, paid: boolean) =>
     setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], paid } }));
-  const setUnpaid = (id: string, unpaid: boolean) =>
+  const setUnpaid = (id: string, unpaid: boolean) => {
+    const stored = getStoredUnpaid();
+    if (unpaid) stored.add(id); else stored.delete(id);
+    saveStoredUnpaid(stored);
     setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], unpaid } }));
+  };
   const setTitle = (id: string, val: string) =>
     setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], title: val } }));
   const toggleMajor = (judgeId: string, major: string, checked: boolean) =>
@@ -1646,9 +1661,10 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         return [...prev, ...fresh];
       });
       setJudgeConfig((prev) => {
+        const storedUnpaid = getStoredUnpaid();
         const next = { ...prev };
         for (const [id, cfg] of Object.entries(config)) {
-          next[id] = { ...cfg, unpaid: prev[id]?.unpaid };
+          next[id] = { ...cfg, unpaid: prev[id]?.unpaid ?? storedUnpaid.has(id) };
         }
         return next;
       });
