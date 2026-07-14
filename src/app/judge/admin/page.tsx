@@ -433,8 +433,12 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
       const ws = wb.Sheets[sheetName];
       const rawRows = XLSX.utils.sheet_to_json<(string | number)[]>(ws, { defval: "", header: 1 });
 
-      // IBC 서식 감지: row[9][0]이 숫자(순번)인지 확인
-      const isIBCFormat = rawRows.length > 10 && typeof rawRows[10]?.[0] === "number";
+      // IBC 서식 감지: 순번(col[0])이 숫자이거나, col[0] 비어있어도 col[1]에 이름이 있으면 단체접수 서식으로 간주
+      const firstDataRow = rawRows[10];
+      const isIBCFormat = rawRows.length > 10 && (
+        typeof firstDataRow?.[0] === "number" ||
+        (String(firstDataRow?.[0] ?? "").trim() === "" && String(firstDataRow?.[1] ?? "").trim().length > 0)
+      );
 
       if (isIBCFormat) {
         // IBC 단체접수 서식 — 단체명은 헤더 영역에서 추출
@@ -458,7 +462,9 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
         const excelRows: Array<{ name: string; phone: string; company: string; grade: string; division: string }> = [];
         for (let i = 10; i < rawRows.length; i++) {
           const row = rawRows[i];
-          if (!row[0] || isNaN(Number(row[0]))) continue;
+          // 순번(col[0])이 있으면 숫자인지 확인, 없으면 이름(col[1])으로 유효 행 판단
+          const hasSeq = String(row[0] ?? "").trim() !== "";
+          if (hasSeq && isNaN(Number(row[0]))) continue;
           const name = String(row[1] ?? "").trim();
           if (!name) continue;
           // col[10]=세부종목(표준 IBC 11열 서식), col[7]=참가종목(콤마 압축 서식)
