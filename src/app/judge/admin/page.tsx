@@ -1400,6 +1400,8 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
   const [allAssignments, setAllAssignments] = useState<(Assignment & { category_name?: string; major_category?: string })[]>([]);
   // 정렬 상태
   const [judgeSort, setJudgeSort] = useState<{ field: "name" | "title" | "major"; dir: "asc" | "desc" } | null>(null);
+  // 배정 완료 탭
+  const [judgeViewTab, setJudgeViewTab] = useState<"title" | "major">("title");
   // 이메일 연결 편집 상태
   const [editEmailUserId, setEditEmailUserId] = useState<string | null>(null);
   const [editEmailValue, setEditEmailValue] = useState("");
@@ -1794,134 +1796,270 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         </div>
       )}
 
-      {/* 배정된 심사위원 목록 — 사람 단위 그룹 */}
+      {/* 배정된 심사위원 목록 — 탭별 뷰 */}
       {allAssignments.length > 0 && (() => {
-        type PersonEntry = { userId: string; name: string; email: string; titles: string[]; commissioned: boolean; commissionOnly: boolean; firstMajor: string; cats: (Assignment & { category_name?: string; major_category?: string })[] };
-        const personMap = new Map<string, PersonEntry>();
+        type PE = { userId: string; name: string; email: string; titles: string[]; commissioned: boolean; commissionOnly: boolean; firstMajor: string; cats: (Assignment & { category_name?: string; major_category?: string })[] };
+        const pm = new Map<string, PE>();
         for (const a of allAssignments) {
-          const uid = a.user_id;
-          if (!personMap.has(uid)) {
-            personMap.set(uid, { userId: uid, name: a.judge_name ?? a.users?.name ?? "(이름 없음)", email: a.users?.email ?? "", titles: [], commissioned: a.commissioned ?? false, commissionOnly: a.commission_only ?? false, firstMajor: a.major_category ?? "", cats: [] });
-          }
-          const p = personMap.get(uid)!;
+          if (!pm.has(a.user_id)) pm.set(a.user_id, { userId: a.user_id, name: a.judge_name ?? a.users?.name ?? "(이름 없음)", email: a.users?.email ?? "", titles: [], commissioned: false, commissionOnly: false, firstMajor: "", cats: [] });
+          const p = pm.get(a.user_id)!;
           p.cats.push(a);
           if (a.title && !p.titles.includes(a.title)) p.titles.push(a.title);
           if (!p.firstMajor && a.major_category) p.firstMajor = a.major_category;
-          p.commissioned = a.commissioned ?? p.commissioned;
-          p.commissionOnly = a.commission_only ?? p.commissionOnly;
+          if (a.commissioned) p.commissioned = true;
+          if (a.commission_only) p.commissionOnly = true;
         }
-        let persons = [...personMap.values()];
-        // 정렬
-        if (judgeSort) {
-          persons = [...persons].sort((a, b) => {
-            let va = "", vb = "";
-            if (judgeSort.field === "name") { va = a.name; vb = b.name; }
-            else if (judgeSort.field === "title") { va = a.titles[0] ?? ""; vb = b.titles[0] ?? ""; }
-            else if (judgeSort.field === "major") { va = a.firstMajor; vb = b.firstMajor; }
+        const allPersons = [...pm.values()];
+        const commPersons = allPersons.filter(p => p.commissionOnly);
+        const scorePersons = allPersons.filter(p => !p.commissionOnly);
+
+        const sortIcon = (f: "name" | "title" | "major") => judgeSort?.field === f
+          ? <span className="ml-0.5 text-blue-500">{judgeSort.dir === "asc" ? "↑" : "↓"}</span>
+          : <span className="ml-0.5 text-gray-300">⇅</span>;
+
+        const applySortPersons = (list: PE[]) => {
+          if (!judgeSort) return list;
+          return [...list].sort((a, b) => {
+            const va = judgeSort.field === "name" ? a.name : judgeSort.field === "title" ? (a.titles[0] ?? "") : a.firstMajor;
+            const vb = judgeSort.field === "name" ? b.name : judgeSort.field === "title" ? (b.titles[0] ?? "") : b.firstMajor;
             return judgeSort.dir === "asc" ? va.localeCompare(vb, "ko") : vb.localeCompare(va, "ko");
           });
-        }
-        const sortIcon = (field: "name" | "title" | "major") => {
-          if (!judgeSort || judgeSort.field !== field) return <span className="ml-0.5 text-gray-300">⇅</span>;
-          return <span className="ml-0.5 text-blue-500">{judgeSort.dir === "asc" ? "↑" : "↓"}</span>;
         };
+
+        const EmailTd = ({ p }: { p: PE }) => (
+          <td className="px-3 py-2 text-xs text-gray-400 whitespace-nowrap">
+            {p.email.includes("@ibc.local") ? (
+              editEmailUserId === p.userId ? (
+                <div className="flex items-center gap-1">
+                  <input autoFocus value={editEmailValue} onChange={e => setEditEmailValue(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") linkEmail(p.userId); if (e.key === "Escape") { setEditEmailUserId(null); setEditEmailValue(""); } }}
+                    placeholder="구글 이메일" className="border rounded px-1.5 py-0.5 text-xs w-40" />
+                  <button onClick={() => linkEmail(p.userId)} className="text-xs text-blue-600">연결</button>
+                  <button onClick={() => { setEditEmailUserId(null); setEditEmailValue(""); }} className="text-xs text-gray-400">✕</button>
+                </div>
+              ) : (
+                <span className="flex items-center gap-1 text-orange-400">
+                  <span className="max-w-[130px] truncate">{p.email}</span>
+                  <button onClick={() => { setEditEmailUserId(p.userId); setEditEmailValue(""); }} title="구글 연결">✎</button>
+                </span>
+              )
+            ) : <span className="max-w-[150px] truncate block">{p.email}</span>}
+          </td>
+        );
+
+        const FlagTd = ({ p }: { p: PE }) => (
+          <td className="px-3 py-2 text-center align-middle">
+            <div className="flex flex-col items-center gap-1">
+              <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
+                <input type="checkbox" checked={p.commissioned} onChange={e => toggleJudgeFlag(p.userId, "commissioned", e.target.checked)} className="w-3.5 h-3.5 accent-amber-500" />
+                <span className={p.commissioned ? "text-amber-700 font-semibold" : "text-gray-400"}>위촉</span>
+              </label>
+              <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
+                <input type="checkbox" checked={!p.commissionOnly} onChange={e => toggleJudgeFlag(p.userId, "commission_only", !e.target.checked)} className="w-3.5 h-3.5 accent-purple-600" />
+                <span className={!p.commissionOnly ? "text-purple-700 font-semibold" : "text-gray-400"}>심사배정</span>
+              </label>
+            </div>
+          </td>
+        );
+
+        const SubCatTd = ({ p }: { p: PE }) => {
+          const majorGroups: { major: string; cats: PE["cats"] }[] = [];
+          for (const a of p.cats) {
+            const major = a.major_category ?? "(미분류)";
+            const g = majorGroups.find(x => x.major === major);
+            if (g) g.cats.push(a); else majorGroups.push({ major, cats: [a] });
+          }
+          return (
+            <td className="px-3 py-2 align-top">
+              <div className="space-y-1">
+                {majorGroups.map(g => (
+                  <div key={g.major} className="flex flex-wrap gap-1">
+                    {g.cats.map(a => (
+                      <span key={a.id} className="inline-flex items-center gap-0.5 bg-purple-50 border border-purple-200 text-purple-800 px-1.5 py-0.5 rounded-full text-xs whitespace-nowrap">
+                        {a.category_name ?? a.category_id}
+                        <button onClick={() => removeJudge(a.id)} className="text-purple-300 hover:text-red-500 ml-0.5">×</button>
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </td>
+          );
+        };
+
+        const TITLE_ORDER = JUDGE_TITLES;
+        const majorOrder = CATEGORY_HIERARCHY.map(g => g.major).filter(m => allAssignments.some(a => a.major_category === m));
+
+        const commonThead = (showMajor = true) => (
+          <thead>
+            <tr className="text-xs text-gray-500 border-b bg-gray-50">
+              <th className="px-3 py-1.5 text-left font-medium cursor-pointer select-none hover:text-blue-600 w-24" onClick={() => cycleSortJudge("name")}>이름{sortIcon("name")}</th>
+              <th className="px-3 py-1.5 text-left font-medium">이메일</th>
+              {showMajor && <th className="px-3 py-1.5 text-left font-medium cursor-pointer select-none hover:text-blue-600 w-20" onClick={() => cycleSortJudge("title")}>직책{sortIcon("title")}</th>}
+              <th className="px-3 py-1.5 text-left font-medium">세부종목</th>
+              <th className="px-3 py-1.5 text-center font-medium w-24">위촉/심사배정</th>
+            </tr>
+          </thead>
+        );
+
         return (
           <div className="bg-white rounded-xl border overflow-hidden">
-            <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-700">배정 완료 심사위원</span>
-              <span className="text-xs text-gray-400">{persons.length}명 · {allAssignments.length}건</span>
+            {/* 헤더 + 탭 */}
+            <div className="px-4 py-2 bg-gray-50 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-700">배정 완료 심사위원</span>
+                <span className="text-xs text-gray-400">{allPersons.length}명 · {allAssignments.length}건</span>
+              </div>
+              <div className="flex gap-1">
+                {(["title", "major"] as const).map(tab => (
+                  <button key={tab} onClick={() => setJudgeViewTab(tab)}
+                    className={`px-3 py-1 text-xs rounded-full border transition ${judgeViewTab === tab ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"}`}>
+                    {tab === "title" ? "직책별" : "종목별"}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 text-xs text-gray-500 border-b">
-                    <th className="px-3 py-2 text-left font-medium cursor-pointer select-none hover:text-blue-600" onClick={() => cycleSortJudge("name")}>이름{sortIcon("name")}</th>
-                    <th className="px-3 py-2 text-left font-medium">이메일</th>
-                    <th className="px-3 py-2 text-left font-medium cursor-pointer select-none hover:text-blue-600" onClick={() => cycleSortJudge("title")}>직책{sortIcon("title")}</th>
-                    <th className="px-3 py-2 text-left font-medium cursor-pointer select-none hover:text-blue-600 w-28" onClick={() => cycleSortJudge("major")}>대종목{sortIcon("major")}</th>
-                    <th className="px-3 py-2 text-left font-medium">세부종목</th>
-                    <th className="px-3 py-2 text-center font-medium w-28">위촉 / 심사배정</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {persons.map((p) => {
-                    const majorGroups: { major: string; cats: typeof p.cats }[] = [];
-                    for (const a of p.cats) {
-                      const major = a.major_category ?? "(미분류)";
-                      const g = majorGroups.find((x) => x.major === major);
-                      if (g) g.cats.push(a); else majorGroups.push({ major, cats: [a] });
-                    }
-                    const isLocalEmail = p.email.includes("@ibc.local");
-                    return (
-                      <tr key={p.userId} className={`hover:bg-gray-50 align-top ${p.commissionOnly ? "bg-amber-50" : ""}`}>
-                        <td className="px-3 py-2.5 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
-                        <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">
-                          {isLocalEmail ? (
-                            editEmailUserId === p.userId ? (
-                              <div className="flex items-center gap-1">
-                                <input autoFocus value={editEmailValue} onChange={(e) => setEditEmailValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") linkEmail(p.userId); if (e.key === "Escape") { setEditEmailUserId(null); setEditEmailValue(""); }}} placeholder="구글 이메일 입력" className="border rounded px-1.5 py-0.5 text-xs w-44" />
-                                <button onClick={() => linkEmail(p.userId)} className="text-xs text-blue-600 font-medium">연결</button>
-                                <button onClick={() => { setEditEmailUserId(null); setEditEmailValue(""); }} className="text-xs text-gray-400">✕</button>
-                              </div>
-                            ) : (
-                              <span className="flex items-center gap-1 text-orange-400">
-                                <span className="line-clamp-1 max-w-[140px]">{p.email}</span>
-                                <button onClick={() => { setEditEmailUserId(p.userId); setEditEmailValue(""); }} className="text-orange-400 hover:text-blue-600" title="구글 계정 연결">✎</button>
-                              </span>
-                            )
-                          ) : <span>{p.email}</span>}
-                        </td>
-                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
-                          {p.titles.map((t) => <span key={t} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap mr-1">{t}</span>)}
-                        </td>
-                        {/* 대종목 — 위촉만이면 숨김 */}
-                        <td className="px-3 py-2.5 align-top">
-                          {!p.commissionOnly && (
-                            <div className="space-y-2">
-                              {majorGroups.map((g) => (
-                                <div key={g.major} className="py-0.5">
-                                  <span className="inline-block bg-purple-600 text-white text-[11px] font-bold px-2 py-0.5 rounded whitespace-nowrap">{g.major}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                        {/* 세부종목 — 위촉만이면 숨김 */}
-                        <td className="px-3 py-2.5 align-top">
-                          {!p.commissionOnly && (
-                            <div className="space-y-2">
-                              {majorGroups.map((g) => (
-                                <div key={g.major} className="flex flex-wrap gap-1">
-                                  {g.cats.map((a) => (
-                                    <span key={a.id} className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
-                                      {a.category_name ?? a.category_id}
-                                      <button onClick={() => removeJudge(a.id)} className="text-purple-300 hover:text-red-500 ml-0.5 leading-none" title="배정 해제">×</button>
-                                    </span>
-                                  ))}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                        {/* 위촉 / 심사배정 체크박스 */}
-                        <td className="px-3 py-2.5 text-center align-middle">
-                          <div className="flex flex-col items-center gap-1.5">
-                            <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
-                              <input type="checkbox" checked={p.commissioned} onChange={(e) => toggleJudgeFlag(p.userId, "commissioned", e.target.checked)} className="w-3.5 h-3.5 accent-amber-500" />
-                              <span className={p.commissioned ? "text-amber-700 font-medium" : "text-gray-400"}>위촉</span>
-                            </label>
-                            <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
-                              <input type="checkbox" checked={!p.commissionOnly} onChange={(e) => toggleJudgeFlag(p.userId, "commission_only", !e.target.checked)} className="w-3.5 h-3.5 accent-purple-600" />
-                              <span className={!p.commissionOnly ? "text-purple-700 font-medium" : "text-gray-400"}>심사배정</span>
-                            </label>
-                          </div>
-                        </td>
+
+            {/* ── 위촉만 섹션 ── */}
+            {commPersons.length > 0 && (
+              <div className="border-b">
+                <div className="px-4 py-1.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wide">위촉</span>
+                  <span className="text-xs text-amber-600">{commPersons.length}명</span>
+                  <span className="text-xs text-amber-500">(심사 미배정 — 위촉장 발급 대상)</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-gray-500 border-b bg-amber-50/40">
+                        <th className="px-3 py-1.5 text-left font-medium w-24">이름</th>
+                        <th className="px-3 py-1.5 text-left font-medium">이메일</th>
+                        <th className="px-3 py-1.5 text-left font-medium w-28">직책</th>
+                        <th className="px-3 py-1.5 text-center font-medium w-24">위촉/심사배정</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody className="divide-y divide-amber-50">
+                      {applySortPersons(commPersons).map(p => (
+                        <tr key={p.userId} className="bg-amber-50/20 hover:bg-amber-50/50">
+                          <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                          <EmailTd p={p} />
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {p.titles.map(t => <span key={t} className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs mr-1">{t}</span>)}
+                          </td>
+                          <FlagTd p={p} />
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ── 심사배정 섹션 ── */}
+            {scorePersons.length > 0 && (
+              <div>
+                <div className="px-4 py-1.5 bg-purple-50 border-b border-purple-100 flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wide">심사배정</span>
+                  <span className="text-xs text-purple-600">{scorePersons.length}명</span>
+                </div>
+
+                {/* 직책별 뷰 */}
+                {judgeViewTab === "title" && (() => {
+                  const usedTitles = [...new Set(scorePersons.flatMap(p => p.titles.length > 0 ? p.titles : ["(직책 없음)"]))];
+                  const orderedTitles = [...TITLE_ORDER.filter(t => usedTitles.includes(t)), ...usedTitles.filter(t => !TITLE_ORDER.includes(t))];
+                  return (
+                    <div>
+                      {orderedTitles.map(title => {
+                        const group = applySortPersons(scorePersons.filter(p => p.titles.includes(title) || (p.titles.length === 0 && title === "(직책 없음)")));
+                        if (group.length === 0) return null;
+                        return (
+                          <div key={title} className="border-t">
+                            <div className="px-4 py-1.5 bg-gray-50 flex items-center gap-2">
+                              <span className="text-xs font-semibold text-gray-700">{title}</span>
+                              <span className="text-xs text-gray-400">{group.length}명</span>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                {commonThead(false)}
+                                <tbody className="divide-y divide-gray-100">
+                                  {group.map(p => (
+                                    <tr key={p.userId} className="hover:bg-gray-50 align-top">
+                                      <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                                      <EmailTd p={p} />
+                                      <SubCatTd p={p} />
+                                      <FlagTd p={p} />
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* 종목별 뷰 */}
+                {judgeViewTab === "major" && (() => {
+                  return (
+                    <div>
+                      {majorOrder.map(major => {
+                        const majorAssignIds = new Set(allAssignments.filter(a => a.major_category === major && !pm.get(a.user_id)?.commissionOnly).map(a => a.user_id));
+                        const group = applySortPersons(scorePersons.filter(p => majorAssignIds.has(p.userId)));
+                        if (group.length === 0) return null;
+                        return (
+                          <div key={major} className="border-t">
+                            <div className="px-4 py-1.5 bg-gray-50 flex items-center gap-2">
+                              <span className="inline-block bg-purple-600 text-white text-[11px] font-bold px-2 py-0.5 rounded">{major}</span>
+                              <span className="text-xs text-gray-400">{group.length}명</span>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="text-xs text-gray-500 border-b bg-gray-50">
+                                    <th className="px-3 py-1.5 text-left font-medium w-24">이름</th>
+                                    <th className="px-3 py-1.5 text-left font-medium">이메일</th>
+                                    <th className="px-3 py-1.5 text-left font-medium w-28">직책</th>
+                                    <th className="px-3 py-1.5 text-left font-medium">세부종목</th>
+                                    <th className="px-3 py-1.5 text-center font-medium w-24">위촉/심사배정</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {group.map(p => {
+                                    const majorCats = p.cats.filter(a => a.major_category === major);
+                                    return (
+                                      <tr key={p.userId} className="hover:bg-gray-50 align-top">
+                                        <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                                        <EmailTd p={p} />
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {p.titles.map(t => <span key={t} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs mr-1">{t}</span>)}
+                                        </td>
+                                        <td className="px-3 py-2 align-top">
+                                          <div className="flex flex-wrap gap-1">
+                                            {majorCats.map(a => (
+                                              <span key={a.id} className="inline-flex items-center gap-0.5 bg-purple-50 border border-purple-200 text-purple-800 px-1.5 py-0.5 rounded-full text-xs">
+                                                {a.category_name ?? a.category_id}
+                                                <button onClick={() => removeJudge(a.id)} className="text-purple-300 hover:text-red-500 ml-0.5">×</button>
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </td>
+                                        <FlagTd p={p} />
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         );
       })()}
