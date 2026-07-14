@@ -672,12 +672,22 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                 <tr className="border-b bg-blue-50">
                   <td className="px-3 py-1.5 font-bold text-blue-800 whitespace-nowrap w-20 border-r bg-blue-100">전체</td>
                   <td className="px-3 py-1.5">
-                    <button
-                      onClick={() => setFilterCatId("")}
-                      className={`px-2.5 py-1 rounded-md font-medium transition ${filterCatId === "" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}
-                    >
-                      전체 {allContestants.length}명
-                    </button>
+                    {(() => {
+                      const uniquePersons = new Set(allContestants.map(c => `${c.name}||${(c.phone ?? "").replace(/\D/g, "")}`)).size;
+                      const proCount = allContestants.filter(c => !c.grade?.includes("학생")).length;
+                      const studentCount = allContestants.filter(c => c.grade?.includes("학생")).length;
+                      return (
+                        <button
+                          onClick={() => setFilterCatId("")}
+                          className={`px-2.5 py-1 rounded-md font-medium transition ${filterCatId === "" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}
+                        >
+                          전체 {uniquePersons}명 · 전체 {allContestants.length}종목
+                          <span className={`ml-1.5 text-xs ${filterCatId === "" ? "text-blue-200" : "text-gray-400"}`}>
+                            (프로전문가부 {proCount}종목, 학생부 {studentCount}종목)
+                          </span>
+                        </button>
+                      );
+                    })()}
                   </td>
                 </tr>
                 {majorGroups.map((g, gi) => (
