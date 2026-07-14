@@ -41,5 +41,5 @@ export async function GET() {
     submitted[row.category_id] = true;
   }
 
-  return NextResponse.json({ assignments: filteredAssignments, submitted });
+  return NextResponse.json({ assignments: filteredAssignments, submitted, isAdmin: ctx.isAdmin });
 }

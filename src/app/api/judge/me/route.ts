@@ -17,9 +17,9 @@ export async function GET() {
     .eq("email", session.user.email)
     .maybeSingle();
 
-  if (!user) return NextResponse.json({ isJudge: false });
+  if (!user) return NextResponse.json({ isJudge: false, isAdmin: false });
   if (user.role === "admin" || user.role === "subadmin") {
-    return NextResponse.json({ isJudge: false });
+    return NextResponse.json({ isJudge: false, isAdmin: true });
   }
 
   const { data: assignments } = await supabase
@@ -43,5 +43,5 @@ export async function GET() {
   const title = (assignments[0] as { title?: string }).title ?? "";
   const name = user.name || session.user.name || "";
 
-  return NextResponse.json({ isJudge: true, name, title, majorCategories });
+  return NextResponse.json({ isJudge: true, isAdmin: false, name, title, majorCategories });
 }

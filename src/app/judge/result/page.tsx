@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -32,6 +32,7 @@ interface ResultRow {
 interface Award { id: string; award_name: string; count: number | null; }
 interface ContestantFile { id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 type Preview = { kind: "photo"; url: string } | { kind: "youtube"; id: string } | { kind: "video"; url: string };
+type AdminJudge = { id: string; name: string; email: string; categories: { categoryId: string; submitted: boolean }[] };
 
 function getYouTubeId(url: string): string | null {
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
@@ -135,12 +136,16 @@ export default function JudgeResultPage() {
   const [videoFullscreen, setVideoFullscreen] = useState<Preview | null>(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminJudges, setAdminJudges] = useState<AdminJudge[]>([]);
 
   const tabsRef = { current: tabs };
   tabsRef.current = tabs;
+  const isAdminRef = useRef(false);
 
   useEffect(() => {
     api("/api/judge/competitions").then(setCompetitions).catch(() => { });
+    fetch("/api/judge/me").then((r) => r.json()).then((d) => { isAdminRef.current = d.isAdmin ?? false; setIsAdmin(d.isAdmin ?? false); }).catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -204,6 +209,13 @@ export default function JudgeResultPage() {
       setSubmittedJudgeCount(maxSubmitted);
       setPreviewFiles(filesMap);
       setGradeTab("전체");
+
+      if (isAdminRef.current) {
+        try {
+          const adminData = await api(`/api/judge/admin/submissions?category_ids=${tab.categoryIds.join(",")}`);
+          setAdminJudges(adminData);
+        } catch { setAdminJudges([]); }
+      }
     } catch (e: unknown) { setMsg((e as Error).message); }
     setLoading(false);
   }, []);
@@ -217,6 +229,18 @@ export default function JudgeResultPage() {
   }, [selectedTabKey]);
 
   useEffect(() => { if (msg) { const t = setTimeout(() => setMsg(""), 4000); return () => clearTimeout(t); } }, [msg]);
+
+  const handleReject = useCallback(async (judgeId: string, categoryId: string, judgeName: string, categoryName?: string) => {
+    const label = categoryName ? `${judgeName} (${categoryName})` : judgeName;
+    if (!confirm(`${label}의 채점 제출을 반려하시겠습니까?\n반려 후 심사위원이 다시 제출할 수 있습니다.`)) return;
+    try {
+      const res = await fetch("/api/judge/scores/submit", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ judge_id: judgeId, category_id: categoryId }) });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setMsg(`${label}의 제출이 반려되었습니다.`);
+      const tab = tabsRef.current.find((t) => t.key === selectedTabKey);
+      if (tab) loadTab(tab);
+    } catch (e: unknown) { setMsg((e as Error).message); }
+  }, [selectedTabKey, loadTab]);
 
   // 등수 필터링 + 전체 기준 글로벌 등수 계산
   const globalRankMap: { [id: string]: number } = {};
@@ -360,9 +384,27 @@ export default function JudgeResultPage() {
             <div className="mb-4 space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5 whitespace-nowrap">✅ 제출완료</span>
-                {judges.length > 0 ? judges.map((j) => (
-                  <span key={j.id} className="text-sm font-semibold text-gray-800 bg-white border border-gray-200 rounded-full px-3 py-0.5">{j.name}</span>
-                )) : <span className="text-sm text-gray-400">{submittedJudgeCount > 0 ? `${submittedJudgeCount}명` : "없음"}</span>}
+                {judges.length > 0 ? judges.map((j) => {
+                  const aj = isAdmin ? adminJudges.find((x) => x.id === j.id) : null;
+                  const submittedCats = aj ? aj.categories.filter((c) => currentTab?.categoryIds.includes(c.categoryId) && c.submitted) : [];
+                  return (
+                    <div key={j.id} className="inline-flex items-center gap-1 flex-wrap">
+                      <span className="text-sm font-semibold text-gray-800 bg-white border border-gray-200 rounded-full px-3 py-0.5">{j.name}</span>
+                      {isAdmin && submittedCats.map((c) => {
+                        const catName = currentTab && currentTab.categoryIds.length > 1
+                          ? currentTab.categoryNames[currentTab.categoryIds.indexOf(c.categoryId)]
+                          : undefined;
+                        return (
+                          <button key={c.categoryId}
+                            onClick={() => handleReject(j.id, c.categoryId, j.name, catName)}
+                            className="text-xs bg-red-50 text-red-500 border border-red-200 px-2 py-0.5 rounded hover:bg-red-100 transition">
+                            반려{catName ? ` (${catName})` : ""}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                }) : <span className="text-sm text-gray-400">{submittedJudgeCount > 0 ? `${submittedJudgeCount}명` : "없음"}</span>}
               </div>
               {pendingJudges.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
