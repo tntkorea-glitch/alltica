@@ -16,6 +16,18 @@ export async function GET(request: NextRequest) {
     .order("display_order", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 출전 선수가 있는 종목만 반환
+  if (request.nextUrl.searchParams.get("filter_empty") === "true" && data) {
+    const catIds = data.map((c) => c.id);
+    const { data: contestantRows } = await supabase
+      .from("contestants")
+      .select("category_id")
+      .in("category_id", catIds.length > 0 ? catIds : ["__none__"]);
+    const catsWithContestants = new Set((contestantRows ?? []).map((r) => r.category_id));
+    return NextResponse.json(data.filter((c) => catsWithContestants.has(c.id)));
+  }
+
   return NextResponse.json(data);
 }
 

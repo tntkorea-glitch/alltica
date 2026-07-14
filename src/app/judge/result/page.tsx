@@ -59,7 +59,7 @@ export default function JudgeResultPage() {
 
   useEffect(() => {
     if (!selectedCompetition) return setCategories([]);
-    api(`/api/judge/categories?competition_id=${selectedCompetition.id}`).then((data) => {
+    api(`/api/judge/categories?competition_id=${selectedCompetition.id}&filter_empty=true`).then((data) => {
       setCategories(data);
     }).catch(() => { });
     setSelectedMajor(null);
