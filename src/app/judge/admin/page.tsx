@@ -658,22 +658,69 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
 
   return (
     <div className="space-y-4">
-      {/* 종목 필터 탭 */}
-      {categories.length > 0 && (
-        <div className="flex gap-1 overflow-x-auto pb-1 flex-wrap">
-          <button onClick={() => setFilterCatId("")} className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${filterCatId === "" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-            전체 ({allContestants.length}명)
-          </button>
-          {categories.map((cat) => {
-            const cnt = allContestants.filter((c) => c.category_id === cat.id).length;
-            return (
-              <button key={cat.id} onClick={() => setFilterCatId(cat.id)} className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${filterCatId === cat.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-                {cat.name} ({cnt})
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* 종목 필터 탭 — 대종목/세부종목 표 */}
+      {categories.length > 0 && (() => {
+        const majorGroups = CATEGORY_HIERARCHY.map((g) => ({
+          major: g.major,
+          cats: categories.filter((c) => c.major_category === g.major),
+        })).filter((g) => g.cats.length > 0);
+        const ungrouped = categories.filter((c) => !c.major_category || !CATEGORY_HIERARCHY.find((g) => g.major === c.major_category));
+        return (
+          <div className="border rounded-xl overflow-hidden text-xs">
+            <table className="w-full border-collapse">
+              <tbody>
+                <tr className="border-b bg-blue-50">
+                  <td className="px-3 py-1.5 font-bold text-blue-800 whitespace-nowrap w-20 border-r bg-blue-100">전체</td>
+                  <td className="px-3 py-1.5">
+                    <button
+                      onClick={() => setFilterCatId("")}
+                      className={`px-2.5 py-1 rounded-md font-medium transition ${filterCatId === "" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}
+                    >
+                      전체 {allContestants.length}명
+                    </button>
+                  </td>
+                </tr>
+                {majorGroups.map((g, gi) => (
+                  <tr key={g.major} className={`border-b ${gi % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                    <td className="px-3 py-1.5 font-semibold text-gray-700 whitespace-nowrap border-r bg-gray-100 align-top">{g.major}</td>
+                    <td className="px-2 py-1.5">
+                      <div className="flex flex-wrap gap-1">
+                        {g.cats.map((cat) => {
+                          const cnt = allContestants.filter((c) => c.category_id === cat.id).length;
+                          return (
+                            <button key={cat.id} onClick={() => setFilterCatId(cat.id)}
+                              className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition ${filterCatId === cat.id ? "bg-blue-600 text-white" : cnt > 0 ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}>
+                              {cat.name} {cnt > 0 ? `(${cnt})` : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {ungrouped.length > 0 && (
+                  <tr className="bg-gray-50">
+                    <td className="px-3 py-1.5 font-semibold text-gray-500 whitespace-nowrap border-r bg-gray-100">기타</td>
+                    <td className="px-2 py-1.5">
+                      <div className="flex flex-wrap gap-1">
+                        {ungrouped.map((cat) => {
+                          const cnt = allContestants.filter((c) => c.category_id === cat.id).length;
+                          return (
+                            <button key={cat.id} onClick={() => setFilterCatId(cat.id)}
+                              className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition ${filterCatId === cat.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                              {cat.name} ({cnt})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
 
       {/* 액션 버튼들 */}
       <div className="flex gap-2 flex-wrap items-center">
