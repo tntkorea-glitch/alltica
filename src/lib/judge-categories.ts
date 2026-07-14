@@ -17,7 +17,7 @@ export const CATEGORY_HIERARCHY: CategoryGroup[] = [
   { major: "LED속눈썹", judgeLabel: "LED속눈썹",     subs: ["LED볼륨연장", "LED클래식연장"] },
   { major: "속눈썹펌",  judgeLabel: "속눈썹펌",      subs: ["속눈썹펌"] },
   { major: "슈가링왁싱",judgeLabel: "슈가링왁싱",    subs: ["바디(S)", "페이스(S)"] },
-  { major: "왁싱",      judgeLabel: "왁싱",          subs: ["바디(W)", "페이스(W)"] },
+  { major: "왁싱",      judgeLabel: "왁싱",          subs: ["바디(W)", "페이스(W)", "바디(다리)"] },
   { major: "네일",      judgeLabel: "네일",          subs: ["살롱매니아트", "창작아트", "스톤아트", "패디아트", "젤매니큐어(선마블)", "젤매니큐어(부채꼴마블)", "아크릴프렌치스캅춰", "젤원톤스캅춰", "팁위드랩", "실크익스텐션", "습식케어+컬러링"] },
   { major: "피부",      judgeLabel: "피부",          subs: ["바디관리(다리)", "바디관리(복부)", "바디관리(등)", "바디관리(겨드랑이)", "바디관리(팔)", "살롱테크닉", "페이스관리", "근막테라피"] },
   { major: "스킨플래닝",judgeLabel: "스킨플래닝",    subs: ["스킨플래닝"] },
