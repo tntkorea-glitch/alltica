@@ -2059,20 +2059,37 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                     <thead>
                       <tr className="text-xs text-gray-500 border-b bg-amber-50/40">
                         <th className="px-3 py-1.5 text-left font-medium w-24">이름</th>
-                        <th className="px-3 py-1.5 text-left font-medium">이메일</th>
                         <th className="px-3 py-1.5 text-left font-medium w-28">직책</th>
                         <th className="px-3 py-1.5 text-left font-medium">종목</th>
                         <th className="px-3 py-1.5 text-center font-medium w-24">위촉/심사배정</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-amber-50">
+                      {/* 고정 명단 (직책별 특별위원) */}
+                      {[
+                        { name: "정선희", title: "운영위원장", major: "" },
+                        { name: "김건희", title: "헤어심사위원장", major: "헤어" },
+                        { name: "이린",   title: "네일심사위원장", major: "네일" },
+                      ].map((r, i) => (
+                        <tr key={`static-${i}`} className="bg-amber-100/30 hover:bg-amber-100/50 align-top">
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="font-semibold text-gray-900">{r.name}</div>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <span className="bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full text-xs">{r.title}</span>
+                          </td>
+                          <td className="px-3 py-2">
+                            {r.major && <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs">{r.major}</span>}
+                          </td>
+                          <td className="px-3 py-2 text-center text-xs text-amber-600 font-medium">위촉✓</td>
+                        </tr>
+                      ))}
                       {applySortPersons(commPersons).map(p => (
                         <tr key={p.userId} className="bg-amber-50/20 hover:bg-amber-50/50 align-top">
                           <td className="px-3 py-2 whitespace-nowrap">
                             <div className="font-semibold text-gray-900">{p.name}</div>
                             <button onClick={() => removeAllJudge(p.userId, p.name)} className="text-[10px] text-red-400 hover:text-red-600 mt-0.5">배정취소</button>
                           </td>
-                          <EmailTd p={p} />
                           <td className="px-3 py-2 whitespace-nowrap">
                             {p.titles.map(t => <span key={t} className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs mr-1">{t}</span>)}
                           </td>
@@ -2094,6 +2111,62 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                 </div>
               </div>
             )}
+
+            {/* ── 위촉장만 수여 섹션 (정적 명단) ── */}
+            {(() => {
+              const CERT_ONLY = [
+                { major: "헤어", name: "김자옥" }, { major: "헤어", name: "김양희" },
+                { major: "헤어", name: "김채윤" }, { major: "헤어", name: "박세은" },
+                { major: "헤어", name: "배효진" }, { major: "헤어", name: "은현주" },
+                { major: "헤어", name: "변채윤" }, { major: "속눈썹", name: "배아랑" },
+                { major: "속눈썹", name: "이혜인" }, { major: "메이크업", name: "이혜림" },
+                { major: "피부", name: "여금화" }, { major: "피부", name: "김혜민" },
+                { major: "왁싱", name: "김세후" }, { major: "네일", name: "김도연" },
+                { major: "피부", name: "정다현" }, { major: "피부", name: "윤정은" },
+                { major: "반영구", name: "이설영" },
+              ];
+              const majorColors: Record<string, string> = {
+                헤어: "bg-sky-100 text-sky-800", 속눈썹: "bg-teal-100 text-teal-800",
+                메이크업: "bg-pink-100 text-pink-800", 피부: "bg-green-100 text-green-800",
+                왁싱: "bg-orange-100 text-orange-800", 네일: "bg-purple-100 text-purple-800",
+                반영구: "bg-rose-100 text-rose-800",
+              };
+              return (
+                <div className="border-b">
+                  <div className="px-4 py-1.5 bg-sky-50 border-b border-sky-100 flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-sky-700 uppercase tracking-wide">위촉장만 수여</span>
+                    <span className="text-xs text-sky-600">{CERT_ONLY.length}명</span>
+                    <span className="text-xs text-sky-400">(위촉패 미수여)</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-xs text-gray-500 border-b bg-sky-50/40">
+                          <th className="px-3 py-1.5 text-center w-8 font-medium">#</th>
+                          <th className="px-3 py-1.5 text-left font-medium w-28">이름</th>
+                          <th className="px-3 py-1.5 text-left font-medium w-24">심사직책</th>
+                          <th className="px-3 py-1.5 text-left font-medium">종목</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-sky-50">
+                        {CERT_ONLY.map((r, i) => (
+                          <tr key={i} className="bg-sky-50/10 hover:bg-sky-50/40">
+                            <td className="px-3 py-2 text-center text-xs text-gray-400">{i + 1}</td>
+                            <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{r.name}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full text-xs">심사위원</span>
+                            </td>
+                            <td className="px-3 py-2">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${majorColors[r.major] ?? "bg-gray-100 text-gray-600"}`}>{r.major}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ── 심사배정 섹션 ── */}
             {scorePersons.length > 0 && (
