@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (inserts.length === 0) return NextResponse.json({ error: `등록할 선수가 없습니다 (중복 ${skippedDup}명 제외)` }, { status: 400 });
+    if (inserts.length === 0) return NextResponse.json({ inserted: 0, skipped, skipped_dup: skippedDup });
     const { data, error } = await supabase.from("contestants").insert(inserts).select();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ inserted: data?.length ?? 0, skipped, skipped_dup: skippedDup });

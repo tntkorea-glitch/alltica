@@ -328,6 +328,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   const [allDivisions, setAllDivisions] = useState<string[]>([]);
 
   const [viewMode, setViewMode] = useState<"category" | "athlete" | "company">("category");
+  const [companySortMode, setCompanySortMode] = useState<"name" | "input">("input");
 
   // 필터 적용한 선수 목록
   const contestants = filterCatId
@@ -673,6 +674,12 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
             단체별
           </button>
         </div>
+        {viewMode === "company" && (
+          <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+            <button onClick={() => setCompanySortMode("input")} className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${companySortMode === "input" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>입력순</button>
+            <button onClick={() => setCompanySortMode("name")} className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${companySortMode === "name" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>이름순</button>
+          </div>
+        )}
       </div>
 
       {/* data-file 폴더 Import UI */}
@@ -915,7 +922,9 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
         return (
           <div className="space-y-4">
             {companies.map(({ company, persons }) => {
-              const personList = [...persons.values()];
+              const personList = companySortMode === "name"
+                ? [...persons.values()].sort((a, b) => a.name.localeCompare(b.name, "ko"))
+                : [...persons.values()];
               const totalEntries = personList.reduce((s, p) => s + p.entries.length, 0);
               return (
                 <div key={company} className="bg-white rounded-xl border overflow-hidden">
@@ -1519,13 +1528,14 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
 }
 
 // ─── CriteriaTab ──────────────────────────────────────────────
-function CriteriaTab({ category, onMsg }: { category: Category | null; onMsg: (m: string) => void }) {
+function CriteriaTab({ category, competition, onMsg }: { category: Category | null; competition: Competition | null; onMsg: (m: string) => void }) {
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [newName, setNewName] = useState("");
   const [newMax, setNewMax] = useState("100");
   const [loading, setLoading] = useState(false);
   const [seedType, setSeedType] = useState<"출품" | "대면">("출품");
   const [seeding, setSeeding] = useState(false);
+  const [seedingAll, setSeedingAll] = useState(false);
 
   const load = useCallback(async () => {
     if (!category) return;
@@ -1547,6 +1557,20 @@ function CriteriaTab({ category, onMsg }: { category: Category | null; onMsg: (m
     setSeeding(false);
   };
 
+  const seedAllCriteria = async () => {
+    if (!competition) { onMsg("대회를 먼저 선택하세요."); return; }
+    if (!confirm(`"${competition.title}"의 전체 종목에 ${seedType}대회 기준 채점항목을 일괄 등록합니다.\n기존 항목이 모두 교체됩니다. 계속하시겠습니까?`)) return;
+    setSeedingAll(true);
+    try {
+      const res = await api("/api/judge/criteria/seed-all", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ competition_id: competition.id, competition_type: seedType }) });
+      const msg = `✅ 전체 종목 채점항목 등록 완료 — ${res.seeded}개 종목 성공` +
+        (res.skipped > 0 ? ` / ${res.skipped}개 건너뜀 (${res.skippedNames.join(", ")})` : "");
+      onMsg(msg);
+      await load();
+    } catch (e: unknown) { onMsg((e as Error).message); }
+    setSeedingAll(false);
+  };
+
   const addCriterion = async () => {
     if (!category || !newName.trim()) return;
     setLoading(true);
@@ -1562,7 +1586,7 @@ function CriteriaTab({ category, onMsg }: { category: Category | null; onMsg: (m
   };
 
   const total = criteria.reduce((s, c) => s + c.max_score, 0);
-  if (!category) return <p className="text-sm text-gray-400">종목을 먼저 선택하세요.</p>;
+  if (!competition) return <p className="text-sm text-gray-400">대회·종목 탭에서 대회를 먼저 선택하세요.</p>;
 
   return (
     <div className="space-y-4">
@@ -1575,9 +1599,16 @@ function CriteriaTab({ category, onMsg }: { category: Category | null; onMsg: (m
               <button key={t} onClick={() => setSeedType(t)} className={`px-4 py-1.5 text-sm font-medium transition ${seedType === t ? "bg-indigo-600 text-white" : "bg-white text-indigo-700 hover:bg-indigo-50"}`}>{t}대회</button>
             ))}
           </div>
-          <button onClick={seedCriteria} disabled={seeding} className="px-5 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
-            {seeding ? "등록 중..." : `"${category.name}" 자동 설정`}
+          {/* 전체 일괄 */}
+          <button onClick={seedAllCriteria} disabled={seedingAll || seeding} className="px-5 py-1.5 bg-indigo-700 text-white rounded-lg text-sm font-bold hover:bg-indigo-800 disabled:opacity-50">
+            {seedingAll ? "등록 중..." : "전체 종목 일괄 자동설정"}
           </button>
+          {/* 선택 종목만 */}
+          {category && (
+            <button onClick={seedCriteria} disabled={seeding || seedingAll} className="px-4 py-1.5 bg-white border border-indigo-400 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-50 disabled:opacity-50">
+              {seeding ? "등록 중..." : `"${category.name}" 만 설정`}
+            </button>
+          )}
           <span className="text-xs text-indigo-500">기존 항목을 모두 교체합니다</span>
         </div>
       </div>
@@ -1783,7 +1814,7 @@ export default function JudgeAdminPage() {
             <JudgesTab category={selectedCategory} competition={selectedCompetition} categories={categories} onMsg={setMsg} />
           )}
 
-          {activeTab === "criteria" && <CriteriaTab category={selectedCategory} onMsg={setMsg} />}
+          {activeTab === "criteria" && <CriteriaTab category={selectedCategory} competition={selectedCompetition} onMsg={setMsg} />}
           {activeTab === "awards" && <AwardsTab category={selectedCategory} competition={selectedCompetition} onMsg={setMsg} />}
         </div>
       </div>
