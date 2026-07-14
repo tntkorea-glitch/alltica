@@ -1415,6 +1415,9 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
   // 이메일 연결 편집 상태
   const [editEmailUserId, setEditEmailUserId] = useState<string | null>(null);
   const [editEmailValue, setEditEmailValue] = useState("");
+  const [showUserPicker, setShowUserPicker] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [searchedUsers, setSearchedUsers] = useState<{ id: string; email: string; name: string; phone?: string }[]>([]);
 
   // 등록된 대종목 목록 (categories에서 distinct major_category)
   const majorList = [...new Set(categories.map((c) => c.major_category).filter(Boolean))] as string[];
@@ -1543,6 +1546,29 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
       if (prev.dir === "asc") return { field, dir: "desc" };
       return null;
     });
+  };
+
+  // 회원 검색 (디바운스 없이 버튼 클릭 방식)
+  const searchUsers = async (q: string) => {
+    if (q.trim().length < 1) { setSearchedUsers([]); return; }
+    try {
+      const data = await api(`/api/judge/users?q=${encodeURIComponent(q.trim())}`);
+      setSearchedUsers(data);
+    } catch { /* ignore */ }
+  };
+
+  const addUserAsJudge = (u: { id: string; email: string; name: string; phone?: string }) => {
+    const judgeId = `user-${u.id}`;
+    setImportJudges((prev) => {
+      const exists = prev.some((j) => j.id === judgeId || j.email === u.email);
+      if (exists) return prev;
+      return [...prev, { id: judgeId, name: u.name, phone: u.phone ?? "", email: u.email, title: "심사위원", categories: [], career: "" }];
+    });
+    setJudgeConfig((prev) => ({
+      ...prev,
+      [judgeId]: prev[judgeId] ?? { paid: false, selectedMajors: [], title: "심사위원" },
+    }));
+    setShowImport(true);
   };
 
   const addJudgeDirect = async () => {
@@ -1713,6 +1739,10 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
             📋 신청서에서 불러오기
           </button>
         )}
+        <button onClick={() => { setShowUserPicker((v) => !v); setUserSearch(""); setSearchedUsers([]); }}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+          👥 회원에서 추가
+        </button>
         <label className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 cursor-pointer">
           📁 단체접수 파일
           <input type="file" className="hidden" accept=".xlsx,.xls" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleJudgeExcel(f); e.target.value = ""; }} />
@@ -1723,6 +1753,58 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
           </button>
         )}
       </div>
+
+      {/* 회원 검색 패널 */}
+      {showUserPicker && (
+        <div className="border border-blue-200 rounded-xl bg-blue-50 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-blue-800">👥 구글 계정 회원에서 심사위원 추가</p>
+            <button onClick={() => setShowUserPicker(false)} className="text-xs text-gray-400 hover:text-gray-600">닫기</button>
+          </div>
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && searchUsers(userSearch)}
+              placeholder="이름 또는 이메일로 검색..."
+              className="flex-1 border rounded-lg px-3 py-2 text-sm bg-white focus:border-blue-400 focus:outline-none"
+            />
+            <button onClick={() => searchUsers(userSearch)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+              검색
+            </button>
+          </div>
+          {searchedUsers.length > 0 && (
+            <div className="bg-white rounded-lg border border-blue-100 divide-y divide-gray-100 max-h-64 overflow-y-auto">
+              {searchedUsers.map((u) => {
+                const judgeId = `user-${u.id}`;
+                const already = importJudges.some((j) => j.id === judgeId || j.email === u.email);
+                return (
+                  <div key={u.id} className="flex items-center justify-between px-3 py-2.5">
+                    <div>
+                      <span className="font-semibold text-gray-900 text-sm">{u.name}</span>
+                      <span className="text-xs text-gray-400 ml-2">{u.email}</span>
+                      {u.phone && <span className="text-xs text-gray-400 ml-2">{u.phone}</span>}
+                    </div>
+                    <button
+                      onClick={() => addUserAsJudge(u)}
+                      disabled={already}
+                      className={`px-3 py-1 rounded text-xs font-medium transition ${
+                        already ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"
+                      }`}>
+                      {already ? "추가됨" : "+ 추가"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {searchedUsers.length === 0 && userSearch.length > 0 && (
+            <p className="text-xs text-gray-400 text-center py-3">검색 버튼을 누르거나 Enter를 눌러 검색하세요.</p>
+          )}
+        </div>
+      )}
 
       {/* 신청서 Import UI — 결제 확인 우선 흐름 */}
       {showImport && (
