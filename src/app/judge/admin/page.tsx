@@ -1462,20 +1462,27 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     setLoading(true);
     try {
       const assignments: Array<{ email: string; category_id: string; title: string; name: string; phone?: string }> = [];
+      const skippedMajors: string[] = [];
       for (const j of toAssign) {
         const { selectedMajors, title } = judgeConfig[j.id];
         for (const major of selectedMajors) {
           const subCats = categories.filter((c) => c.major_category === major);
+          if (subCats.length === 0) { if (!skippedMajors.includes(major)) skippedMajors.push(major); continue; }
           for (const cat of subCats) {
             assignments.push({ email: j.email, category_id: cat.id, title, name: j.name, phone: j.phone });
           }
         }
       }
-      if (assignments.length === 0) { onMsg("배정할 세부종목이 없습니다. 대종목을 먼저 등록해주세요 (대회·종목 탭 → 전체 종목 일괄 생성)."); setLoading(false); return; }
+      if (assignments.length === 0) {
+        const skipMsg = skippedMajors.length > 0 ? ` (미등록 대종목: ${skippedMajors.join(", ")})` : "";
+        onMsg(`배정할 세부종목이 없습니다${skipMsg}. 대회·종목 탭 → 전체 종목 일괄 생성 후 재시도.`);
+        setLoading(false); return;
+      }
       const result = await api("/api/judge/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "judges", assignments }) });
       const errorNames = result.errors?.length > 0 ? [...new Set<string>(result.errors.map((e: string) => e.split(":")[0]))] : [];
       const errorDetails = errorNames.length > 0 ? ` | 미등록: ${errorNames.join(", ")}` : "";
-      onMsg(`✅ 심사위원 ${result.inserted}건 배정 완료 (${toAssign.length}명 × 세부종목)${errorDetails}`);
+      const skipDetails = skippedMajors.length > 0 ? ` | 미등록 대종목 건너뜀: ${skippedMajors.join(", ")}` : "";
+      onMsg(`✅ 심사위원 ${result.inserted}건 배정 완료 (${toAssign.length}명)${errorDetails}${skipDetails}`);
       setShowImport(false);
       await loadAssignments();
     } catch (e: unknown) { onMsg((e as Error).message); }
@@ -1691,19 +1698,26 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                           <div className="flex flex-wrap gap-1">
                             {/* 신청 종목에서 매핑된 대종목 */}
                             {(() => {
-                              // 신청종목 → 대종목 (정확히 일치하는 것만)
+                              // 신청서 종목 → 대종목 매핑
                               const appliedMajors = [...new Set(
                                 j.categories
                                   .map((cn) => CATEGORY_HIERARCHY.find((g) => g.major === cn || g.judgeLabel === cn)?.major)
                                   .filter(Boolean) as string[]
                               )];
-                              // 못 찾은 항목 (수동 선택 필요)
+                              // 수동으로 추가된 대종목(selectedMajors에 있지만 appliedMajors에 없는 것) 포함
+                              const allDisplayMajors = [...new Set([...appliedMajors, ...cfg.selectedMajors])];
+                              // 미매핑 항목 — selectedMajors에 의해 커버된 것 제외
                               const unmapped = j.categories.filter(
                                 (cn) => !CATEGORY_HIERARCHY.find((g) => g.major === cn || g.judgeLabel === cn)
                               );
+                              // unmapped 중 아직 아무 대종목도 선택 안 된 것만 표시
+                              const pendingUnmapped = unmapped.filter((cn) => {
+                                // 이미 selectedMajors에 뭔가 있으면 숨기기 (추가가 완료된 것으로 간주)
+                                return cfg.selectedMajors.length === appliedMajors.length;
+                              });
                               return (
                                 <>
-                                  {appliedMajors.map((major) => {
+                                  {allDisplayMajors.map((major) => {
                                     const isRegistered = sortedMajors.includes(major);
                                     const isSelected = cfg.selectedMajors.includes(major);
                                     if (!isRegistered) {
@@ -1718,7 +1732,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                                       </label>
                                     );
                                   })}
-                                  {unmapped.map((cn) => (
+                                  {pendingUnmapped.map((cn) => (
                                     <div key={cn} className="flex items-center gap-1 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5 text-xs">
                                       <span className="text-orange-500">?{cn}</span>
                                       <select defaultValue="" onChange={(e) => { if (e.target.value) { toggleMajor(j.id, e.target.value, true); (e.target as HTMLSelectElement).value = ""; } }}

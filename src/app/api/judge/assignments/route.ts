@@ -11,7 +11,7 @@ async function fetchAssignmentsWithUsers(
 ) {
   let query = supabase
     .from("judge_assignments")
-    .select("id, user_id, category_id, title, judge_name, created_at")
+    .select("id, user_id, category_id, title, judge_name, commissioned, commission_only, created_at")
     .order("created_at", { ascending: true });
 
   if (filter.competition_id && catMeta) {
