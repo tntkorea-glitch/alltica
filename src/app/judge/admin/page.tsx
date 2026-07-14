@@ -10,7 +10,7 @@ interface Category { id: string; competition_id: string; name: string; display_o
 interface Contestant { id: string; category_id: string; name: string; phone?: string; email?: string; company?: string; grade?: string; number?: number; display_order: number; paid?: boolean; contestant_files?: ContestantFile[]; }
 interface ContestantFile { id: string; contestant_id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 interface Criterion { id: string; category_id: string; name: string; max_score: number; display_order: number; }
-interface Assignment { id: string; user_id: string; category_id: string; title?: string; judge_name?: string; users: { email: string; name?: string; }; }
+interface Assignment { id: string; user_id: string; category_id: string; title?: string; judge_name?: string; commissioned?: boolean; commission_only?: boolean; users: { email: string; name?: string; }; }
 interface Award { id: string; category_id: string; award_name: string; count: number | null; display_order: number; }
 
 interface DetectedContest { slug: string; title: string; counts: Record<string, number>; }
@@ -1398,6 +1398,11 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
   const [judgeConfig, setJudgeConfig] = useState<Record<string, { paid: boolean; selectedMajors: string[]; title: string }>>({});
   // 배정 완료된 심사위원 목록 (전체 카테고리)
   const [allAssignments, setAllAssignments] = useState<(Assignment & { category_name?: string; major_category?: string })[]>([]);
+  // 정렬 상태
+  const [judgeSort, setJudgeSort] = useState<{ field: "name" | "title" | "major"; dir: "asc" | "desc" } | null>(null);
+  // 이메일 연결 편집 상태
+  const [editEmailUserId, setEditEmailUserId] = useState<string | null>(null);
+  const [editEmailValue, setEditEmailValue] = useState("");
 
   // 등록된 대종목 목록 (categories에서 distinct major_category)
   const majorList = [...new Set(categories.map((c) => c.major_category).filter(Boolean))] as string[];
@@ -1475,6 +1480,33 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
       await loadAssignments();
     } catch (e: unknown) { onMsg((e as Error).message); }
     setLoading(false);
+  };
+
+  const toggleJudgeFlag = async (userId: string, flag: "commissioned" | "commission_only", value: boolean) => {
+    if (!competition) return;
+    try {
+      await api("/api/judge/assignments", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId, competition_id: competition.id, [flag]: value }) });
+      await loadAssignments();
+    } catch (e: unknown) { onMsg((e as Error).message); }
+  };
+
+  const linkEmail = async (userId: string) => {
+    const newEmail = editEmailValue.trim();
+    if (!newEmail) return;
+    try {
+      await api("/api/judge/assignments", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "link-email", user_id: userId, new_email: newEmail }) });
+      setEditEmailUserId(null); setEditEmailValue("");
+      await loadAssignments();
+      onMsg("✅ 이메일 연결 완료");
+    } catch (e: unknown) { onMsg((e as Error).message); }
+  };
+
+  const cycleSortJudge = (field: "name" | "title" | "major") => {
+    setJudgeSort((prev) => {
+      if (!prev || prev.field !== field) return { field, dir: "asc" };
+      if (prev.dir === "asc") return { field, dir: "desc" };
+      return null;
+    });
   };
 
   const addJudgeDirect = async () => {
@@ -1750,23 +1782,35 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
 
       {/* 배정된 심사위원 목록 — 사람 단위 그룹 */}
       {allAssignments.length > 0 && (() => {
-        // 사람별로 그룹화 (user_id 기준)
-        const personMap = new Map<string, { name: string; email: string; titles: string[]; cats: (Assignment & { category_name?: string; major_category?: string })[] }>();
+        type PersonEntry = { userId: string; name: string; email: string; titles: string[]; commissioned: boolean; commissionOnly: boolean; firstMajor: string; cats: (Assignment & { category_name?: string; major_category?: string })[] };
+        const personMap = new Map<string, PersonEntry>();
         for (const a of allAssignments) {
           const uid = a.user_id;
           if (!personMap.has(uid)) {
-            personMap.set(uid, {
-              name: a.judge_name ?? a.users?.name ?? "(이름 없음)",
-              email: a.users?.email ?? "",
-              titles: [],
-              cats: [],
-            });
+            personMap.set(uid, { userId: uid, name: a.judge_name ?? a.users?.name ?? "(이름 없음)", email: a.users?.email ?? "", titles: [], commissioned: a.commissioned ?? false, commissionOnly: a.commission_only ?? false, firstMajor: a.major_category ?? "", cats: [] });
           }
           const p = personMap.get(uid)!;
           p.cats.push(a);
           if (a.title && !p.titles.includes(a.title)) p.titles.push(a.title);
+          if (!p.firstMajor && a.major_category) p.firstMajor = a.major_category;
+          p.commissioned = a.commissioned ?? p.commissioned;
+          p.commissionOnly = a.commission_only ?? p.commissionOnly;
         }
-        const persons = [...personMap.values()];
+        let persons = [...personMap.values()];
+        // 정렬
+        if (judgeSort) {
+          persons = [...persons].sort((a, b) => {
+            let va = "", vb = "";
+            if (judgeSort.field === "name") { va = a.name; vb = b.name; }
+            else if (judgeSort.field === "title") { va = a.titles[0] ?? ""; vb = b.titles[0] ?? ""; }
+            else if (judgeSort.field === "major") { va = a.firstMajor; vb = b.firstMajor; }
+            return judgeSort.dir === "asc" ? va.localeCompare(vb, "ko") : vb.localeCompare(va, "ko");
+          });
+        }
+        const sortIcon = (field: "name" | "title" | "major") => {
+          if (!judgeSort || judgeSort.field !== field) return <span className="ml-0.5 text-gray-300">⇅</span>;
+          return <span className="ml-0.5 text-blue-500">{judgeSort.dir === "asc" ? "↑" : "↓"}</span>;
+        };
         return (
           <div className="bg-white rounded-xl border overflow-hidden">
             <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
@@ -1777,55 +1821,85 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-xs text-gray-500 border-b">
-                    <th className="px-3 py-2 text-left font-medium">이름</th>
+                    <th className="px-3 py-2 text-left font-medium cursor-pointer select-none hover:text-blue-600" onClick={() => cycleSortJudge("name")}>이름{sortIcon("name")}</th>
                     <th className="px-3 py-2 text-left font-medium">이메일</th>
-                    <th className="px-3 py-2 text-left font-medium">직책</th>
-                    <th className="px-3 py-2 text-left font-medium w-28">대종목</th>
+                    <th className="px-3 py-2 text-left font-medium cursor-pointer select-none hover:text-blue-600" onClick={() => cycleSortJudge("title")}>직책{sortIcon("title")}</th>
+                    <th className="px-3 py-2 text-left font-medium cursor-pointer select-none hover:text-blue-600 w-28" onClick={() => cycleSortJudge("major")}>대종목{sortIcon("major")}</th>
                     <th className="px-3 py-2 text-left font-medium">세부종목</th>
+                    <th className="px-3 py-2 text-center font-medium w-28">위촉 / 심사배정</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {persons.map((p) => {
-                    // 대종목별 그룹화
                     const majorGroups: { major: string; cats: typeof p.cats }[] = [];
                     for (const a of p.cats) {
                       const major = a.major_category ?? "(미분류)";
                       const g = majorGroups.find((x) => x.major === major);
-                      if (g) g.cats.push(a);
-                      else majorGroups.push({ major, cats: [a] });
+                      if (g) g.cats.push(a); else majorGroups.push({ major, cats: [a] });
                     }
+                    const isLocalEmail = p.email.includes("@ibc.local");
                     return (
-                      <tr key={p.email} className="hover:bg-gray-50 align-top">
+                      <tr key={p.userId} className={`hover:bg-gray-50 align-top ${p.commissionOnly ? "bg-amber-50" : ""}`}>
                         <td className="px-3 py-2.5 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
-                        <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">{p.email}</td>
+                        <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">
+                          {isLocalEmail ? (
+                            editEmailUserId === p.userId ? (
+                              <div className="flex items-center gap-1">
+                                <input autoFocus value={editEmailValue} onChange={(e) => setEditEmailValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") linkEmail(p.userId); if (e.key === "Escape") { setEditEmailUserId(null); setEditEmailValue(""); }}} placeholder="구글 이메일 입력" className="border rounded px-1.5 py-0.5 text-xs w-44" />
+                                <button onClick={() => linkEmail(p.userId)} className="text-xs text-blue-600 font-medium">연결</button>
+                                <button onClick={() => { setEditEmailUserId(null); setEditEmailValue(""); }} className="text-xs text-gray-400">✕</button>
+                              </div>
+                            ) : (
+                              <span className="flex items-center gap-1 text-orange-400">
+                                <span className="line-clamp-1 max-w-[140px]">{p.email}</span>
+                                <button onClick={() => { setEditEmailUserId(p.userId); setEditEmailValue(""); }} className="text-orange-400 hover:text-blue-600" title="구글 계정 연결">✎</button>
+                              </span>
+                            )
+                          ) : <span>{p.email}</span>}
+                        </td>
                         <td className="px-3 py-2.5 text-xs whitespace-nowrap">
-                          {p.titles.map((t) => (
-                            <span key={t} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap mr-1">{t}</span>
-                          ))}
+                          {p.titles.map((t) => <span key={t} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap mr-1">{t}</span>)}
                         </td>
-                        {/* 대종목 */}
+                        {/* 대종목 — 위촉만이면 숨김 */}
                         <td className="px-3 py-2.5 align-top">
-                          <div className="space-y-2">
-                            {majorGroups.map((g) => (
-                              <div key={g.major} className="py-0.5">
-                                <span className="inline-block bg-purple-600 text-white text-[11px] font-bold px-2 py-0.5 rounded whitespace-nowrap">{g.major}</span>
-                              </div>
-                            ))}
-                          </div>
+                          {!p.commissionOnly && (
+                            <div className="space-y-2">
+                              {majorGroups.map((g) => (
+                                <div key={g.major} className="py-0.5">
+                                  <span className="inline-block bg-purple-600 text-white text-[11px] font-bold px-2 py-0.5 rounded whitespace-nowrap">{g.major}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </td>
-                        {/* 세부종목 */}
+                        {/* 세부종목 — 위촉만이면 숨김 */}
                         <td className="px-3 py-2.5 align-top">
-                          <div className="space-y-2">
-                            {majorGroups.map((g) => (
-                              <div key={g.major} className="flex flex-wrap gap-1">
-                                {g.cats.map((a) => (
-                                  <span key={a.id} className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
-                                    {a.category_name ?? a.category_id}
-                                    <button onClick={() => removeJudge(a.id)} className="text-purple-300 hover:text-red-500 ml-0.5 leading-none" title="배정 해제">×</button>
-                                  </span>
-                                ))}
-                              </div>
-                            ))}
+                          {!p.commissionOnly && (
+                            <div className="space-y-2">
+                              {majorGroups.map((g) => (
+                                <div key={g.major} className="flex flex-wrap gap-1">
+                                  {g.cats.map((a) => (
+                                    <span key={a.id} className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
+                                      {a.category_name ?? a.category_id}
+                                      <button onClick={() => removeJudge(a.id)} className="text-purple-300 hover:text-red-500 ml-0.5 leading-none" title="배정 해제">×</button>
+                                    </span>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        {/* 위촉 / 심사배정 체크박스 */}
+                        <td className="px-3 py-2.5 text-center align-middle">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
+                              <input type="checkbox" checked={p.commissioned} onChange={(e) => toggleJudgeFlag(p.userId, "commissioned", e.target.checked)} className="w-3.5 h-3.5 accent-amber-500" />
+                              <span className={p.commissioned ? "text-amber-700 font-medium" : "text-gray-400"}>위촉</span>
+                            </label>
+                            <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
+                              <input type="checkbox" checked={!p.commissionOnly} onChange={(e) => toggleJudgeFlag(p.userId, "commission_only", !e.target.checked)} className="w-3.5 h-3.5 accent-purple-600" />
+                              <span className={!p.commissionOnly ? "text-purple-700 font-medium" : "text-gray-400"}>심사배정</span>
+                            </label>
                           </div>
                         </td>
                       </tr>

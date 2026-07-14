@@ -14,6 +14,7 @@ export async function GET() {
     .from("judge_assignments")
     .select("id, category_id, categories(id, name, competition_id, competitions(id, title))")
     .eq("user_id", ctx.userId)
+    .eq("commission_only", false)
     .order("created_at");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -99,6 +99,41 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(data, { status: 201 });
 }
 
+export async function PATCH(request: NextRequest) {
+  const ctx = await getJudgeAdminContext();
+  if (!ctx) return NextResponse.json({ error: "권한 없음" }, { status: 403 });
+
+  const body = await request.json();
+  const supabase = getSupabaseAdmin();
+
+  // 실제 이메일 연결 (ibc.local 플레이스홀더 → 구글 계정)
+  if (body.action === "link-email") {
+    const { user_id, new_email } = body as { user_id: string; new_email: string };
+    const { data: existing } = await supabase.from("users").select("id").eq("email", new_email).maybeSingle();
+    if (existing) return NextResponse.json({ error: "이미 사용 중인 이메일입니다" }, { status: 409 });
+    const { error } = await supabase.from("users").update({ email: new_email }).eq("id", user_id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // 위촉/심사배정 플래그 일괄 업데이트 (한 사람의 모든 종목 배정에 적용)
+  const { user_id, competition_id, commissioned, commission_only } = body as {
+    user_id: string; competition_id: string; commissioned?: boolean; commission_only?: boolean;
+  };
+  const { data: cats } = await supabase.from("categories").select("id").eq("competition_id", competition_id);
+  const catIds = (cats ?? []).map((c: { id: string }) => c.id);
+  if (catIds.length === 0) return NextResponse.json({ ok: true });
+
+  const updates: Record<string, boolean> = {};
+  if (commissioned !== undefined) updates.commissioned = commissioned;
+  if (commission_only !== undefined) updates.commission_only = commission_only;
+
+  const { error } = await supabase.from("judge_assignments")
+    .update(updates).eq("user_id", user_id).in("category_id", catIds);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(request: NextRequest) {
   const ctx = await getJudgeAdminContext();
   if (!ctx) return NextResponse.json({ error: "권한 없음" }, { status: 403 });
