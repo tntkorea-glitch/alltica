@@ -252,8 +252,24 @@ export async function POST(request: NextRequest) {
          nameSlug ? `judge-${nameSlug}@ibc.local` : "");
       if (!email) { errors.push(`${a.name ?? "??"}: 이메일/연락처 없음`); continue; }
 
-      // 유저 조회 → 없으면 자동 생성 (role은 CHECK 제약 내 값 사용)
+      // 1. 이메일로 기존 유저 조회
       let { data: user } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
+
+      // 2. 이메일이 ibc.local 임시계정이고 연락처가 있으면 → 실제 구글 계정 연락처 매칭 시도
+      if (!user && phone && email.includes("@ibc.local")) {
+        const phoneSuffix = phone.slice(-8);
+        const { data: phoneCandidates } = await supabase
+          .from("users")
+          .select("id, phone")
+          .like("phone", `%${phoneSuffix}`)
+          .not("email", "like", "%@ibc.local");
+        const byPhone = (phoneCandidates ?? []).find(
+          (u) => u.phone && u.phone.replace(/\D/g, "") === phone
+        );
+        if (byPhone) user = byPhone;
+      }
+
+      // 3. 그래도 없으면 ibc.local 임시 유저 생성
       if (!user) {
         const { data: created, error: createErr } = await supabase
           .from("users")

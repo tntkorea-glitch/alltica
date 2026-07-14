@@ -64,6 +64,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           last_login_at: new Date().toISOString(),
         });
       }
+
+      // ibc.local 임시계정 자동 병합: 연락처가 같은 임시계정의 judge_assignments를 실계정으로 이전
+      const { data: realUser } = await supabase
+        .from("users")
+        .select("id, phone")
+        .eq("email", user.email!)
+        .maybeSingle();
+      if (realUser?.phone) {
+        const cleanPhone = realUser.phone.replace(/\D/g, "");
+        if (cleanPhone.length >= 8) {
+          const { data: placeholders } = await supabase
+            .from("users")
+            .select("id")
+            .like("email", `judge-${cleanPhone}%@ibc.local`)
+            .neq("id", realUser.id);
+          for (const p of placeholders ?? []) {
+            await supabase
+              .from("judge_assignments")
+              .update({ user_id: realUser.id })
+              .eq("user_id", p.id);
+          }
+        }
+      }
+
       return true;
     },
     async jwt({ token, user, trigger, session }: { token: any; user?: any; trigger?: string; session?: any }) {
