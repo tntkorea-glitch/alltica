@@ -33,7 +33,7 @@ export default function JudgeNoticePopup({ judgeName, judgeTitle, categories }: 
         {/* 내용 */}
         <div className="px-6 py-5 space-y-4">
           <p className="text-gray-800 font-semibold">
-            {judgeName} {categories[0] ?? ""} {judgeTitle}님,
+            {judgeName} {categories.join(" / ")} {judgeTitle}님,
           </p>
           <p className="text-sm text-gray-600 leading-relaxed">
             온라인 심사 시스템에 오신 것을 환영합니다.<br />
