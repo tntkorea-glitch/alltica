@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-interface Category { id: string; name: string; competition_id: string; }
+interface Category { id: string; name: string; major_category?: string; competition_id: string; }
 interface Competition { id: string; title: string; }
 interface ContestantFile { id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 interface Contestant { id: string; name: string; phone?: string; company?: string; grade?: string; number?: number; contestant_files?: ContestantFile[]; }
@@ -317,25 +317,43 @@ export default function JudgeScorePage() {
           <div className="mb-4 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm">{msg}</div>
         )}
 
-        {/* 종목 탭 */}
-        {assignments.length > 0 && (
-          <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-            {assignments.map((a) => (
-              <button
-                key={a.category.id}
-                onClick={() => setSelectedCategoryId(a.category.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
-                  selectedCategoryId === a.category.id
-                    ? "bg-blue-600 text-white shadow"
-                    : "bg-white border text-gray-700 hover:border-blue-300"
-                }`}
-              >
-                {a.category.name}
-                {submitted[a.category.id] && <span className="ml-1.5 text-xs opacity-75">✓</span>}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* 종목 탭 — 대종목별 그룹 */}
+        {assignments.length > 0 && (() => {
+          const groups = new Map<string, typeof assignments>();
+          for (const a of assignments) {
+            const major = a.category.major_category ?? "기타";
+            if (!groups.has(major)) groups.set(major, []);
+            groups.get(major)!.push(a);
+          }
+          const isMultiGroup = groups.size > 1;
+          return (
+            <div className={`mb-6 ${isMultiGroup ? "space-y-2" : ""}`}>
+              {[...groups.entries()].map(([major, items]) => (
+                <div key={major} className={isMultiGroup ? "flex items-center gap-2 overflow-x-auto pb-1" : "flex gap-2 overflow-x-auto pb-1"}>
+                  {isMultiGroup && (
+                    <span className="shrink-0 text-xs font-bold text-white bg-purple-600 px-2.5 py-1 rounded-full whitespace-nowrap">
+                      {major}
+                    </span>
+                  )}
+                  {items.map((a) => (
+                    <button
+                      key={a.category.id}
+                      onClick={() => setSelectedCategoryId(a.category.id)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                        selectedCategoryId === a.category.id
+                          ? "bg-blue-600 text-white shadow"
+                          : "bg-white border text-gray-700 hover:border-blue-300"
+                      }`}
+                    >
+                      {a.category.name}
+                      {submitted[a.category.id] && <span className="ml-1.5 text-xs opacity-75">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {selectedAssignment && (
           <div className="mb-4 flex items-center justify-between">
