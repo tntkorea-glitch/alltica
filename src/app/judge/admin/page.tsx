@@ -1442,7 +1442,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
           const major = CATEGORY_HIERARCHY.find((g) => g.major === catName || g.judgeLabel === catName)?.major;
           if (major) selectedMajors.push(major);
         }
-        config[j.id] = { paid: false, selectedMajors, title: j.title || "심사위원" };
+        config[j.id] = { paid: false, selectedMajors, title: JUDGE_TITLES.includes(j.title) ? j.title : "심사위원" };
       }
       // 기존 Excel 데이터에 MERGE (이름+전화 기준 중복 제거)
       setImportJudges((prev) => {
@@ -1454,7 +1454,11 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         const storedUnpaid = getStoredUnpaid();
         const next = { ...prev };
         for (const [id, cfg] of Object.entries(config)) {
-          next[id] = { ...cfg, unpaid: prev[id]?.unpaid ?? storedUnpaid.has(id) };
+          next[id] = {
+            ...cfg,
+            unpaid: prev[id]?.unpaid ?? storedUnpaid.has(id),
+            title: prev[id]?.title ?? cfg.title,
+          };
         }
         return next;
       });
@@ -1652,7 +1656,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
           const major = CATEGORY_HIERARCHY.find((g) => g.major === catName || g.judgeLabel === catName)?.major;
           if (major) selectedMajors.push(major);
         }
-        config[j.id] = { paid: false, selectedMajors, title: j.title || "심사위원" };
+        config[j.id] = { paid: false, selectedMajors, title: JUDGE_TITLES.includes(j.title) ? j.title : "심사위원" };
       }
       // 기존 신청서 데이터에 MERGE (이름+전화 기준 중복 제거)
       setImportJudges((prev) => {
@@ -1664,7 +1668,11 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         const storedUnpaid = getStoredUnpaid();
         const next = { ...prev };
         for (const [id, cfg] of Object.entries(config)) {
-          next[id] = { ...cfg, unpaid: prev[id]?.unpaid ?? storedUnpaid.has(id) };
+          next[id] = {
+            ...cfg,
+            unpaid: prev[id]?.unpaid ?? storedUnpaid.has(id),
+            title: prev[id]?.title ?? cfg.title,
+          };
         }
         return next;
       });
@@ -1734,7 +1742,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                   <th className="px-3 py-2 text-left font-medium">직책</th>
                   <th className="px-3 py-2 text-left font-medium">신청종목 (체크=배정)</th>
                   <th className="px-3 py-2 text-left font-medium max-w-[180px]">경력</th>
-                  <th className="px-3 py-2 text-center font-medium w-24">입금확인 / 직책</th>
+                  <th className="px-3 py-2 text-center font-medium w-24">입금확인 / 심사직책</th>
                   <th className="px-3 py-2 text-center font-medium w-16">미입금</th>
                 </tr>
               </thead>
