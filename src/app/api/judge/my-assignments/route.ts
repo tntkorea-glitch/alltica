@@ -20,6 +20,16 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const categoryIds = (assignments ?? []).map((a) => a.category_id);
+
+  // 선수가 있는 카테고리만 필터링
+  const { data: contestantRows } = await supabase
+    .from("contestants")
+    .select("category_id")
+    .in("category_id", categoryIds.length > 0 ? categoryIds : ["__none__"]);
+
+  const catsWithContestants = new Set((contestantRows ?? []).map((r) => r.category_id));
+  const filteredAssignments = (assignments ?? []).filter((a) => catsWithContestants.has(a.category_id));
+
   const { data: submittedRows } = await supabase
     .from("judge_submissions")
     .select("category_id")
@@ -31,5 +41,5 @@ export async function GET() {
     submitted[row.category_id] = true;
   }
 
-  return NextResponse.json({ assignments, submitted });
+  return NextResponse.json({ assignments: filteredAssignments, submitted });
 }
