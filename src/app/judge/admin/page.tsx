@@ -706,12 +706,47 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
             단체별
           </button>
         </div>
-        {viewMode === "company" && (
-          <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
-            <button onClick={() => setCompanySortMode("input")} className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${companySortMode === "input" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>입력순</button>
-            <button onClick={() => setCompanySortMode("name")} className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${companySortMode === "name" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>이름순</button>
-          </div>
-        )}
+        {viewMode === "company" && (() => {
+          // 단체별 총 예상 수금액: 각 단체 총액 × 메모% 합산
+          const companyMap2 = new Map<string, { grade?: string; count: number }>();
+          for (const c of allContestants) {
+            const co = c.company?.trim() || "(단체명 없음)";
+            if (!companyMap2.has(co)) companyMap2.set(co, { grade: c.grade, count: 0 });
+            companyMap2.get(co)!.count += 1;
+          }
+          // 단체별 총액 계산 (선수별 grade 혼재 시 대표값 사용)
+          const personGradeMap = new Map<string, Map<string, { grade?: string; cnt: number }>>();
+          for (const c of allContestants) {
+            const co = c.company?.trim() || "(단체명 없음)";
+            const pk = `${c.name}||${(c.phone ?? "").replace(/\D/g, "")}`;
+            if (!personGradeMap.has(co)) personGradeMap.set(co, new Map());
+            const pm = personGradeMap.get(co)!;
+            if (!pm.has(pk)) pm.set(pk, { grade: c.grade, cnt: 0 });
+            pm.get(pk)!.cnt += 1;
+          }
+          let grandTotal = 0;
+          for (const [co, persons] of personGradeMap) {
+            const note = companyNotes[co];
+            if (!note) continue;
+            const rate = parseFloat(note.replace("%", "")) / 100;
+            if (isNaN(rate)) continue;
+            const coFee = [...persons.values()].reduce((s, p) => s + calcFeeNum(p.grade, p.cnt), 0);
+            grandTotal += Math.round(coFee * rate);
+          }
+          return (
+            <div className="flex items-center gap-2">
+              <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+                <button onClick={() => setCompanySortMode("input")} className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${companySortMode === "input" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>입력순</button>
+                <button onClick={() => setCompanySortMode("name")} className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${companySortMode === "name" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>이름순</button>
+              </div>
+              {grandTotal > 0 && (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                  예상 수금 총액 {grandTotal}만원
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* data-file 폴더 Import UI */}
