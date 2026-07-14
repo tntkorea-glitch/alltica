@@ -1492,13 +1492,114 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
 
   const paidCount = Object.values(judgeConfig).filter((c) => c.paid).length;
 
+  const handleJudgeExcel = async (file: File) => {
+    setLoading(true);
+    try {
+      const XLSX = await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer);
+      const sheetName = wb.SheetNames.find((n) => n.includes("심사위원")) ?? wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rawRows = XLSX.utils.sheet_to_json<(string | number)[]>(ws, { defval: "", header: 1 });
+
+      // 헤더 행 찾기 (이름/name 포함된 행)
+      let headerIdx = -1;
+      let colName = 1, colPhone = 2, colEmail = 3, colTitle = 4, colCategory = 5, colCareer = 6;
+      for (let i = 0; i < Math.min(15, rawRows.length); i++) {
+        const row = rawRows[i].map((c) => String(c ?? "").trim());
+        const nameCol = row.findIndex((c) => c === "이름" || c === "성명");
+        if (nameCol >= 0) {
+          headerIdx = i;
+          colName = nameCol;
+          colPhone = row.findIndex((c) => /연락처|전화/.test(c));
+          colEmail = row.findIndex((c) => /이메일|email/i.test(c));
+          colTitle = row.findIndex((c) => /직책|직위|title/i.test(c));
+          colCategory = row.findIndex((c) => /종목|카테고리|분야/.test(c));
+          colCareer = row.findIndex((c) => /경력|career/i.test(c));
+          if (colPhone < 0) colPhone = nameCol + 1;
+          if (colEmail < 0) colEmail = nameCol + 2;
+          if (colTitle < 0) colTitle = nameCol + 3;
+          if (colCategory < 0) colCategory = nameCol + 4;
+          if (colCareer < 0) colCareer = nameCol + 5;
+          break;
+        }
+      }
+      const startRow = headerIdx >= 0 ? headerIdx + 1 : 1;
+
+      const parsed: ImportJudge[] = [];
+      for (let i = startRow; i < rawRows.length; i++) {
+        const row = rawRows[i];
+        const name = String(row[colName] ?? "").trim();
+        if (!name || name === "이름" || name === "성명") continue;
+        const phone = String(row[colPhone] ?? "").trim();
+        const email = String(row[colEmail] ?? "").trim();
+        const title = String(row[colTitle] ?? "").trim() || "심사위원";
+        const categoryRaw = String(row[colCategory] ?? "").trim();
+        const categories = categoryRaw ? categoryRaw.split(/[,，、]/).map((c) => c.trim()).filter(Boolean) : [];
+        const career = String(row[colCareer] ?? "").trim();
+        parsed.push({ id: `excel-${i}`, name, phone, email, title, categories, career });
+      }
+
+      if (parsed.length === 0) { onMsg("심사위원 데이터를 찾을 수 없습니다. 시트 이름이 '심사위원'인지 확인해주세요."); setLoading(false); return; }
+
+      const config: Record<string, { paid: boolean; selectedMajors: string[]; title: string }> = {};
+      for (const j of parsed) {
+        const selectedMajors: string[] = [];
+        for (const catName of j.categories) {
+          const major = CATEGORY_HIERARCHY.find((g) => g.major === catName || g.judgeLabel === catName)?.major;
+          if (major) selectedMajors.push(major);
+        }
+        config[j.id] = { paid: false, selectedMajors, title: j.title || "심사위원" };
+      }
+      setImportJudges(parsed);
+      setJudgeConfig(config);
+      setShowImport(true);
+      onMsg(`📁 ${sheetName} 시트에서 심사위원 ${parsed.length}명 불러옴`);
+    } catch (e: unknown) { onMsg((e as Error).message); }
+    setLoading(false);
+  };
+
+  const deduplicateJudges = async () => {
+    if (!competition) return;
+    if (!confirm("동일 심사위원이 같은 종목에 중복 배정된 항목을 삭제합니다. 계속하시겠습니까?")) return;
+    setLoading(true);
+    try {
+      const seen = new Set<string>();
+      const toDelete: string[] = [];
+      const sorted = [...allAssignments].sort((a, b) => a.id.localeCompare(b.id));
+      for (const a of sorted) {
+        const key = `${a.user_id}||${a.category_id}`;
+        if (seen.has(key)) toDelete.push(a.id);
+        else seen.add(key);
+      }
+      if (toDelete.length === 0) { onMsg("중복 배정 없음"); setLoading(false); return; }
+      for (const id of toDelete) {
+        await api("/api/judge/assignments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+      }
+      onMsg(`✅ 중복 ${toDelete.length}건 삭제 완료`);
+      await loadAssignments();
+    } catch (e: unknown) { onMsg((e as Error).message); }
+    setLoading(false);
+  };
+
   return (
     <div className="space-y-4">
-      {competition?.contest_slug && (
-        <button onClick={loadImportJudges} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
-          📋 신청서에서 불러오기
-        </button>
-      )}
+      <div className="flex gap-2 flex-wrap items-center">
+        {competition?.contest_slug && (
+          <button onClick={loadImportJudges} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
+            📋 신청서에서 불러오기
+          </button>
+        )}
+        <label className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 cursor-pointer">
+          📁 단체접수 파일
+          <input type="file" className="hidden" accept=".xlsx,.xls" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleJudgeExcel(f); e.target.value = ""; }} />
+        </label>
+        {allAssignments.length > 0 && (
+          <button onClick={deduplicateJudges} disabled={loading} className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-200 disabled:opacity-50 border border-orange-300">
+            🔄 중복 자동 삭제
+          </button>
+        )}
+      </div>
 
       {/* 신청서 Import UI — 결제 확인 우선 흐름 */}
       {showImport && (
