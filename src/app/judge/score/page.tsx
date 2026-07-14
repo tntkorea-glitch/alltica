@@ -141,7 +141,10 @@ export default function JudgeScorePage() {
   }, []);
 
   useEffect(() => {
-    if (selectedCategoryId) loadCategory(selectedCategoryId);
+    if (selectedCategoryId) {
+      setPreviewPhoto("");
+      loadCategory(selectedCategoryId);
+    }
   }, [selectedCategoryId, loadCategory]);
 
   useEffect(() => {
