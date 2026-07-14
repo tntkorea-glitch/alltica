@@ -10,7 +10,7 @@ interface Category { id: string; competition_id: string; name: string; display_o
 interface Contestant { id: string; category_id: string; name: string; phone?: string; email?: string; company?: string; grade?: string; number?: number; display_order: number; paid?: boolean; contestant_files?: ContestantFile[]; }
 interface ContestantFile { id: string; contestant_id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 interface Criterion { id: string; category_id: string; name: string; max_score: number; display_order: number; }
-interface Assignment { id: string; user_id: string; category_id: string; title?: string; judge_name?: string; commissioned?: boolean; commission_only?: boolean; users: { email: string; name?: string; }; }
+interface Assignment { id: string; user_id: string; category_id: string; title?: string; judge_name?: string; commissioned?: boolean; commission_only?: boolean; users: { email: string; name?: string; phone?: string; }; }
 interface Award { id: string; category_id: string; award_name: string; count: number | null; display_order: number; }
 
 interface DetectedContest { slug: string; title: string; counts: Record<string, number>; }
@@ -1544,10 +1544,23 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     catch (e: unknown) { onMsg((e as Error).message); }
   };
 
-  // 이미 배정 완료된 심사위원 이름 set (목록에서 제외)
+  // 이미 배정 완료된 심사위원 이름·이메일·전화 set (목록에서 제외)
   const assignedJudgeNames = new Set(allAssignments.map((a) => a.judge_name).filter(Boolean) as string[]);
+  const assignedJudgeEmails = new Set(
+    allAssignments.map((a) => a.users?.email).filter((e): e is string => Boolean(e) && !e.includes("@ibc.local"))
+  );
+  const assignedJudgePhones = new Set(
+    allAssignments.map((a) => (a.users?.phone ?? "").replace(/\D/g, "")).filter(Boolean)
+  );
   const unpaidJudges = importJudges.filter((j) => judgeConfig[j.id]?.unpaid);
-  const unassignedJudges = importJudges.filter((j) => !assignedJudgeNames.has(j.name) && !judgeConfig[j.id]?.unpaid);
+  const unassignedJudges = importJudges.filter((j) => {
+    if (judgeConfig[j.id]?.unpaid) return false;
+    if (assignedJudgeNames.has(j.name)) return false;
+    if (j.email && assignedJudgeEmails.has(j.email)) return false;
+    const phone = j.phone.replace(/\D/g, "");
+    if (phone && assignedJudgePhones.has(phone)) return false;
+    return true;
+  });
 
   const paidCount = unassignedJudges.filter((j) => judgeConfig[j.id]?.paid).length;
 

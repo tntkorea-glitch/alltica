@@ -30,7 +30,7 @@ async function fetchAssignmentsWithUsers(
   const userIds = [...new Set(assignments.map((a) => a.user_id))];
   const { data: users } = await supabase
     .from("users")
-    .select("id, email, name, image")
+    .select("id, email, name, phone, image")
     .in("id", userIds);
 
   const userMap = new Map((users ?? []).map((u) => [u.id, u]));
