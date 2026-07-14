@@ -1440,7 +1440,13 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         const fresh = (data.judges as ImportJudge[]).filter((j) => !existingKeys.has(`${j.name}||${j.phone.replace(/\D/g, "")}`));
         return [...prev, ...fresh];
       });
-      setJudgeConfig((prev) => ({ ...prev, ...config }));
+      setJudgeConfig((prev) => {
+        const next = { ...prev };
+        for (const [id, cfg] of Object.entries(config)) {
+          next[id] = { ...cfg, unpaid: prev[id]?.unpaid };
+        }
+        return next;
+      });
       setShowImport(true);
     } catch (e: unknown) { onMsg((e as Error).message); }
   };
@@ -1614,7 +1620,13 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         const fresh = parsed.filter((j) => !existingKeys.has(`${j.name}||${j.phone.replace(/\D/g, "")}`));
         return [...prev, ...fresh];
       });
-      setJudgeConfig((prev) => ({ ...prev, ...config }));
+      setJudgeConfig((prev) => {
+        const next = { ...prev };
+        for (const [id, cfg] of Object.entries(config)) {
+          next[id] = { ...cfg, unpaid: prev[id]?.unpaid };
+        }
+        return next;
+      });
       setShowImport(true);
       onMsg(`📁 ${sheetName} 시트에서 심사위원 ${parsed.length}명 불러옴 (중복 자동 제외)`);
     } catch (e: unknown) { onMsg((e as Error).message); }
