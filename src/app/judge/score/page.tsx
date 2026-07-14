@@ -392,11 +392,12 @@ export default function JudgeScorePage() {
                       const rank = rankMap[c.id];
                       const cTotal = totals.find((t) => t.id === c.id)!.total;
 
+                      const isCatSubmitted = isMultiCat && isFirstInGroup && submitted[c._categoryId ?? ""];
                       const separatorRow = isMultiCat && isFirstInGroup ? (
-                        <tr key={`sep_${c._categoryId}_${idx}`} className="bg-purple-50/40">
-                          <td colSpan={colCount} className="px-4 py-1.5 border-b border-purple-100">
-                            <span className="text-xs font-semibold text-purple-500 border-l-2 border-purple-400 pl-2">
-                              {c._categoryName}
+                        <tr key={`sep_${c._categoryId}_${idx}`} className={isCatSubmitted ? "bg-green-50/60" : "bg-amber-50/50"}>
+                          <td colSpan={colCount} className={`px-4 py-1.5 border-b ${isCatSubmitted ? "border-green-100" : "border-amber-100"}`}>
+                            <span className={`text-xs font-semibold pl-2 border-l-2 ${isCatSubmitted ? "text-green-600 border-green-400" : "text-amber-600 border-amber-400"}`}>
+                              {c._categoryName} {isCatSubmitted ? "✅ 제출완료" : "⏳ 미제출"}
                             </span>
                           </td>
                         </tr>

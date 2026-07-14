@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const judges = rows.filter((r) => r.form_slug.endsWith("-judge")).map((r) => {
+    const judges = rows.filter((r) => r.form_slug.endsWith("-judge") || r.form_slug.endsWith("-committee")).map((r) => {
       const d = r.data as Record<string, unknown>;
       const 심사종목 = Array.isArray(d.심사종목) ? d.심사종목 as string[] : [];
       return {

@@ -29,22 +29,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "데이터 조회 실패" }, { status: 500 });
   }
 
-  // 배정된 심사위원 전체 조회
+  // 배정된 심사위원 전체 조회 (judge_name = 신청서 실명, users.name = 구글 프로필명)
   const { data: assignments } = await supabase
     .from("judge_assignments")
-    .select("user_id")
+    .select("user_id, judge_name")
     .eq("category_id", categoryId)
     .eq("commission_only", false);
 
   const assignedIds = (assignments ?? []).map((a) => a.user_id);
   const submittedIds = new Set((submissions ?? []).map((s) => s.judge_id));
+  const judgeNameMap = new Map((assignments ?? []).map((a) => [a.user_id, a.judge_name as string | null]));
 
   const { data: allJudgeUsers } = assignedIds.length > 0
     ? await supabase.from("users").select("id, name").in("id", assignedIds)
     : { data: [] };
 
-  const submittedJudges = (allJudgeUsers ?? []).filter((u) => submittedIds.has(u.id));
-  const pendingJudges = (allJudgeUsers ?? []).filter((u) => !submittedIds.has(u.id));
+  // 신청서 judge_name 우선, 없으면 users.name (구글 프로필)
+  const judgeList = (allJudgeUsers ?? []).map((u) => ({
+    id: u.id,
+    name: judgeNameMap.get(u.id) || u.name,
+  }));
+
+  const submittedJudges = judgeList.filter((u) => submittedIds.has(u.id));
+  const pendingJudges = judgeList.filter((u) => !submittedIds.has(u.id));
 
   // 선수별 × 항목별 평균 점수 계산
   const results = contestants.map((contestant) => {
