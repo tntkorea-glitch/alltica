@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { CATEGORY_HIERARCHY } from "@/lib/judge-categories";
+import { resolveCategory } from "@/lib/judge-category-matcher";
 
 // ─── Types ───────────────────────────────────────────────────
 interface Competition { id: string; title: string; description?: string; date_display?: string; status: string; contest_slug?: string; }
@@ -411,8 +413,8 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
         const divs = [...new Set(excelRows.map((r) => r.division))];
         const map: Record<string, string> = {};
         for (const div of divs) {
-          const matched = categories.find((c) => c.name === div || div.includes(c.name) || c.name.includes(div.split("(")[0]));
-          if (matched) map[div] = matched.id;
+          const resolved = resolveCategory(div, categories);
+          if (resolved) map[div] = resolved;
         }
         // 즉시 등록 대신 매핑 UI 표시
         setDataFiles([{ filename: file.name, rows: excelRows, divisions: divs }]);
@@ -563,12 +565,31 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
           <div className="mb-3 bg-white rounded-lg p-3 space-y-2">
             <p className="text-xs font-medium text-gray-700">세부종목 → 등록 종목 매핑:</p>
             {[...new Set(dataFiles.flatMap((f) => f.divisions))].sort().map((div) => (
-              <div key={div} className="flex items-center gap-2 text-xs">
+              <div key={div} className={`flex items-center gap-2 text-xs rounded px-1 py-0.5 ${dataFileCatMap[div] ? "bg-green-50" : "bg-red-50"}`}>
                 <span className="flex-1 text-gray-700 truncate">{div}</span>
                 <span className="text-gray-400">→</span>
-                <select value={dataFileCatMap[div] ?? ""} onChange={(e) => setDataFileCatMap((m) => ({ ...m, [div]: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                <select value={dataFileCatMap[div] ?? ""} onChange={(e) => setDataFileCatMap((m) => ({ ...m, [div]: e.target.value }))} className="border rounded px-2 py-1 text-xs min-w-[180px]">
                   <option value="">등록 안 함</option>
-                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {CATEGORY_HIERARCHY.map((group) => {
+                    const groupCats = categories.filter((c) => group.subs.includes(c.name));
+                    if (groupCats.length === 0) return null;
+                    return (
+                      <optgroup key={group.major} label={group.major}>
+                        {groupCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </optgroup>
+                    );
+                  })}
+                  {/* 계층 미분류 종목 */}
+                  {(() => {
+                    const allSubNames = CATEGORY_HIERARCHY.flatMap((g) => g.subs);
+                    const uncategorized = categories.filter((c) => !allSubNames.includes(c.name));
+                    if (uncategorized.length === 0) return null;
+                    return (
+                      <optgroup label="기타">
+                        {uncategorized.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </optgroup>
+                    );
+                  })()}
                 </select>
               </div>
             ))}
