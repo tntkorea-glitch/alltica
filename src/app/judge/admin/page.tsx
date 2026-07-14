@@ -329,6 +329,14 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
 
   const [viewMode, setViewMode] = useState<"category" | "athlete" | "company">("category");
   const [companySortMode, setCompanySortMode] = useState<"name" | "input">("input");
+  const [companyNotes, setCompanyNotes] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem("judge_company_notes") ?? "{}"); } catch { return {}; }
+  });
+  const setCompanyNote = (company: string, note: string) => {
+    const next = note.trim() ? { ...companyNotes, [company]: note.trim() } : (({ [company]: _, ...rest }) => rest)(companyNotes);
+    setCompanyNotes(next);
+    localStorage.setItem("judge_company_notes", JSON.stringify(next));
+  };
 
   // 필터 적용한 선수 목록
   const contestants = filterCatId
@@ -978,11 +986,20 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                     <span className="text-sm font-bold text-indigo-800">{company}</span>
                     <span className="text-xs text-gray-400">{personList.length}명 · {totalEntries}건</span>
                     {totalFee > 0 && (
-                      <span className="text-xs font-semibold text-indigo-600 ml-1">
-                        · 총 {totalFee}만원
-                        {paidRate > 0 && <span className={`ml-1 ${paidRate === 100 ? "text-green-600" : "text-amber-500"}`}>({paidRate}%)</span>}
-                      </span>
+                      <span className="text-xs font-semibold text-indigo-600 ml-1">· 총 {totalFee}만원</span>
                     )}
+                    {companyNotes[company] && (
+                      <span className="text-xs text-gray-500 ml-0.5">({companyNotes[company]})</span>
+                    )}
+                    <button
+                      onClick={() => {
+                        const val = window.prompt(`${company} 메모 (빈칸=삭제):`, companyNotes[company] ?? "");
+                        if (val !== null) setCompanyNote(company, val);
+                      }}
+                      className="ml-1 text-gray-300 hover:text-gray-500 text-xs leading-none"
+                      title="메모 편집"
+                    >✎</button>
+                    <span className={`ml-auto text-xs font-bold ${paidRate === 100 ? "text-green-600" : paidRate >= 50 ? "text-amber-500" : "text-gray-400"}`}>{paidRate}%</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
