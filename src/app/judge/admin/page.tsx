@@ -460,11 +460,16 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
           const row = rawRows[i];
           if (!row[0] || isNaN(Number(row[0]))) continue;
           const name = String(row[1] ?? "").trim();
-          const division = String(row[10] ?? "").trim();
-          if (!name || !division) continue;
+          if (!name) continue;
+          // col[10]=세부종목(표준 IBC 11열 서식), col[7]=참가종목(콤마 압축 서식)
+          const divisionRaw = String(row[10] ?? "").trim() || String(row[7] ?? "").trim();
+          if (!divisionRaw) continue;
+          const divisionList = divisionRaw.split(",").map((d) => d.trim()).filter(Boolean);
           const rawCompany = String(row[2] ?? "").trim();
           const company = isRealCompany(rawCompany) ? rawCompany : headerCompany;
-          excelRows.push({ name, phone: String(row[5] ?? "").trim(), company, grade: String(row[8] ?? "").trim(), division });
+          for (const division of divisionList) {
+            excelRows.push({ name, phone: String(row[5] ?? "").trim(), company, grade: String(row[8] ?? "").trim(), division });
+          }
         }
         const divs = [...new Set(excelRows.map((r) => r.division))];
         const map: Record<string, string> = {};
