@@ -10,7 +10,7 @@ interface Category { id: string; competition_id: string; name: string; display_o
 interface Contestant { id: string; category_id: string; name: string; phone?: string; email?: string; company?: string; grade?: string; number?: number; display_order: number; paid?: boolean; contestant_files?: ContestantFile[]; }
 interface ContestantFile { id: string; contestant_id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 interface Criterion { id: string; category_id: string; name: string; max_score: number; display_order: number; }
-interface Assignment { id: string; user_id: string; category_id: string; title?: string; users: { email: string; name?: string; }; }
+interface Assignment { id: string; user_id: string; category_id: string; title?: string; judge_name?: string; users: { email: string; name?: string; }; }
 interface Award { id: string; category_id: string; award_name: string; count: number | null; display_order: number; }
 
 interface DetectedContest { slug: string; title: string; counts: Record<string, number>; }
@@ -1133,13 +1133,13 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     if (toAssign.length === 0) { onMsg("입금 확인 + 배정 대종목이 선택된 심사위원이 없습니다."); return; }
     setLoading(true);
     try {
-      const assignments: Array<{ email: string; category_id: string; title: string }> = [];
+      const assignments: Array<{ email: string; category_id: string; title: string; name: string }> = [];
       for (const j of toAssign) {
         const { selectedMajors, title } = judgeConfig[j.id];
         for (const major of selectedMajors) {
           const subCats = categories.filter((c) => c.major_category === major);
           for (const cat of subCats) {
-            assignments.push({ email: j.email, category_id: cat.id, title });
+            assignments.push({ email: j.email, category_id: cat.id, title, name: j.name });
           }
         }
       }
@@ -1310,46 +1310,70 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
         </div>
       )}
 
-      {/* 배정된 심사위원 목록 (전체 종목) — 테이블 */}
-      {allAssignments.length > 0 && (
-        <div className="bg-white rounded-xl border overflow-hidden">
-          <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-700">배정 완료 심사위원</span>
-            <span className="text-xs text-gray-400">{allAssignments.length}명</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-xs text-gray-500 border-b">
-                  <th className="px-3 py-2 text-left font-medium">종목</th>
-                  <th className="px-3 py-2 text-left font-medium">이름</th>
-                  <th className="px-3 py-2 text-left font-medium">이메일</th>
-                  <th className="px-3 py-2 text-left font-medium">직책</th>
-                  <th className="px-3 py-2 text-center w-12 font-medium">해제</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {allAssignments.map((a) => (
-                  <tr key={a.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-xs">
-                      {a.major_category && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] mr-1">{a.major_category}</span>}
-                      {a.category_name && <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap">{a.category_name}</span>}
-                    </td>
-                    <td className="px-3 py-2 font-medium text-gray-800 whitespace-nowrap">{a.users?.name ?? "(이름 없음)"}</td>
-                    <td className="px-3 py-2 text-xs text-gray-400 whitespace-nowrap">{a.users?.email}</td>
-                    <td className="px-3 py-2 text-xs">
-                      {a.title && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{a.title}</span>}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <button onClick={() => removeJudge(a.id)} className="text-xs text-red-400 hover:text-red-600">해제</button>
-                    </td>
+      {/* 배정된 심사위원 목록 — 사람 단위 그룹 */}
+      {allAssignments.length > 0 && (() => {
+        // 사람별로 그룹화 (user_id 기준)
+        const personMap = new Map<string, { name: string; email: string; titles: string[]; cats: (Assignment & { category_name?: string; major_category?: string })[] }>();
+        for (const a of allAssignments) {
+          const uid = a.user_id;
+          if (!personMap.has(uid)) {
+            personMap.set(uid, {
+              name: a.judge_name ?? a.users?.name ?? "(이름 없음)",
+              email: a.users?.email ?? "",
+              titles: [],
+              cats: [],
+            });
+          }
+          const p = personMap.get(uid)!;
+          p.cats.push(a);
+          if (a.title && !p.titles.includes(a.title)) p.titles.push(a.title);
+        }
+        const persons = [...personMap.values()];
+        return (
+          <div className="bg-white rounded-xl border overflow-hidden">
+            <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
+              <span className="text-sm font-semibold text-gray-700">배정 완료 심사위원</span>
+              <span className="text-xs text-gray-400">{persons.length}명 · {allAssignments.length}건</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-xs text-gray-500 border-b">
+                    <th className="px-3 py-2 text-left font-medium">이름</th>
+                    <th className="px-3 py-2 text-left font-medium">이메일</th>
+                    <th className="px-3 py-2 text-left font-medium">직책</th>
+                    <th className="px-3 py-2 text-left font-medium">배정 종목</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {persons.map((p) => (
+                    <tr key={p.email} className="hover:bg-gray-50 align-top">
+                      <td className="px-3 py-2.5 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                      <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">{p.email}</td>
+                      <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                        {p.titles.map((t) => (
+                          <span key={t} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap mr-1">{t}</span>
+                        ))}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {p.cats.map((a) => (
+                            <span key={a.id} className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
+                              {a.major_category && <span className="text-purple-400 text-[10px]">[{a.major_category}]</span>}
+                              {a.category_name ?? a.category_id}
+                              <button onClick={() => removeJudge(a.id)} className="text-purple-300 hover:text-red-500 ml-0.5 leading-none" title="배정 해제">×</button>
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       {allAssignments.length === 0 && !showImport && <p className="text-sm text-gray-400">배정된 심사위원이 없습니다.</p>}
 
       <div className="flex gap-2 pt-2 border-t">

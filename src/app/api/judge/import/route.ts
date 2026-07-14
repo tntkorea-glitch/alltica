@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
 
   if (action === "judges") {
     const { assignments } = body as {
-      assignments: Array<{ email: string; category_id: string; title: string }>;
+      assignments: Array<{ email: string; category_id: string; title: string; name?: string }>;
     };
 
     let inserted = 0;
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
 
       const { error } = await supabase
         .from("judge_assignments")
-        .upsert({ user_id: user.id, category_id: a.category_id, assigned_by: ctx.userId, title: a.title }, { onConflict: "user_id,category_id" });
+        .upsert({ user_id: user.id, category_id: a.category_id, assigned_by: ctx.userId, title: a.title, judge_name: a.name ?? null }, { onConflict: "user_id,category_id" });
 
       if (error) errors.push(`${a.email}: ${error.message}`);
       else inserted++;
