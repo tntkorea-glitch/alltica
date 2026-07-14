@@ -983,15 +983,35 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gray-50 text-xs text-gray-500 border-b">
-                          <th className="px-3 py-2 text-center w-8 font-medium">#</th>
-                          <th className="px-3 py-2 text-left font-medium">이름</th>
-                          <th className="px-3 py-2 text-center font-medium">입금 / 금액</th>
-                          <th className="px-3 py-2 text-left font-medium">연락처</th>
-                          <th className="px-3 py-2 text-left font-medium">부문</th>
-                          <th className="px-3 py-2 text-left font-medium">접수 종목 (참가번호)</th>
-                          <th className="px-3 py-2 text-center w-14 font-medium sticky right-0 bg-gray-50">삭제</th>
-                        </tr>
+                        {(() => {
+                          const allCompanyPaid = personList.every(p => p.entries.every(e => e.paid));
+                          const someCompanyPaid = personList.some(p => p.entries.some(e => e.paid));
+                          return (
+                            <tr className="bg-gray-50 text-xs text-gray-500 border-b">
+                              <th className="px-3 py-2 text-center w-8 font-medium">#</th>
+                              <th className="px-3 py-2 text-left font-medium">이름</th>
+                              <th className="px-3 py-2 text-center font-medium">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <input type="checkbox"
+                                    checked={allCompanyPaid}
+                                    ref={el => { if (el) el.indeterminate = !allCompanyPaid && someCompanyPaid; }}
+                                    onChange={async () => {
+                                      const target = !allCompanyPaid;
+                                      for (const p of personList)
+                                        for (const e of p.entries)
+                                          if ((e.paid ?? false) !== target) await togglePaid(e.id, e.paid ?? false);
+                                    }}
+                                    className="w-4 h-4 accent-green-500 cursor-pointer" />
+                                  <span>입금 / 금액</span>
+                                </div>
+                              </th>
+                              <th className="px-3 py-2 text-left font-medium">연락처</th>
+                              <th className="px-3 py-2 text-left font-medium">부문</th>
+                              <th className="px-3 py-2 text-left font-medium">접수 종목 (참가번호)</th>
+                              <th className="px-3 py-2 text-center w-14 font-medium sticky right-0 bg-gray-50">삭제</th>
+                            </tr>
+                          );
+                        })()}
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {personList.map((p, idx) => (
