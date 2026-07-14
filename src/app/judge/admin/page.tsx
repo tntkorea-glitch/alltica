@@ -867,7 +867,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                     <th className="px-3 py-2 text-left font-medium">단체명</th>
                     <th className="px-3 py-2 text-left font-medium">부문</th>
                     <th className="px-3 py-2 text-left font-medium">접수 종목 (참가번호)</th>
-                    <th className="px-3 py-2 text-center w-12 font-medium">삭제</th>
+                    <th className="px-3 py-2 text-center w-14 font-medium sticky right-0 bg-gray-50">삭제</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -894,7 +894,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                         })()}
                       </td>
                       <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">{p.phone}</td>
-                      <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">{p.company ?? "-"}</td>
+                      <td className="px-3 py-2.5 text-xs text-gray-500 max-w-[140px] break-words">{p.company ?? "-"}</td>
                       <td className="px-3 py-2.5 text-xs">
                         {p.grade && <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{p.grade}</span>}
                       </td>
@@ -927,13 +927,13 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                           ))}
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 text-center">
+                      <td className="px-3 py-2.5 text-center sticky right-0 bg-white shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)]">
                         <button
                           onClick={async () => {
                             if (!confirm(`${p.name} 선수의 전체 접수(${p.entries.length}개 종목)를 삭제하시겠습니까?`)) return;
                             for (const e of p.entries) await deleteContestant(e.id, true);
                           }}
-                          className="text-xs text-red-400 hover:text-red-600"
+                          className="text-xs text-red-400 hover:text-red-600 whitespace-nowrap"
                         >전체삭제</button>
                       </td>
                     </tr>
@@ -981,7 +981,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                           <th className="px-3 py-2 text-left font-medium">연락처</th>
                           <th className="px-3 py-2 text-left font-medium">부문</th>
                           <th className="px-3 py-2 text-left font-medium">접수 종목 (참가번호)</th>
-                          <th className="px-3 py-2 text-center w-12 font-medium">삭제</th>
+                          <th className="px-3 py-2 text-center w-14 font-medium sticky right-0 bg-gray-50">삭제</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -1022,13 +1022,13 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                                 ))}
                               </div>
                             </td>
-                            <td className="px-3 py-2.5 text-center">
+                            <td className="px-3 py-2.5 text-center sticky right-0 bg-white shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)]">
                               <button
                                 onClick={async () => {
                                   if (!confirm(`${p.name} 선수의 전체 접수(${p.entries.length}개 종목)를 삭제하시겠습니까?`)) return;
                                   for (const e of p.entries) await deleteContestant(e.id, true);
                                 }}
-                                className="text-xs text-red-400 hover:text-red-600"
+                                className="text-xs text-red-400 hover:text-red-600 whitespace-nowrap"
                               >전체삭제</button>
                             </td>
                           </tr>
