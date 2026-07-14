@@ -1,17 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { SCALE_LABELS, getScaleForCriterion } from "@/lib/judge-criteria-data";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 interface Category { id: string; name: string; competition_id: string; }
 interface Competition { id: string; title: string; }
-interface Contestant { id: string; name: string; phone?: string; company?: string; grade?: string; number?: number; contestant_files?: ContestantFile[]; }
 interface ContestantFile { id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
+interface Contestant { id: string; name: string; phone?: string; company?: string; grade?: string; number?: number; contestant_files?: ContestantFile[]; }
 interface Criterion { id: string; name: string; max_score: number; display_order: number; }
-interface ScoreMap { [contestantId: string]: { [criterionId: string]: { score: string; comment: string } } }
-interface SubmittedSet { [categoryId: string]: boolean }
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+type ScoreMap = { [contestantId: string]: { [criterionId: string]: { score: string; comment: string } } };
 
 const api = async (url: string, opts?: RequestInit) => {
   const res = await fetch(url, opts);
@@ -24,205 +22,157 @@ function getYouTubeId(url: string): string | null {
   return m ? m[1] : null;
 }
 
-function FileViewer({ file }: { file: ContestantFile }) {
-  // YouTube 임베드
-  if (file.file_type === "youtube" && file.video_url) {
-    const videoId = getYouTubeId(file.video_url);
-    if (videoId) {
-      return (
-        <div className="border rounded-lg overflow-hidden bg-black">
-          <div className="relative" style={{ paddingBottom: "56.25%" }}>
-            <iframe
-              src={`https://www.youtube.com/embed/${videoId}`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="absolute inset-0 w-full h-full"
-              title={file.file_name}
-            />
-          </div>
-        </div>
-      );
-    }
-    return (
-      <a href={file.video_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 text-sm text-red-600 hover:underline border rounded-lg">
-        ▶ YouTube 영상 보기
-      </a>
-    );
-  }
-
-  const url = `${SUPABASE_URL}/storage/v1/object/public/contestant-files/${file.storage_path}`;
-  const isVideo = file.file_type.startsWith("video");
-  const isImage = file.file_type.startsWith("image");
-
+function PhotoCell({ files }: { files: ContestantFile[] }) {
+  const images = files.filter((f) => f.file_type.startsWith("image") && f.storage_path);
+  const [enlarged, setEnlarged] = useState<string | null>(null);
+  if (images.length === 0) return <span className="text-gray-300 text-xs">-</span>;
   return (
-    <div className="border rounded-lg overflow-hidden bg-gray-50">
-      {isImage && (
-        <a href={url} target="_blank" rel="noopener noreferrer">
-          <img src={url} alt={file.file_name} className="w-full max-h-64 object-contain bg-black" />
-        </a>
+    <>
+      <div className="flex gap-1 flex-wrap">
+        {images.map((f) => {
+          const url = `${SUPABASE_URL}/storage/v1/object/public/contestant-files/${f.storage_path}`;
+          return (
+            <button key={f.id} onClick={() => setEnlarged(url)} className="shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={f.file_name} className="w-16 h-16 object-cover rounded border border-gray-200 hover:opacity-80 transition" />
+            </button>
+          );
+        })}
+      </div>
+      {enlarged && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setEnlarged(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={enlarged} alt="확대" className="max-w-full max-h-full rounded-lg object-contain" />
+        </div>
       )}
-      {isVideo && (
-        <video src={url} controls className="w-full max-h-64 bg-black">
-          <track kind="captions" />
-        </video>
-      )}
-      {!isImage && !isVideo && (
-        <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 text-sm text-blue-600 hover:underline">
-          📎 {file.file_name}
-        </a>
-      )}
-    </div>
+    </>
   );
 }
 
-function ScoreCard({
-  contestant, criteria, scores, submitted, categoryId, categoryName,
-  onChange, onSave,
+function VideoCell({ files }: { files: ContestantFile[] }) {
+  const [open, setOpen] = useState(false);
+  const ytFiles = files.filter((f) => f.file_type === "youtube" && f.video_url);
+  const videoFiles = files.filter((f) => f.file_type.startsWith("video") && f.storage_path);
+  if (ytFiles.length === 0 && videoFiles.length === 0) return <span className="text-gray-300 text-xs">-</span>;
+
+  const ytId = ytFiles[0] ? getYouTubeId(ytFiles[0].video_url!) : null;
+
+  return (
+    <>
+      <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 rounded text-xs font-medium hover:bg-red-100 transition">
+        ▶ 재생
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div className="w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            {ytId ? (
+              <div className="relative" style={{ paddingBottom: "56.25%" }}>
+                <iframe
+                  src={`https://www.youtube.com/embed/${ytId}?autoplay=1`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full rounded-lg"
+                  title="영상"
+                />
+              </div>
+            ) : videoFiles[0] ? (
+              <video
+                src={`${SUPABASE_URL}/storage/v1/object/public/contestant-files/${videoFiles[0].storage_path}`}
+                controls autoPlay className="w-full rounded-lg bg-black"
+              >
+                <track kind="captions" />
+              </video>
+            ) : null}
+            <button onClick={() => setOpen(false)} className="mt-3 block mx-auto text-white/70 text-sm hover:text-white">✕ 닫기</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ScoreRow({
+  contestant, criteria, scores, submitted, onChange, onSave,
 }: {
   contestant: Contestant;
   criteria: Criterion[];
   scores: ScoreMap;
   submitted: boolean;
-  categoryId: string;
-  categoryName: string;
-  onChange: (contestantId: string, criterionId: string, field: "score" | "comment", value: string) => void;
-  onSave: (contestantId: string, criterionId: string) => void;
+  onChange: (cid: string, crId: string, v: string) => void;
+  onSave: (cid: string, crId: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-
-  const totalMax = criteria.reduce((s, c) => s + c.max_score, 0);
-  const totalScore = criteria.reduce((s, c) => {
-    const v = parseFloat(scores[contestant.id]?.[c.id]?.score ?? "");
-    return s + (isNaN(v) ? 0 : v);
+  const files = contestant.contestant_files ?? [];
+  const total = criteria.reduce((sum, cr) => {
+    const v = parseFloat(scores[contestant.id]?.[cr.id]?.score ?? "");
+    return sum + (isNaN(v) ? 0 : v);
   }, 0);
-  const allFilled = criteria.every((c) => {
-    const v = scores[contestant.id]?.[c.id]?.score;
-    return v !== undefined && v !== "";
-  });
-  const filledCount = criteria.filter((c) => {
-    const v = scores[contestant.id]?.[c.id]?.score;
-    return v !== undefined && v !== "";
-  }).length;
+  const maxTotal = criteria.reduce((sum, cr) => sum + cr.max_score, 0);
 
   return (
-    <div className={`bg-white border rounded-xl overflow-hidden ${allFilled ? "border-green-300" : ""}`}>
-      <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition">
-        <div className="flex items-center gap-3">
-          {contestant.number && <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{contestant.number}</span>}
-          <div>
-            <span className="font-semibold text-gray-900">{contestant.name}</span>
-            {contestant.company && <span className="text-xs text-gray-400 ml-2">{contestant.company}</span>}
-          </div>
-          {allFilled
-            ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">채점완료</span>
-            : filledCount > 0 && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{filledCount}/{criteria.length}</span>
-          }
-        </div>
-        <div className="flex items-center gap-4">
-          {allFilled && <span className="text-sm font-bold text-blue-600">{totalScore} / {totalMax}점</span>}
-          <span className="text-gray-400 text-sm">{open ? "▲" : "▼"}</span>
-        </div>
-      </button>
+    <tr className="border-b border-gray-100 hover:bg-blue-50/30 transition">
+      {/* 번호 */}
+      <td className="px-3 py-3 text-center">
+        <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white text-sm font-bold">
+          {contestant.number}
+        </span>
+      </td>
 
-      {open && (
-        <div className="border-t px-5 py-4 space-y-5">
-          {/* 파일 뷰어 */}
-          {(contestant.contestant_files ?? []).length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(contestant.contestant_files ?? []).map((f) => (
-                <FileViewer key={f.id} file={f} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400 text-center py-3 bg-gray-50 rounded-lg">등록된 작품 파일이 없습니다.</p>
-          )}
+      {/* 이름/단체 */}
+      <td className="px-3 py-3">
+        <div className="font-semibold text-gray-900 text-sm whitespace-nowrap">{contestant.name}</div>
+        {contestant.company && <div className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">{contestant.company}</div>}
+      </td>
 
-          {/* 채점 항목 */}
-          <div className="space-y-4">
-            {criteria.map((c) => {
-              const val = scores[contestant.id]?.[c.id] ?? { score: "", comment: "" };
-              const scoreNum = parseFloat(val.score);
-              const valid = !isNaN(scoreNum) && scoreNum >= 0 && scoreNum <= c.max_score;
-              // 대면/출품 모두 시도해서 scale 찾기
-              const scaleVals =
-                getScaleForCriterion(categoryName, c.name, "출품") ??
-                getScaleForCriterion(categoryName, c.name, "대면");
+      {/* 작품사진 */}
+      <td className="px-3 py-3">
+        <PhotoCell files={files} />
+      </td>
 
-              const selectScore = (v: number) => {
-                if (submitted) return;
-                onChange(contestant.id, c.id, "score", String(v));
-                setTimeout(() => onSave(contestant.id, c.id), 50);
-              };
+      {/* 영상 */}
+      <td className="px-3 py-3 text-center">
+        <VideoCell files={files} />
+      </td>
 
-              return (
-                <div key={c.id} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-gray-700">
-                      {c.name}
-                      <span className="text-gray-400 font-normal ml-1">/ {c.max_score}점</span>
-                    </label>
-                    {val.score !== "" && (
-                      <span className={`text-sm font-bold ${valid ? "text-blue-600" : "text-red-500"}`}>
-                        {valid ? `${val.score}점` : `범위 초과 (0~${c.max_score})`}
-                      </span>
-                    )}
-                  </div>
-
-                  {scaleVals ? (
-                    /* 5단계 버튼 */
-                    <div className="grid grid-cols-5 gap-1.5">
-                      {scaleVals.map((v, i) => {
-                        const selected = val.score === String(v);
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => selectScore(v)}
-                            disabled={submitted}
-                            className={`flex flex-col items-center py-2 px-1 rounded-lg border text-center transition text-xs leading-tight
-                              ${selected
-                                ? "bg-blue-600 border-blue-600 text-white font-bold"
-                                : submitted
-                                  ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
-                                  : "bg-white border-gray-200 text-gray-600 hover:border-blue-400 hover:bg-blue-50"
-                              }`}
-                          >
-                            <span className="font-bold text-sm">{v}</span>
-                            <span className={`mt-0.5 ${selected ? "text-blue-100" : "text-gray-400"}`} style={{ fontSize: "0.65rem" }}>{SCALE_LABELS[i]}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    /* fallback: 숫자 입력 */
-                    <input
-                      type="number"
-                      min={0}
-                      max={c.max_score}
-                      value={val.score}
-                      disabled={submitted}
-                      onChange={(e) => onChange(contestant.id, c.id, "score", e.target.value)}
-                      onBlur={() => valid && onSave(contestant.id, c.id)}
-                      className={`w-32 border rounded-lg px-3 py-2 text-sm ${submitted ? "bg-gray-50 text-gray-400" : "focus:border-blue-400 focus:outline-none"}`}
-                      placeholder={`0 ~ ${c.max_score}`}
-                    />
-                  )}
-
-                  <input
-                    type="text"
-                    value={val.comment}
-                    disabled={submitted}
-                    onChange={(e) => onChange(contestant.id, c.id, "comment", e.target.value)}
-                    onBlur={() => onSave(contestant.id, c.id)}
-                    className={`w-full border rounded-lg px-3 py-2 text-sm ${submitted ? "bg-gray-50 text-gray-400" : "focus:border-blue-400 focus:outline-none"}`}
-                    placeholder="코멘트 (선택)"
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      {/* 채점 항목들 */}
+      {criteria.length > 0 ? (
+        criteria.map((cr) => {
+          const val = scores[contestant.id]?.[cr.id]?.score ?? "";
+          const num = parseFloat(val);
+          const valid = !isNaN(num) && num >= 0 && num <= cr.max_score;
+          return (
+            <td key={cr.id} className="px-2 py-3 text-center">
+              <input
+                type="number"
+                min={0}
+                max={cr.max_score}
+                value={val}
+                disabled={submitted}
+                onChange={(e) => onChange(contestant.id, cr.id, e.target.value)}
+                onBlur={() => valid && onSave(contestant.id, cr.id)}
+                className={`w-16 text-center border rounded-lg px-1 py-1.5 text-sm font-medium
+                  ${submitted ? "bg-gray-50 text-gray-400 border-gray-200"
+                    : valid && val !== "" ? "border-blue-400 bg-blue-50 text-blue-800"
+                    : val !== "" && !valid ? "border-red-400 bg-red-50"
+                    : "border-gray-300 focus:border-blue-400 focus:outline-none"}`}
+                placeholder={`/${cr.max_score}`}
+              />
+            </td>
+          );
+        })
+      ) : (
+        <td className="px-3 py-3 text-center text-xs text-gray-400">채점항목<br/>미설정</td>
       )}
-    </div>
+
+      {/* 총점 */}
+      <td className="px-3 py-3 text-center">
+        {criteria.length > 0 ? (
+          <div className={`text-lg font-bold ${total > 0 ? "text-blue-700" : "text-gray-300"}`}>
+            {total}
+            <div className="text-xs font-normal text-gray-400">/{maxTotal}</div>
+          </div>
+        ) : <span className="text-gray-300">-</span>}
+      </td>
+    </tr>
   );
 }
 
@@ -232,8 +182,9 @@ export default function JudgeScorePage() {
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [scores, setScores] = useState<ScoreMap>({});
-  const [submitted, setSubmitted] = useState<SubmittedSet>({});
+  const [submitted, setSubmitted] = useState<{ [categoryId: string]: boolean }>({});
   const [loading, setLoading] = useState(true);
+  const [catLoading, setCatLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const saveTimers = useRef<{ [key: string]: ReturnType<typeof setTimeout> }>({});
@@ -245,7 +196,6 @@ export default function JudgeScorePage() {
   useEffect(() => { criteriaRef.current = criteria; }, [criteria]);
   useEffect(() => { selectedCategoryIdRef.current = selectedCategoryId; }, [selectedCategoryId]);
 
-  // 내 배정 목록 로드
   useEffect(() => {
     (async () => {
       try {
@@ -260,8 +210,8 @@ export default function JudgeScorePage() {
     })();
   }, []);
 
-  // 종목 선택 시 선수·항목·점수 로드
   const loadCategory = useCallback(async (categoryId: string) => {
+    setCatLoading(true);
     try {
       const [cs, crs, scs] = await Promise.all([
         api(`/api/judge/contestants?category_id=${categoryId}`),
@@ -270,7 +220,6 @@ export default function JudgeScorePage() {
       ]);
       setContestants(cs);
       setCriteria(crs);
-
       const map: ScoreMap = {};
       for (const s of scs) {
         if (!map[s.contestant_id]) map[s.contestant_id] = {};
@@ -278,6 +227,7 @@ export default function JudgeScorePage() {
       }
       setScores(map);
     } catch (e: unknown) { setMsg((e as Error).message); }
+    setCatLoading(false);
   }, []);
 
   useEffect(() => {
@@ -288,10 +238,13 @@ export default function JudgeScorePage() {
     if (msg) { const t = setTimeout(() => setMsg(""), 4000); return () => clearTimeout(t); }
   }, [msg]);
 
-  const handleChange = (contestantId: string, criterionId: string, field: "score" | "comment", value: string) => {
+  const handleChange = (contestantId: string, criterionId: string, value: string) => {
     setScores((prev) => ({
       ...prev,
-      [contestantId]: { ...prev[contestantId], [criterionId]: { ...(prev[contestantId]?.[criterionId] ?? { score: "", comment: "" }), [field]: value } },
+      [contestantId]: {
+        ...prev[contestantId],
+        [criterionId]: { ...(prev[contestantId]?.[criterionId] ?? { score: "", comment: "" }), score: value },
+      },
     }));
   };
 
@@ -307,9 +260,9 @@ export default function JudgeScorePage() {
       const criterion = criteriaRef.current.find((c) => c.id === criterionId);
       if (!criterion || isNaN(scoreNum) || scoreNum < 0 || scoreNum > criterion.max_score) return;
       try {
-        await api("/api/judge/scores", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contestant_id: contestantId, criterion_id: criterionId, score: scoreNum, comment: val.comment, category_id: categoryId }) });
+        await api("/api/judge/scores", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contestant_id: contestantId, criterion_id: criterionId, score: scoreNum, comment: "", category_id: categoryId }) });
       } catch (e: unknown) { setMsg((e as Error).message); }
-    }, 600);
+    }, 800);
   }, []);
 
   const handleSubmit = async () => {
@@ -328,20 +281,55 @@ export default function JudgeScorePage() {
 
   const selectedAssignment = assignments.find((a) => a.category.id === selectedCategoryId);
   const isSubmitted = selectedCategoryId ? !!submitted[selectedCategoryId] : false;
-  const totalFilled = contestants.filter((c) => criteria.every((cr) => scores[c.id]?.[cr.id]?.score !== "" && scores[c.id]?.[cr.id]?.score !== undefined)).length;
+
+  // 등수 계산 (총점 기준 내림차순)
+  const maxTotal = criteria.reduce((s, cr) => s + cr.max_score, 0);
+  const totals = contestants.map((c) => ({
+    id: c.id,
+    total: criteria.reduce((sum, cr) => {
+      const v = parseFloat(scores[c.id]?.[cr.id]?.score ?? "");
+      return sum + (isNaN(v) ? 0 : v);
+    }, 0),
+  }));
+  const sorted = [...totals].sort((a, b) => b.total - a.total);
+  const rankMap: { [id: string]: number } = {};
+  sorted.forEach((item, i) => {
+    if (item.total > 0) {
+      const sameScore = sorted.filter((x) => x.total === item.total);
+      rankMap[item.id] = sorted.findIndex((x) => x.total === item.total) + 1;
+      if (sameScore.length > 1) { /* 동점 처리: 같은 등수 */ }
+    }
+  });
+
+  const totalFilled = criteria.length > 0
+    ? contestants.filter((c) => criteria.every((cr) => {
+        const v = scores[c.id]?.[cr.id]?.score;
+        return v !== undefined && v !== "";
+      })).length
+    : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">⚖️ 심사 채점</h1>
 
-        {msg && <div className="mb-4 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm">{msg}</div>}
+        {msg && (
+          <div className="mb-4 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm">{msg}</div>
+        )}
 
         {/* 종목 탭 */}
-        {assignments.length > 1 && (
+        {assignments.length > 0 && (
           <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
             {assignments.map((a) => (
-              <button key={a.category.id} onClick={() => setSelectedCategoryId(a.category.id)} className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${selectedCategoryId === a.category.id ? "bg-blue-600 text-white" : "bg-white border text-gray-700 hover:border-blue-300"}`}>
+              <button
+                key={a.category.id}
+                onClick={() => setSelectedCategoryId(a.category.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                  selectedCategoryId === a.category.id
+                    ? "bg-blue-600 text-white shadow"
+                    : "bg-white border text-gray-700 hover:border-blue-300"
+                }`}
+              >
                 {a.category.name}
                 {submitted[a.category.id] && <span className="ml-1.5 text-xs opacity-75">✓</span>}
               </button>
@@ -350,49 +338,145 @@ export default function JudgeScorePage() {
         )}
 
         {selectedAssignment && (
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">{selectedAssignment.category.competitions.title}</h2>
-            <p className="text-sm text-gray-500">종목: {selectedAssignment.category.name}</p>
-          </div>
-        )}
-
-        {isSubmitted && (
-          <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 font-medium">
-            ✅ 이 종목의 채점이 제출 완료되었습니다. 수정이 불가능합니다.
-          </div>
-        )}
-
-        <div className="space-y-3 mb-6">
-          {contestants.map((c) => (
-            <ScoreCard
-              key={c.id}
-              contestant={c}
-              criteria={criteria}
-              scores={scores}
-              submitted={isSubmitted}
-              categoryId={selectedCategoryId ?? ""}
-              categoryName={selectedAssignment?.category.name ?? ""}
-              onChange={handleChange}
-              onSave={handleSave}
-            />
-          ))}
-          {contestants.length === 0 && <p className="text-sm text-gray-400 text-center py-8">등록된 선수가 없습니다.</p>}
-        </div>
-
-        {!isSubmitted && contestants.length > 0 && (
-          <div className="sticky bottom-4">
-            <div className="bg-white border rounded-2xl shadow-lg px-6 py-4 flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                채점 완료: <strong className="text-blue-600">{totalFilled} / {contestants.length}명</strong>
-              </p>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || totalFilled < contestants.length}
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {submitting ? "제출 중..." : "채점 제출"}
-              </button>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-400">{selectedAssignment.category.competitions.title}</p>
+              <h2 className="text-lg font-semibold text-gray-800">{selectedAssignment.category.name}</h2>
             </div>
+            {isSubmitted && (
+              <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">✅ 제출완료</span>
+            )}
+          </div>
+        )}
+
+        {catLoading ? (
+          <div className="text-center py-16 text-gray-400">로딩 중...</div>
+        ) : contestants.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">등록된 선수가 없습니다.</div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap w-14">번호</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">이름/단체</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">작품사진</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">영상</th>
+                    {criteria.map((cr) => (
+                      <th key={cr.id} className="px-2 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
+                        {cr.name}
+                        <div className="text-gray-400 font-normal">/{cr.max_score}</div>
+                      </th>
+                    ))}
+                    {criteria.length === 0 && (
+                      <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500">채점</th>
+                    )}
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
+                      총점{maxTotal > 0 ? `/${maxTotal}` : ""}
+                    </th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">등수</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contestants.map((c) => {
+                    const rank = rankMap[c.id];
+                    return (
+                      <tr key={c.id} className="border-b border-gray-100 hover:bg-blue-50/30 transition">
+                        {/* 번호 */}
+                        <td className="px-3 py-3 text-center">
+                          <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white text-sm font-bold">
+                            {c.number}
+                          </span>
+                        </td>
+
+                        {/* 이름/단체 */}
+                        <td className="px-3 py-3">
+                          <div className="font-semibold text-gray-900 whitespace-nowrap">{c.name}</div>
+                          {c.company && <div className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">{c.company}</div>}
+                        </td>
+
+                        {/* 작품사진 */}
+                        <td className="px-3 py-3">
+                          <PhotoCell files={c.contestant_files ?? []} />
+                        </td>
+
+                        {/* 영상 */}
+                        <td className="px-3 py-3 text-center">
+                          <VideoCell files={c.contestant_files ?? []} />
+                        </td>
+
+                        {/* 채점 항목들 */}
+                        {criteria.length > 0 ? criteria.map((cr) => {
+                          const val = scores[c.id]?.[cr.id]?.score ?? "";
+                          const num = parseFloat(val);
+                          const valid = !isNaN(num) && num >= 0 && num <= cr.max_score;
+                          return (
+                            <td key={cr.id} className="px-2 py-3 text-center">
+                              <input
+                                type="number"
+                                min={0}
+                                max={cr.max_score}
+                                value={val}
+                                disabled={isSubmitted}
+                                onChange={(e) => handleChange(c.id, cr.id, e.target.value)}
+                                onBlur={() => valid && handleSave(c.id, cr.id)}
+                                className={`w-16 text-center border rounded-lg px-1 py-1.5 text-sm font-medium
+                                  ${isSubmitted ? "bg-gray-50 text-gray-400 border-gray-200"
+                                    : valid && val !== "" ? "border-blue-400 bg-blue-50 text-blue-800"
+                                    : val !== "" && !valid ? "border-red-400 bg-red-50"
+                                    : "border-gray-300 focus:border-blue-400 focus:outline-none"}`}
+                                placeholder={`/${cr.max_score}`}
+                              />
+                            </td>
+                          );
+                        }) : (
+                          <td className="px-3 py-3 text-center text-xs text-gray-400">채점항목<br/>미설정</td>
+                        )}
+
+                        {/* 총점 */}
+                        <td className="px-3 py-3 text-center">
+                          {criteria.length > 0 ? (
+                            <div className={`text-xl font-bold ${totals.find((t) => t.id === c.id)!.total > 0 ? "text-blue-700" : "text-gray-300"}`}>
+                              {totals.find((t) => t.id === c.id)!.total}
+                            </div>
+                          ) : <span className="text-gray-300">-</span>}
+                        </td>
+
+                        {/* 등수 */}
+                        <td className="px-3 py-3 text-center">
+                          {rank ? (
+                            <span className={`inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold
+                              ${rank === 1 ? "bg-yellow-400 text-yellow-900"
+                                : rank === 2 ? "bg-gray-300 text-gray-800"
+                                : rank === 3 ? "bg-amber-600 text-white"
+                                : "bg-gray-100 text-gray-600"}`}>
+                              {rank}등
+                            </span>
+                          ) : <span className="text-gray-300">-</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 하단 제출 */}
+            {!isSubmitted && criteria.length > 0 && (
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  채점 완료: <strong className="text-blue-600">{totalFilled} / {contestants.length}명</strong>
+                </p>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || totalFilled < contestants.length}
+                  className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  {submitting ? "제출 중..." : "채점 제출"}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
