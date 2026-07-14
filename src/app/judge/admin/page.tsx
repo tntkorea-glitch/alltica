@@ -1008,6 +1008,17 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
           const ai = majorOrder.indexOf(a.major); const bi = majorOrder.indexOf(b.major);
           return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
         });
+        // 세부종목: 최소 참가번호 오름차순 / 선수: 참가번호 오름차순
+        for (const mg of sortedMajorGroups) {
+          mg.subs.sort((a, b) => {
+            const minA = Math.min(...a.rows.map((r) => r.number ?? Infinity));
+            const minB = Math.min(...b.rows.map((r) => r.number ?? Infinity));
+            return minA - minB;
+          });
+          for (const sg of mg.subs) {
+            sg.rows = [...sg.rows].sort((a, b) => (a.number ?? Infinity) - (b.number ?? Infinity));
+          }
+        }
 
         return (
           <div className="space-y-6">
