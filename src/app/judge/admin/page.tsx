@@ -326,6 +326,8 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   const [catMap, setCatMap] = useState<Record<string, string>>({});
   const [allDivisions, setAllDivisions] = useState<string[]>([]);
 
+  const [viewMode, setViewMode] = useState<"category" | "athlete">("category");
+
   // 필터 적용한 선수 목록
   const contestants = filterCatId
     ? allContestants.filter((c) => c.category_id === filterCatId)
@@ -521,6 +523,33 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
     setLoading(false);
   };
 
+  const renumberContestants = async () => {
+    if (!confirm("종목별로 참가번호를 1번부터 순서대로 자동 부여합니다.")) return;
+    setLoading(true);
+    try {
+      // 카테고리별 그룹핑 후 순서대로 번호 부여
+      const grouped = new Map<string, (Contestant & { category_name?: string })[]>();
+      for (const c of allContestants) {
+        if (!grouped.has(c.category_id)) grouped.set(c.category_id, []);
+        grouped.get(c.category_id)!.push(c);
+      }
+      let updated = 0;
+      for (const [, rows] of grouped) {
+        const sorted = [...rows].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+        for (let i = 0; i < sorted.length; i++) {
+          const newNum = i + 1;
+          if (sorted[i].number !== newNum) {
+            await api(`/api/judge/contestants/${sorted[i].id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ number: newNum, display_order: newNum }) });
+            updated++;
+          }
+        }
+      }
+      onMsg(`참가번호 ${updated}건 업데이트 완료`);
+      await load();
+    } catch (e: unknown) { onMsg((e as Error).message); }
+    setLoading(false);
+  };
+
   const saveCompany = async (id: string, value: string) => {
     try {
       await api(`/api/judge/contestants/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ company: value }) });
@@ -588,7 +617,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
       )}
 
       {/* 액션 버튼들 */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         {competition?.contest_slug && (
           <button onClick={loadImportAthletes} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
             📋 신청서에서 불러오기
@@ -598,11 +627,23 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
           📁 단체접수 파일
           <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleExcel(f); e.target.value = ""; }} />
         </label>
-        {allContestants.length > 0 && (
+        {allContestants.length > 0 && (<>
           <button onClick={deduplicateContestants} disabled={loading} className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-200 disabled:opacity-50 border border-orange-300">
             🔄 중복 자동 삭제
           </button>
-        )}
+          <button onClick={renumberContestants} disabled={loading} className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 disabled:opacity-50 border border-blue-300">
+            🔢 참가번호 자동 부여
+          </button>
+        </>)}
+        {/* 보기 모드 토글 */}
+        <div className="ml-auto flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+          <button onClick={() => setViewMode("category")} className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === "category" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+            종목별
+          </button>
+          <button onClick={() => setViewMode("athlete")} className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === "athlete" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+            선수별
+          </button>
+        </div>
       </div>
 
       {/* data-file 폴더 Import UI */}
@@ -742,8 +783,66 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
         </div>
       )}
 
+      {/* 선수별 보기 */}
+      {viewMode === "athlete" && (() => {
+        // name+phone 기준으로 사람별 그룹핑
+        const personMap = new Map<string, { name: string; phone: string; company?: string; grade?: string; paid?: boolean; entries: (Contestant & { category_name?: string })[] }>();
+        for (const c of allContestants) {
+          const key = `${c.name}||${(c.phone ?? "").replace(/\D/g, "")}`;
+          if (!personMap.has(key)) personMap.set(key, { name: c.name, phone: c.phone ?? "", company: c.company, grade: c.grade, paid: c.paid, entries: [] });
+          personMap.get(key)!.entries.push(c);
+        }
+        const persons = [...personMap.values()].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+        if (persons.length === 0) return <p className="text-sm text-gray-400 text-center py-6">등록된 선수가 없습니다.</p>;
+        return (
+          <div className="bg-white rounded-xl border overflow-hidden">
+            <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
+              <span className="text-sm font-semibold text-gray-700">선수별 접수 종목</span>
+              <span className="text-xs text-gray-400">총 {persons.length}명 · {allContestants.length}건</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-xs text-gray-500 border-b">
+                    <th className="px-3 py-2 text-center w-8 font-medium">#</th>
+                    <th className="px-3 py-2 text-left font-medium">이름</th>
+                    <th className="px-3 py-2 text-left font-medium">연락처</th>
+                    <th className="px-3 py-2 text-left font-medium">단체명</th>
+                    <th className="px-3 py-2 text-left font-medium">부문</th>
+                    <th className="px-3 py-2 text-left font-medium">접수 종목 (참가번호)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {persons.map((p, idx) => (
+                    <tr key={`${p.name}-${p.phone}`} className="hover:bg-gray-50 align-top">
+                      <td className="px-3 py-2.5 text-center text-xs text-gray-400">{idx + 1}</td>
+                      <td className="px-3 py-2.5 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                      <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">{p.phone}</td>
+                      <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">{p.company ?? "-"}</td>
+                      <td className="px-3 py-2.5 text-xs">
+                        {p.grade && <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{p.grade}</span>}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {p.entries.map((e) => (
+                            <span key={e.id} className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-800 px-2 py-0.5 rounded-full text-xs">
+                              {e.category_name}
+                              {e.number != null && <span className="bg-purple-200 text-purple-900 rounded-full px-1.5 font-bold">{e.number}</span>}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 선수 목록 — 종목별 테이블 */}
-      {contestants.length === 0 ? (
+      {viewMode === "category" && (contestants.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-6">
           {allContestants.length === 0 ? "등록된 선수가 없습니다. 신청서 또는 단체접수 파일에서 불러오세요." : "이 종목에 등록된 선수가 없습니다."}
         </p>
@@ -874,7 +973,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
             ))}
           </div>
         );
-      })()}
+      })())}
     </div>
   );
 }
