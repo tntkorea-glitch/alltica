@@ -1350,8 +1350,8 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                               ))}
                               <label className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs cursor-pointer transition whitespace-nowrap ${uploading === c.id ? "bg-gray-200 text-gray-400" : "bg-blue-50 text-blue-600 hover:bg-blue-100"}`}>
                                 {uploading === c.id ? "..." : "+파일"}
-                                <input type="file" className="hidden" accept="image/*,video/*" disabled={uploading === c.id}
-                                  onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFile(c.id, file); e.target.value = ""; }} />
+                                <input type="file" className="hidden" accept="image/*,video/*" multiple disabled={uploading === c.id}
+                                  onChange={async (e) => { const files = Array.from(e.target.files ?? []); for (const file of files) { await uploadFile(c.id, file); } e.target.value = ""; }} />
                               </label>
                               {ytInputId === c.id ? (
                                 <div className="flex gap-1 items-center">
