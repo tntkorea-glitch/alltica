@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   const [{ data: contestants }, { data: criteria }, { data: scores }, { data: awards }, { data: submissions }] =
     await Promise.all([
-      supabase.from("contestants").select("id, name, phone, email").eq("category_id", categoryId).order("display_order"),
+      supabase.from("contestants").select("id, name, phone, email, grade, number").eq("category_id", categoryId).order("display_order"),
       supabase.from("scoring_criteria").select("id, name, max_score").eq("category_id", categoryId).order("display_order"),
       supabase.from("scores").select("judge_id, contestant_id, criterion_id, score").in(
         "contestant_id",
@@ -29,6 +29,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "데이터 조회 실패" }, { status: 500 });
   }
 
+  // 심사위원 이름 조회
+  const judgeIds = (submissions ?? []).map((s) => s.judge_id);
+  const { data: judgeUsers } = judgeIds.length > 0
+    ? await supabase.from("users").select("id, name").in("id", judgeIds)
+    : { data: [] };
+
   // 선수별 × 항목별 평균 점수 계산
   const results = contestants.map((contestant) => {
     const contestantScores = scores.filter((s) => s.contestant_id === contestant.id);
@@ -36,14 +42,21 @@ export async function GET(request: NextRequest) {
     const criteriaScores = (criteria ?? []).map((criterion) => {
       const criterionScores = contestantScores
         .filter((s) => s.criterion_id === criterion.id)
-        .map((s) => s.score);
+        .map((s) => ({ judge_id: s.judge_id, score: s.score }));
 
       const avg =
         criterionScores.length > 0
-          ? criterionScores.reduce((a, b) => a + b, 0) / criterionScores.length
+          ? criterionScores.reduce((a, b) => a + b.score, 0) / criterionScores.length
           : null;
 
-      return { criterion_id: criterion.id, criterion_name: criterion.name, max_score: criterion.max_score, avg, judge_count: criterionScores.length };
+      return {
+        criterion_id: criterion.id,
+        criterion_name: criterion.name,
+        max_score: criterion.max_score,
+        avg,
+        judge_count: criterionScores.length,
+        judge_scores: criterionScores,
+      };
     });
 
     const totalAvg = criteriaScores.every((c) => c.avg !== null)
@@ -57,7 +70,6 @@ export async function GET(request: NextRequest) {
   results.sort((a, b) => (b.total ?? -1) - (a.total ?? -1));
 
   // 시상 배분
-  let rankCursor = 0;
   const ranked = results.map((r, idx) => {
     if (r.total === null) return { ...r, rank: null, award: null };
     const rank = idx + 1;
@@ -65,10 +77,7 @@ export async function GET(request: NextRequest) {
     let awardCursor = 0;
     for (const aw of awards ?? []) {
       const cnt = aw.count ?? 0;
-      if (rank > awardCursor && rank <= awardCursor + cnt) {
-        award = aw.award_name;
-        break;
-      }
+      if (rank > awardCursor && rank <= awardCursor + cnt) { award = aw.award_name; break; }
       awardCursor += cnt;
     }
     return { ...r, rank, award };
@@ -76,5 +85,11 @@ export async function GET(request: NextRequest) {
 
   const submittedJudgeCount = submissions?.length ?? 0;
 
-  return NextResponse.json({ results: ranked, criteria: criteria ?? [], awards: awards ?? [], submitted_judge_count: submittedJudgeCount });
+  return NextResponse.json({
+    results: ranked,
+    criteria: criteria ?? [],
+    awards: awards ?? [],
+    submitted_judge_count: submittedJudgeCount,
+    judges: judgeUsers ?? [],
+  });
 }
