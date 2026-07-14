@@ -252,12 +252,15 @@ export default function JudgeScorePage() {
           return (
             <div className={`mb-6 ${isMultiGroup ? "space-y-2" : ""}`}>
               {[...groups.entries()].map(([major, items]) => (
-                <div key={major} className={isMultiGroup ? "flex items-start gap-2 flex-wrap" : "flex gap-2 flex-wrap"}>
+                <div key={major} className={isMultiGroup ? "flex items-start gap-3" : "flex gap-2 flex-wrap"}>
                   {isMultiGroup && (
-                    <span className="shrink-0 text-xs font-bold text-white bg-purple-600 px-2.5 py-1 rounded-full whitespace-nowrap">
-                      {major}
-                    </span>
+                    <div className="shrink-0 w-20 flex justify-center pt-0.5">
+                      <span className="text-xs font-bold text-white bg-purple-600 px-2.5 py-1 rounded-full whitespace-nowrap">
+                        {major}
+                      </span>
+                    </div>
                   )}
+                  <div className="flex flex-wrap gap-2">
                   {items.map((a) => (
                     <button
                       key={a.category.id}
@@ -272,6 +275,7 @@ export default function JudgeScorePage() {
                       {submitted[a.category.id] && <span className="ml-1.5 text-xs opacity-75">✓</span>}
                     </button>
                   ))}
+                  </div>
                 </div>
               ))}
             </div>
