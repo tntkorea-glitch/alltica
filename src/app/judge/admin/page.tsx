@@ -977,8 +977,12 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                   <div className="px-4 py-2 bg-indigo-50 border-b flex items-center gap-2">
                     <span className="text-sm font-bold text-indigo-800">{company}</span>
                     <span className="text-xs text-gray-400">{personList.length}명 · {totalEntries}건</span>
-                    {totalFee > 0 && <span className="text-xs font-semibold text-indigo-600 ml-1">· 총 {totalFee}만원</span>}
-                    <span className={`ml-auto text-xs font-bold ${paidRate === 100 ? "text-green-600" : paidRate >= 50 ? "text-amber-500" : "text-gray-400"}`}>{paidRate}%</span>
+                    {totalFee > 0 && (
+                      <span className="text-xs font-semibold text-indigo-600 ml-1">
+                        · 총 {totalFee}만원
+                        {paidRate > 0 && <span className={`ml-1 ${paidRate === 100 ? "text-green-600" : "text-amber-500"}`}>({paidRate}%)</span>}
+                      </span>
+                    )}
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
