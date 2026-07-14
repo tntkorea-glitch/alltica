@@ -525,27 +525,41 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   };
 
   const renumberContestants = async () => {
-    if (!confirm("종목별로 참가번호를 1번부터 순서대로 자동 부여합니다.")) return;
+    // 대종목별 100단위 오프셋: SMP→101~, 속눈썹→201~, 피부→501~ (CATEGORY_HIERARCHY 순서)
+    const preview = CATEGORY_HIERARCHY
+      .map((g, i) => {
+        const cnt = allContestants.filter((c) => categories.find((cat) => cat.id === c.category_id)?.major_category === g.major).length;
+        return cnt > 0 ? `${g.major}: ${(i + 1) * 100 + 1}~` : null;
+      })
+      .filter(Boolean)
+      .join(", ");
+    if (!confirm(`대종목별 100단위로 참가번호를 자동 부여합니다.\n${preview}\n계속하시겠습니까?`)) return;
     setLoading(true);
     try {
-      // 카테고리별 그룹핑 후 순서대로 번호 부여
-      const grouped = new Map<string, (Contestant & { category_name?: string })[]>();
-      for (const c of allContestants) {
-        if (!grouped.has(c.category_id)) grouped.set(c.category_id, []);
-        grouped.get(c.category_id)!.push(c);
-      }
       let updated = 0;
-      for (const [, rows] of grouped) {
-        const sorted = [...rows].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
-        for (let i = 0; i < sorted.length; i++) {
-          const newNum = i + 1;
-          if (sorted[i].number !== newNum) {
-            await api(`/api/judge/contestants/${sorted[i].id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ number: newNum, display_order: newNum }) });
-            updated++;
+      for (let majorIdx = 0; majorIdx < CATEGORY_HIERARCHY.length; majorIdx++) {
+        const g = CATEGORY_HIERARCHY[majorIdx];
+        const offset = (majorIdx + 1) * 100;
+        // 이 대종목에 속한 세부종목 (display_order 오름차순)
+        const majorCats = categories
+          .filter((c) => c.major_category === g.major)
+          .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+        let seq = 1;
+        for (const cat of majorCats) {
+          const rows = allContestants
+            .filter((c) => c.category_id === cat.id)
+            .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+          for (const c of rows) {
+            const newNum = offset + seq;
+            if (c.number !== newNum) {
+              await api(`/api/judge/contestants/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ number: newNum }) });
+              updated++;
+            }
+            seq++;
           }
         }
       }
-      onMsg(`참가번호 ${updated}건 업데이트 완료`);
+      onMsg(`참가번호 ${updated}건 업데이트 완료 (대종목별 100단위)`);
       await load();
     } catch (e: unknown) { onMsg((e as Error).message); }
     setLoading(false);
