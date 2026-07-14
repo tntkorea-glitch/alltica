@@ -312,26 +312,10 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   };
 
   // data-file 폴더 불러오기
-  const [dataFiles, setDataFiles] = useState<Array<{ filename: string; rows: Array<{ name: string; phone: string; company: string; grade: string; mainCategory: string; division: string }>; divisions: string[] }>>([]);
+  const [dataFiles, setDataFiles] = useState<Array<{ filename: string; rows: Array<{ name: string; phone: string; company: string; grade: string; division: string }>; divisions: string[] }>>([]);
   const [showDataFile, setShowDataFile] = useState(false);
   const [dataFileCatMap, setDataFileCatMap] = useState<Record<string, string>>({});
   const [fallbackToCurrent, setFallbackToCurrent] = useState(true);
-
-  const loadDataFiles = async () => {
-    try {
-      const data = await api("/api/judge/import-excel");
-      setDataFiles(data.files);
-      // 자동 매핑
-      const allDivs = [...new Set(data.files.flatMap((f: { divisions: string[] }) => f.divisions))];
-      const map: Record<string, string> = {};
-      for (const div of allDivs as string[]) {
-        const matched = categories.find((c) => c.name === div || div.includes(c.name) || c.name.includes(div.split("(")[0]));
-        if (matched) map[div] = matched.id;
-      }
-      setDataFileCatMap(map);
-      setShowDataFile(true);
-    } catch (e: unknown) { onMsg((e as Error).message); }
-  };
 
   const bulkImportDataFiles = async () => {
     const allRows = dataFiles.flatMap((f) => f.rows);
@@ -395,7 +379,24 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
       const isIBCFormat = rawRows.length > 10 && typeof rawRows[10]?.[0] === "number";
 
       if (isIBCFormat) {
-        // IBC 단체접수 서식
+        // IBC 단체접수 서식 — 단체명은 헤더 영역에서 추출
+        const isRealCompany = (v: string) => !!v && !/^\d+층?$/.test(v) && v.length > 1;
+        let headerCompany = "";
+        for (let i = 0; i < Math.min(9, rawRows.length); i++) {
+          const hRow = rawRows[i];
+          for (let j = 0; j < hRow.length; j++) {
+            const cell = String(hRow[j] ?? "").trim();
+            if (cell.includes("단체") && (cell.includes("기관명") || cell.includes("기관") || cell.includes("상호"))) {
+              for (let k = j + 1; k < hRow.length; k++) {
+                const val = String(hRow[k] ?? "").trim();
+                if (isRealCompany(val)) { headerCompany = val; break; }
+              }
+            }
+            if (headerCompany) break;
+          }
+          if (headerCompany) break;
+        }
+
         const excelRows: Array<{ name: string; phone: string; company: string; grade: string; division: string }> = [];
         for (let i = 10; i < rawRows.length; i++) {
           const row = rawRows[i];
@@ -403,20 +404,22 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
           const name = String(row[1] ?? "").trim();
           const division = String(row[10] ?? "").trim();
           if (!name || !division) continue;
-          excelRows.push({ name, phone: String(row[5] ?? "").trim(), company: String(row[2] ?? "").trim(), grade: String(row[8] ?? "").trim(), division });
+          const rawCompany = String(row[2] ?? "").trim();
+          const company = isRealCompany(rawCompany) ? rawCompany : headerCompany;
+          excelRows.push({ name, phone: String(row[5] ?? "").trim(), company, grade: String(row[8] ?? "").trim(), division });
         }
         const divs = [...new Set(excelRows.map((r) => r.division))];
         const map: Record<string, string> = {};
         for (const div of divs) {
-          const matched = categories.find((c) => c.name === div || div.includes(c.name));
+          const matched = categories.find((c) => c.name === div || div.includes(c.name) || c.name.includes(div.split("(")[0]));
           if (matched) map[div] = matched.id;
         }
-        const result = await api("/api/judge/import", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "excel-rows", rows: excelRows, category_map: map, fallback_category_id: filterCatId || category?.id }),
-        });
-        onMsg(`IBC 서식에서 선수 ${result.inserted}명 등록 완료`);
+        // 즉시 등록 대신 매핑 UI 표시
+        setDataFiles([{ filename: file.name, rows: excelRows, divisions: divs }]);
+        setDataFileCatMap(map);
+        setShowDataFile(true);
+        setLoading(false);
+        return;
       } else {
         // 일반 서식
         const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws);
@@ -537,11 +540,8 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
             📋 신청서에서 불러오기
           </button>
         )}
-        <button onClick={loadDataFiles} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">
+        <label className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 cursor-pointer">
           📁 단체접수 파일
-        </button>
-        <label className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 cursor-pointer">
-          📊 엑셀 업로드
           <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleExcel(f); e.target.value = ""; }} />
         </label>
         {allContestants.length > 0 && (
@@ -555,7 +555,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
       {showDataFile && (
         <div className="border border-purple-200 rounded-xl bg-purple-50 p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-purple-800">단체접수 파일 ({dataFiles.length}개 / 총 {dataFiles.reduce((s, f) => s + f.rows.length, 0)}행)</p>
+            <p className="text-sm font-semibold text-purple-800">단체접수 파일: {dataFiles[0]?.filename ?? ""} (총 {dataFiles.reduce((s, f) => s + f.rows.length, 0)}명)</p>
             <button onClick={() => setShowDataFile(false)} className="text-xs text-gray-400 hover:text-gray-600">닫기</button>
           </div>
 
