@@ -2149,7 +2149,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-sky-50">
-                        {[...CERT_ONLY].sort((a, b) => a.major.localeCompare(b.major, "ko")).map((r, i) => (
+                        {[...CERT_ONLY].sort((a, b) => a.major.localeCompare(b.major, "ko") || a.name.localeCompare(b.name, "ko")).map((r, i) => (
                           <tr key={i} className="bg-sky-50/10 hover:bg-sky-50/40">
                             <td className="px-3 py-2 text-center text-xs text-gray-400">{i + 1}</td>
                             <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{r.name}</td>
