@@ -6,9 +6,40 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const categoryId = request.nextUrl.searchParams.get("category_id");
-  if (!categoryId) return NextResponse.json({ error: "category_id 필수" }, { status: 400 });
+  const competitionId = request.nextUrl.searchParams.get("competition_id");
 
   const supabase = getSupabaseAdmin();
+
+  // competition_id: 대회 전체 배정 목록 (단일 쿼리)
+  if (competitionId) {
+    const { data: cats } = await supabase
+      .from("categories")
+      .select("id, name, major_category")
+      .eq("competition_id", competitionId);
+
+    const catIds = (cats ?? []).map((c) => c.id);
+    if (catIds.length === 0) return NextResponse.json([]);
+
+    const { data, error } = await supabase
+      .from("judge_assignments")
+      .select("*, users(id, email, name, image)")
+      .in("category_id", catIds)
+      .order("created_at", { ascending: true });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const catMap = new Map((cats ?? []).map((c) => [c.id, c]));
+    return NextResponse.json(
+      (data ?? []).map((a) => ({
+        ...a,
+        category_name: catMap.get(a.category_id)?.name,
+        major_category: catMap.get(a.category_id)?.major_category,
+      }))
+    );
+  }
+
+  if (!categoryId) return NextResponse.json({ error: "category_id 또는 competition_id 필수" }, { status: 400 });
+
   const { data, error } = await supabase
     .from("judge_assignments")
     .select("*, users(id, email, name, image)")

@@ -1086,17 +1086,14 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
   const sortedMajors = CATEGORY_HIERARCHY.map((g) => g.major).filter((m) => majorList.includes(m));
 
   const loadAssignments = useCallback(async () => {
-    const results: (Assignment & { category_name?: string; major_category?: string })[] = [];
-    for (const cat of categories) {
-      try {
-        const data = await api(`/api/judge/assignments?category_id=${cat.id}`);
-        results.push(...data.map((a: Assignment) => ({ ...a, category_name: cat.name, major_category: cat.major_category })));
-      } catch { /* ignore */ }
-    }
-    setAllAssignments(results);
-  }, [categories]);
+    if (!competition) { setAllAssignments([]); return; }
+    try {
+      const data = await api(`/api/judge/assignments?competition_id=${competition.id}`);
+      setAllAssignments(data);
+    } catch { /* ignore */ }
+  }, [competition]);
 
-  useEffect(() => { if (categories.length > 0) loadAssignments(); }, [loadAssignments, categories]);
+  useEffect(() => { loadAssignments(); }, [loadAssignments]);
 
   const loadImportJudges = async () => {
     if (!competition?.contest_slug) { onMsg("신청서와 연결된 대회가 아닙니다."); return; }
@@ -1146,10 +1143,10 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
           }
         }
       }
-      if (assignments.length === 0) { onMsg("배정할 세부종목이 없습니다. 대종목을 먼저 등록해주세요."); setLoading(false); return; }
+      if (assignments.length === 0) { onMsg("배정할 세부종목이 없습니다. 대종목을 먼저 등록해주세요 (대회·종목 탭 → 전체 종목 일괄 생성)."); setLoading(false); return; }
       const result = await api("/api/judge/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "judges", assignments }) });
-      const errMsg = result.errors?.length > 0 ? ` (오류: ${result.errors.length}건)` : "";
-      onMsg(`심사위원 ${result.inserted}건 배정 완료 (${toAssign.length}명 × 세부종목)${errMsg}`);
+      const errorDetails = result.errors?.length > 0 ? ` | 미등록: ${result.errors.map((e: string) => e.split(":")[0]).join(", ")}` : "";
+      onMsg(`✅ 심사위원 ${result.inserted}건 배정 완료 (${toAssign.length}명 × 세부종목)${errorDetails}`);
       setShowImport(false);
       await loadAssignments();
     } catch (e: unknown) { onMsg((e as Error).message); }
