@@ -27,7 +27,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "awards", label: "시상 설정" },
 ];
 
-const JUDGE_TITLES = ["수석심사위원", "심사위원", "글로벌심사위원", "특별심사위원", "명예심사위원"];
+const JUDGE_TITLES = ["수석심사위원", "심사위원", "글로벌심사위원", "운영위원장", "심사위원장"];
 
 // ─── Helpers ──────────────────────────────────────────────────
 const api = async (url: string, opts?: RequestInit) => {
