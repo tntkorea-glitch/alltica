@@ -853,6 +853,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                   <tr className="bg-gray-50 text-xs text-gray-500 border-b">
                     <th className="px-3 py-2 text-center w-8 font-medium">#</th>
                     <th className="px-3 py-2 text-left font-medium">이름</th>
+                    <th className="px-3 py-2 text-center w-10 font-medium">입금</th>
                     <th className="px-3 py-2 text-left font-medium">연락처</th>
                     <th className="px-3 py-2 text-left font-medium">단체명</th>
                     <th className="px-3 py-2 text-left font-medium">부문</th>
@@ -865,6 +866,19 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                     <tr key={`${p.name}-${p.phone}`} className="hover:bg-gray-50 align-top">
                       <td className="px-3 py-2.5 text-center text-xs text-gray-400">{idx + 1}</td>
                       <td className="px-3 py-2.5 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        {(() => {
+                          const allPaid = p.entries.every((e) => e.paid);
+                          return (
+                            <input type="checkbox" checked={allPaid}
+                              onChange={async () => {
+                                const target = !allPaid;
+                                for (const e of p.entries) if ((e.paid ?? false) !== target) await togglePaid(e.id, e.paid ?? false);
+                              }}
+                              className="w-4 h-4 accent-green-500 cursor-pointer" />
+                          );
+                        })()}
+                      </td>
                       <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">{p.phone}</td>
                       <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">{p.company ?? "-"}</td>
                       <td className="px-3 py-2.5 text-xs">
@@ -949,6 +963,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                         <tr className="bg-gray-50 text-xs text-gray-500 border-b">
                           <th className="px-3 py-2 text-center w-8 font-medium">#</th>
                           <th className="px-3 py-2 text-left font-medium">이름</th>
+                          <th className="px-3 py-2 text-center w-10 font-medium">입금</th>
                           <th className="px-3 py-2 text-left font-medium">연락처</th>
                           <th className="px-3 py-2 text-left font-medium">부문</th>
                           <th className="px-3 py-2 text-left font-medium">접수 종목 (참가번호)</th>
@@ -960,6 +975,19 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                           <tr key={`${p.name}-${p.phone}`} className="hover:bg-gray-50 align-top">
                             <td className="px-3 py-2.5 text-center text-xs text-gray-400">{idx + 1}</td>
                             <td className="px-3 py-2.5 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                            <td className="px-3 py-2.5 text-center">
+                              {(() => {
+                                const allPaid = p.entries.every((e) => e.paid);
+                                return (
+                                  <input type="checkbox" checked={allPaid}
+                                    onChange={async () => {
+                                      const target = !allPaid;
+                                      for (const e of p.entries) if ((e.paid ?? false) !== target) await togglePaid(e.id, e.paid ?? false);
+                                    }}
+                                    className="w-4 h-4 accent-green-500 cursor-pointer" />
+                                );
+                              })()}
+                            </td>
                             <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">{p.phone}</td>
                             <td className="px-3 py-2.5 text-xs">
                               {p.grade && <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{p.grade}</span>}
