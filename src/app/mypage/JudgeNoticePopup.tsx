@@ -1,22 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
-const POPUP_KEY = "ibc_judge_notice_dismissed";
-
 export default function JudgeNoticePopup({ judgeName, judgeTitle, categories }: { judgeName: string; judgeTitle: string; categories: string[] }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
-  useEffect(() => {
-    const dismissed = sessionStorage.getItem(POPUP_KEY);
-    if (!dismissed) setOpen(true);
-  }, []);
-
-  const dismiss = () => {
-    sessionStorage.setItem(POPUP_KEY, "1");
-    setOpen(false);
-  };
+  const dismiss = () => setOpen(false);
 
   if (!open) return null;
 
