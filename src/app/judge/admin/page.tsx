@@ -6,7 +6,7 @@ import { resolveCategory } from "@/lib/judge-category-matcher";
 
 // ─── Types ───────────────────────────────────────────────────
 interface Competition { id: string; title: string; description?: string; date_display?: string; status: string; contest_slug?: string; }
-interface Category { id: string; competition_id: string; name: string; display_order: number; }
+interface Category { id: string; competition_id: string; name: string; display_order: number; major_category?: string; }
 interface Contestant { id: string; category_id: string; name: string; phone?: string; email?: string; company?: string; grade?: string; number?: number; display_order: number; paid?: boolean; contestant_files?: ContestantFile[]; }
 interface ContestantFile { id: string; contestant_id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 interface Criterion { id: string; category_id: string; name: string; max_score: number; display_order: number; }
@@ -57,6 +57,7 @@ function CompetitionsTab({
   const [newTitle, setNewTitle] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newCatName, setNewCatName] = useState("");
+  const [newCatMajor, setNewCatMajor] = useState(CATEGORY_HIERARCHY[0]?.major ?? "");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [detected, setDetected] = useState<DetectedContest[]>([]);
@@ -118,8 +119,10 @@ function CompetitionsTab({
     let added = 0;
     for (const name of importCategories) {
       if (!categories.some((c) => c.name === name)) {
+        // CATEGORY_HIERARCHY에서 major_category 자동 매핑
+        const group = CATEGORY_HIERARCHY.find((g) => g.subs.includes(name));
         try {
-          await api("/api/judge/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ competition_id: selectedCompetition.id, name, display_order: categories.length + added }) });
+          await api("/api/judge/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ competition_id: selectedCompetition.id, name, major_category: group?.major ?? null, display_order: categories.length + added }) });
           added++;
         } catch { /* skip */ }
       }
@@ -128,11 +131,22 @@ function CompetitionsTab({
     setLoading(false);
   };
 
+  const bulkCreateCategories = async () => {
+    if (!selectedCompetition) return;
+    if (!confirm("CATEGORY_HIERARCHY의 모든 세부종목을 대종목 포함해 일괄 생성합니다. 이미 있는 종목은 건너뜁니다.")) return;
+    setLoading(true);
+    try {
+      const result = await api("/api/judge/categories/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ competition_id: selectedCompetition.id }) });
+      setMsg(`종목 ${result.added}개 일괄 생성됐습니다.`); onRefresh();
+    } catch (e: unknown) { setMsg((e as Error).message); }
+    setLoading(false);
+  };
+
   const addCategory = async () => {
     if (!selectedCompetition || !newCatName.trim()) return;
     setLoading(true);
     try {
-      await api("/api/judge/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ competition_id: selectedCompetition.id, name: newCatName.trim(), display_order: categories.length }) });
+      await api("/api/judge/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ competition_id: selectedCompetition.id, name: newCatName.trim(), major_category: newCatMajor || null, display_order: categories.length }) });
       setNewCatName(""); setMsg("종목이 추가됐습니다."); onRefresh();
     } catch (e: unknown) { setMsg((e as Error).message); }
     setLoading(false);
@@ -205,13 +219,18 @@ function CompetitionsTab({
         <div className="bg-white rounded-xl border p-5">
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-semibold text-gray-800">종목 — {selectedCompetition.title}</h3>
-            {selectedCompetition.contest_slug && (
-              <button onClick={loadImportCategories} className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700">
-                📋 신청서에서 자동 추가
+            <div className="flex gap-2">
+              <button onClick={bulkCreateCategories} disabled={loading} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50">
+                📁 전체 종목 일괄 생성
               </button>
-            )}
+              {selectedCompetition.contest_slug && (
+                <button onClick={loadImportCategories} className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700">
+                  📋 신청서에서 추가
+                </button>
+              )}
+            </div>
           </div>
-          <p className="text-xs text-gray-400 mb-4">종목을 선택하면 다른 탭에서 선수·심사위원 관리가 가능합니다.</p>
+          <p className="text-xs text-gray-400 mb-4">대종목 클릭 → 세부종목 선택 · 심사위원은 대종목 단위로 배정</p>
 
           {showCatImport && (
             <div className="mb-4 border border-green-200 rounded-xl bg-green-50 p-4">
@@ -222,8 +241,10 @@ function CompetitionsTab({
               <div className="flex flex-wrap gap-2">
                 {importCategories.map((name) => {
                   const exists = categories.some((c) => c.name === name);
+                  const group = CATEGORY_HIERARCHY.find((g) => g.subs.includes(name));
                   return (
                     <div key={name} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border ${exists ? "bg-gray-100 text-gray-400 border-gray-200" : "bg-white text-gray-800 border-gray-300"}`}>
+                      {group && <span className="text-gray-400">[{group.major}]</span>}
                       <span className="max-w-[200px] truncate">{name}</span>
                       {exists ? <span className="text-green-600">✓</span> : <button onClick={() => importCategory(name)} className="text-blue-600 hover:text-blue-800 font-medium ml-1">+ 추가</button>}
                     </div>
@@ -234,20 +255,51 @@ function CompetitionsTab({
             </div>
           )}
 
-          <div className="space-y-2 mb-4">
-            {categories.map((cat) => (
-              <div key={cat.id} className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition ${selectedCategory?.id === cat.id ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}
-                onClick={() => onSelectCategory(cat)}>
-                <span className="font-medium text-gray-900">{cat.name}</span>
-                <button onClick={(e) => { e.stopPropagation(); deleteCategory(cat.id); }} className="text-xs text-red-400 hover:text-red-600 px-2 py-1">삭제</button>
-              </div>
-            ))}
-            {categories.length === 0 && <p className="text-sm text-gray-400">등록된 종목이 없습니다.</p>}
+          {/* 대종목별 그룹 표시 */}
+          <div className="space-y-4 mb-4">
+            {(() => {
+              // 1) CATEGORY_HIERARCHY 순서대로 그룹핑
+              const grouped: { major: string; cats: Category[] }[] = [];
+              for (const group of CATEGORY_HIERARCHY) {
+                const cats = categories.filter((c) => c.major_category === group.major);
+                if (cats.length > 0) grouped.push({ major: group.major, cats });
+              }
+              // 2) major_category 없는 것 (기존 데이터 또는 직접 추가)
+              const ungrouped = categories.filter((c) => !c.major_category);
+              if (ungrouped.length > 0) grouped.push({ major: "기타 (대종목 미지정)", cats: ungrouped });
+
+              if (grouped.length === 0) return <p className="text-sm text-gray-400">등록된 종목이 없습니다. 전체 종목 일괄 생성 버튼을 눌러주세요.</p>;
+
+              return grouped.map(({ major, cats }) => (
+                <div key={major}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded px-2 py-0.5">대종목 {major}</span>
+                    <span className="text-xs text-gray-400">{cats.length}개 세부종목</span>
+                  </div>
+                  <div className="space-y-1 ml-3">
+                    {cats.map((cat) => (
+                      <div key={cat.id} className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition ${selectedCategory?.id === cat.id ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300 bg-white"}`}
+                        onClick={() => onSelectCategory(cat)}>
+                        <span className="text-sm text-gray-800">{cat.name}</span>
+                        <button onClick={(e) => { e.stopPropagation(); deleteCategory(cat.id); }} className="text-xs text-red-400 hover:text-red-600 px-2 py-1">삭제</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ));
+            })()}
           </div>
 
-          <div className="flex gap-2">
-            <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="종목명 직접 입력" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addCategory()} />
-            <button onClick={addCategory} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">추가</button>
+          {/* 직접 추가 */}
+          <div className="border-t pt-4">
+            <p className="text-xs text-gray-500 mb-2 font-medium">세부종목 직접 추가</p>
+            <div className="flex gap-2">
+              <select value={newCatMajor} onChange={(e) => setNewCatMajor(e.target.value)} className="border rounded-lg px-3 py-2 text-sm bg-white">
+                {CATEGORY_HIERARCHY.map((g) => <option key={g.major} value={g.major}>{g.major}</option>)}
+              </select>
+              <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="세부종목명" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addCategory()} />
+              <button onClick={addCategory} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">추가</button>
+            </div>
           </div>
         </div>
       )}
@@ -830,21 +882,26 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
 // ─── JudgesTab ────────────────────────────────────────────────
 function JudgesTab({ competition, categories, onMsg }: { category: Category | null; competition: Competition | null; categories: Category[]; onMsg: (m: string) => void }) {
   const [email, setEmail] = useState("");
+  const [directMajor, setDirectMajor] = useState("");
   const [loading, setLoading] = useState(false);
   const [importJudges, setImportJudges] = useState<ImportJudge[]>([]);
   const [showImport, setShowImport] = useState(false);
-  // { judgeId → { paid, categoryId, title } }
-  const [judgeConfig, setJudgeConfig] = useState<Record<string, { paid: boolean; categoryId: string; title: string }>>({});
+  // { judgeId → { paid, majorCategory, title } }
+  const [judgeConfig, setJudgeConfig] = useState<Record<string, { paid: boolean; majorCategory: string; title: string }>>({});
   // 배정 완료된 심사위원 목록 (전체 카테고리)
-  const [allAssignments, setAllAssignments] = useState<(Assignment & { category_name?: string })[]>([]);
+  const [allAssignments, setAllAssignments] = useState<(Assignment & { category_name?: string; major_category?: string })[]>([]);
+
+  // 등록된 대종목 목록 (categories에서 distinct major_category)
+  const majorList = [...new Set(categories.map((c) => c.major_category).filter(Boolean))] as string[];
+  // CATEGORY_HIERARCHY 순서로 정렬
+  const sortedMajors = CATEGORY_HIERARCHY.map((g) => g.major).filter((m) => majorList.includes(m));
 
   const loadAssignments = useCallback(async () => {
-    // 모든 카테고리의 배정 목록 합산
-    const results: (Assignment & { category_name?: string })[] = [];
+    const results: (Assignment & { category_name?: string; major_category?: string })[] = [];
     for (const cat of categories) {
       try {
         const data = await api(`/api/judge/assignments?category_id=${cat.id}`);
-        results.push(...data.map((a: Assignment) => ({ ...a, category_name: cat.name })));
+        results.push(...data.map((a: Assignment) => ({ ...a, category_name: cat.name, major_category: cat.major_category })));
       } catch { /* ignore */ }
     }
     setAllAssignments(results);
@@ -857,11 +914,15 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     try {
       const data = await api(`/api/judge/import?action=data&contest_slug=${competition.contest_slug}`);
       setImportJudges(data.judges);
-      const config: Record<string, { paid: boolean; categoryId: string; title: string }> = {};
+      const config: Record<string, { paid: boolean; majorCategory: string; title: string }> = {};
       for (const j of data.judges as ImportJudge[]) {
+        // 신청서의 첫 번째 심사종목으로 대종목 자동 매핑
         const firstCat = j.categories[0] ?? "";
-        const matched = categories.find((c) => c.name === firstCat || firstCat.startsWith(c.name) || c.name.startsWith(firstCat.split("(")[0]));
-        config[j.id] = { paid: false, categoryId: matched?.id ?? (categories[0]?.id ?? ""), title: j.title || "심사위원" };
+        const group = CATEGORY_HIERARCHY.find((g) =>
+          g.major === firstCat || g.judgeLabel === firstCat ||
+          firstCat.includes(g.major) || g.subs.some((s) => firstCat.includes(s.split("(")[0]))
+        );
+        config[j.id] = { paid: false, majorCategory: group?.major ?? sortedMajors[0] ?? "", title: j.title || "심사위원" };
       }
       setJudgeConfig(config);
       setShowImport(true);
@@ -870,18 +931,27 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
 
   const setPaid = (id: string, paid: boolean) =>
     setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], paid } }));
-  const setCfg = (id: string, field: "categoryId" | "title", val: string) =>
+  const setCfg = (id: string, field: "majorCategory" | "title", val: string) =>
     setJudgeConfig((prev) => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
 
   const bulkAssign = async () => {
-    const toAssign = importJudges.filter((j) => judgeConfig[j.id]?.paid && judgeConfig[j.id]?.categoryId);
-    if (toAssign.length === 0) { onMsg("입금 확인 + 종목 선택된 심사위원이 없습니다."); return; }
+    const toAssign = importJudges.filter((j) => judgeConfig[j.id]?.paid && judgeConfig[j.id]?.majorCategory);
+    if (toAssign.length === 0) { onMsg("입금 확인 + 대종목 선택된 심사위원이 없습니다."); return; }
     setLoading(true);
     try {
-      const list = toAssign.map((j) => ({ email: j.email, category_id: judgeConfig[j.id].categoryId, title: judgeConfig[j.id].title }));
-      const result = await api("/api/judge/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "judges", assignments: list }) });
-      const errMsg = result.errors?.length > 0 ? ` (미배정: ${result.errors.length}명)` : "";
-      onMsg(`심사위원 ${result.inserted}명 배정 완료${errMsg}`);
+      // 대종목 → 해당하는 모든 세부종목 카테고리 ID에 배정
+      const assignments: Array<{ email: string; category_id: string; title: string }> = [];
+      for (const j of toAssign) {
+        const { majorCategory, title } = judgeConfig[j.id];
+        const subCats = categories.filter((c) => c.major_category === majorCategory);
+        for (const cat of subCats) {
+          assignments.push({ email: j.email, category_id: cat.id, title });
+        }
+      }
+      if (assignments.length === 0) { onMsg("선택된 대종목에 세부종목이 없습니다. 종목을 먼저 등록해주세요."); setLoading(false); return; }
+      const result = await api("/api/judge/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "judges", assignments }) });
+      const errMsg = result.errors?.length > 0 ? ` (오류: ${result.errors.length}건)` : "";
+      onMsg(`심사위원 ${result.inserted}건 배정 완료 (${toAssign.length}명 × 세부종목)${errMsg}`);
       setShowImport(false);
       await loadAssignments();
     } catch (e: unknown) { onMsg((e as Error).message); }
@@ -889,10 +959,13 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
   };
 
   const addJudgeDirect = async () => {
-    if (!email.trim() || categories.length === 0) return;
+    if (!email.trim() || !directMajor) return;
     setLoading(true);
     try {
-      await api("/api/judge/assignments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim(), category_id: categories[0].id }) });
+      const subCats = categories.filter((c) => c.major_category === directMajor);
+      for (const cat of subCats) {
+        await api("/api/judge/assignments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim(), category_id: cat.id }) });
+      }
       setEmail(""); await loadAssignments();
     } catch (e: unknown) { onMsg((e as Error).message); }
     setLoading(false);
@@ -968,10 +1041,12 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                       </td>
                       <td className="px-3 py-2.5">
                         {cfg.paid && (
-                          <select value={cfg.categoryId} onChange={(e) => setCfg(j.id, "categoryId", e.target.value)}
-                            className="border rounded px-2 py-1.5 text-xs font-medium text-gray-700 w-full min-w-[100px]">
-                            <option value="">종목 선택</option>
-                            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          <select value={cfg.majorCategory} onChange={(e) => setCfg(j.id, "majorCategory", e.target.value)}
+                            className="border rounded px-2 py-1.5 text-xs font-medium text-gray-700 w-full min-w-[120px]">
+                            <option value="">대종목 선택</option>
+                            {sortedMajors.map((m) => (
+                              <option key={m} value={m}>{m} ({categories.filter((c) => c.major_category === m).length}종목)</option>
+                            ))}
                           </select>
                         )}
                       </td>
@@ -1022,6 +1097,7 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                 {allAssignments.map((a) => (
                   <tr key={a.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-xs">
+                      {a.major_category && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] mr-1">{a.major_category}</span>}
                       {a.category_name && <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap">{a.category_name}</span>}
                     </td>
                     <td className="px-3 py-2 font-medium text-gray-800 whitespace-nowrap">{a.users?.name ?? "(이름 없음)"}</td>
@@ -1042,8 +1118,12 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
       {allAssignments.length === 0 && !showImport && <p className="text-sm text-gray-400">배정된 심사위원이 없습니다.</p>}
 
       <div className="flex gap-2 pt-2 border-t">
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일로 직접 추가 (첫 번째 종목에 배정)" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addJudgeDirect()} />
-        <button onClick={addJudgeDirect} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">배정</button>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일 (직접 배정)" className="flex-1 border rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => e.key === "Enter" && addJudgeDirect()} />
+        <select value={directMajor} onChange={(e) => setDirectMajor(e.target.value)} className="border rounded-lg px-3 py-2 text-sm bg-white">
+          <option value="">대종목 선택</option>
+          {sortedMajors.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <button onClick={addJudgeDirect} disabled={loading || !directMajor} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">배정</button>
       </div>
     </div>
   );

@@ -24,14 +24,14 @@ export async function POST(request: NextRequest) {
   if (!ctx) return NextResponse.json({ error: "권한 없음" }, { status: 403 });
 
   const body = await request.json();
-  const { competition_id, name, description, display_order } = body;
+  const { competition_id, name, description, display_order, major_category } = body;
 
   if (!competition_id || !name) return NextResponse.json({ error: "competition_id, name 필수" }, { status: 400 });
 
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("categories")
-    .insert({ competition_id, name, description, display_order: display_order ?? 0 })
+    .insert({ competition_id, name, description, display_order: display_order ?? 0, major_category: major_category ?? null })
     .select()
     .single();
 
