@@ -1048,7 +1048,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                         <tr key={c.id} className="hover:bg-gray-50 align-top">
                           <td className="px-3 py-2.5 text-center">
                             {c.number != null && (
-                              <span className="text-xs font-bold text-white bg-blue-500 rounded-full w-6 h-6 inline-flex items-center justify-center">{c.number}</span>
+                              <span className="text-xs font-bold text-white bg-blue-500 rounded-full px-2 py-0.5 inline-flex items-center justify-center min-w-[1.5rem]">{c.number}</span>
                             )}
                           </td>
                           <td className="px-3 py-2.5 whitespace-nowrap">
