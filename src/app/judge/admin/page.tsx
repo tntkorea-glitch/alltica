@@ -739,11 +739,16 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                 <button onClick={() => setCompanySortMode("input")} className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${companySortMode === "input" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>입력순</button>
                 <button onClick={() => setCompanySortMode("name")} className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${companySortMode === "name" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>이름순</button>
               </div>
-              {grandTotal > 0 && (
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                  예상 수금 총액 {grandTotal}만원
-                </span>
-              )}
+              {(() => {
+                const totalPersons = [...personGradeMap.values()].reduce((s, pm) => s + pm.size, 0);
+                const totalEntries = allContestants.length;
+                return (
+                  <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-lg">
+                    전체 <span className="font-bold text-gray-700">{totalPersons}명</span> · <span className="font-bold text-gray-700">{totalEntries}건</span>
+                    {grandTotal > 0 && <span className="ml-2 font-bold text-emerald-700">· 예상 수금 {grandTotal}만원</span>}
+                  </span>
+                );
+              })()}
             </div>
           );
         })()}
