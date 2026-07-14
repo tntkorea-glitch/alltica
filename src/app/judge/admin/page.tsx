@@ -1544,6 +1544,18 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     catch (e: unknown) { onMsg((e as Error).message); }
   };
 
+  const removeAllJudge = async (userId: string, name: string) => {
+    if (!confirm(`"${name}"의 모든 심사 배정을 취소하시겠습니까?`)) return;
+    try {
+      const cats = allAssignments.filter((a) => a.user_id === userId);
+      for (const a of cats) {
+        await api("/api/judge/assignments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: a.id }) });
+      }
+      await loadAssignments();
+      onMsg(`"${name}" 배정 취소 완료 (${cats.length}건)`);
+    } catch (e: unknown) { onMsg((e as Error).message); }
+  };
+
   // 이미 배정 완료된 심사위원 이름·이메일·전화 set (목록에서 제외)
   const assignedJudgeNames = new Set(allAssignments.map((a) => a.judge_name).filter(Boolean) as string[]);
   const assignedJudgeEmails = new Set(
@@ -2031,7 +2043,10 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                     <tbody className="divide-y divide-amber-50">
                       {applySortPersons(commPersons).map(p => (
                         <tr key={p.userId} className="bg-amber-50/20 hover:bg-amber-50/50">
-                          <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="font-semibold text-gray-900">{p.name}</div>
+                            <button onClick={() => removeAllJudge(p.userId, p.name)} className="text-[10px] text-red-400 hover:text-red-600 mt-0.5">배정취소</button>
+                          </td>
                           <EmailTd p={p} />
                           <td className="px-3 py-2 whitespace-nowrap">
                             {p.titles.map(t => <span key={t} className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs mr-1">{t}</span>)}
@@ -2074,7 +2089,10 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                                 <tbody className="divide-y divide-gray-100">
                                   {group.map(p => (
                                     <tr key={p.userId} className="hover:bg-gray-50 align-top">
-                                      <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                                      <td className="px-3 py-2 whitespace-nowrap">
+                                        <div className="font-semibold text-gray-900">{p.name}</div>
+                                        <button onClick={() => removeAllJudge(p.userId, p.name)} className="text-[10px] text-red-400 hover:text-red-600 mt-0.5">배정취소</button>
+                                      </td>
                                       <EmailTd p={p} />
                                       <SubCatTd p={p} />
                                       <FlagTd p={p} />
@@ -2128,7 +2146,10 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
                                     const majorCats = p.cats.filter(a => a.major_category === major);
                                     return (
                                       <tr key={p.userId} className="hover:bg-gray-50 align-top">
-                                        <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{p.name}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          <div className="font-semibold text-gray-900">{p.name}</div>
+                                          <button onClick={() => removeAllJudge(p.userId, p.name)} className="text-[10px] text-red-400 hover:text-red-600 mt-0.5">배정취소</button>
+                                        </td>
                                         <EmailTd p={p} />
                                         <td className="px-3 py-2 whitespace-nowrap">
                                           {p.titles.map(t => <span key={t} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs mr-1">{t}</span>)}
