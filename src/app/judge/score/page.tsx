@@ -350,8 +350,10 @@ export default function JudgeScorePage() {
 
                           {/* 작품사진 */}
                           {hasPhotos && (
-                            <td className="px-3 py-3">
-                              <PhotoCell files={c.contestant_files ?? []} onSelect={setPreviewPhoto} activeUrl={previewPhoto} />
+                            <td className="px-3 py-3 text-center">
+                              <div className="flex justify-center">
+                                <PhotoCell files={c.contestant_files ?? []} onSelect={setPreviewPhoto} activeUrl={previewPhoto} />
+                              </div>
                             </td>
                           )}
 
