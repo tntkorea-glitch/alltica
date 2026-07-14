@@ -142,13 +142,26 @@ export async function POST(request: NextRequest) {
       catCounters[catId] = count ?? 0;
     }
 
+    // 기존 선수 로드 → 이름+연락처(숫자)+종목 기준 중복 체크
+    const existingSet = new Set<string>();
+    if (catIds.length > 0) {
+      const { data: existingList } = await supabase.from("contestants").select("name, phone, category_id").in("category_id", catIds);
+      for (const e of existingList ?? []) {
+        existingSet.add(`${e.name}|${(e.phone ?? "").replace(/\D/g, "")}|${e.category_id}`);
+      }
+    }
+
     const inserts: Array<{ category_id: string; name: string; phone: string; email: string; display_order: number; number: number; company?: string; grade?: string }> = [];
+    let skippedDup = 0;
 
     for (const athlete of athletes) {
       const mapped = athlete.divisions.map((d) => category_map[d]).filter(Boolean);
       const targets = mapped.length > 0 ? mapped : (fallback_category_id ? [fallback_category_id] : []);
 
       for (const categoryId of targets) {
+        const dupKey = `${athlete.name}|${(athlete.phone ?? "").replace(/\D/g, "")}|${categoryId}`;
+        if (existingSet.has(dupKey)) { skippedDup++; continue; }
+        existingSet.add(dupKey);
         catCounters[categoryId] = (catCounters[categoryId] ?? 0) + 1;
         inserts.push({
           category_id: categoryId,
@@ -163,11 +176,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (inserts.length === 0) return NextResponse.json({ error: "등록할 선수가 없습니다 (종목 매핑 또는 현재 종목 선택 확인)" }, { status: 400 });
+    if (inserts.length === 0) return NextResponse.json({ error: `등록할 선수가 없습니다 (중복 ${skippedDup}명 제외, 종목 매핑 확인)` }, { status: 400 });
 
     const { data, error } = await supabase.from("contestants").insert(inserts).select();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ inserted: data?.length ?? 0 }, { status: 201 });
+    return NextResponse.json({ inserted: data?.length ?? 0, skipped_dup: skippedDup }, { status: 201 });
   }
 
   // 단체접수 엑셀 행 직접 등록 (1행 = 1종목 참가, IBC 서식)
@@ -178,13 +191,27 @@ export async function POST(request: NextRequest) {
       fallback_category_id?: string;
     };
 
+    // 기존 선수 로드 → 중복 체크
+    const targetCatIds = [...new Set([...Object.values(category_map), fallback_category_id].filter(Boolean))] as string[];
+    const existingSetExcel = new Set<string>();
+    if (targetCatIds.length > 0) {
+      const { data: existingList } = await supabase.from("contestants").select("name, phone, category_id").in("category_id", targetCatIds);
+      for (const e of existingList ?? []) {
+        existingSetExcel.add(`${e.name}|${(e.phone ?? "").replace(/\D/g, "")}|${e.category_id}`);
+      }
+    }
+
     const catCounters: Record<string, number> = {};
     const inserts: Array<{ category_id: string; name: string; phone: string; display_order: number; number: number; company?: string; grade?: string }> = [];
     let skipped = 0;
+    let skippedDup = 0;
 
     for (const row of rows) {
       const categoryId = category_map[row.division] ?? fallback_category_id;
       if (!categoryId) { skipped++; continue; }
+      const dupKey = `${row.name}|${(row.phone ?? "").replace(/\D/g, "")}|${categoryId}`;
+      if (existingSetExcel.has(dupKey)) { skippedDup++; continue; }
+      existingSetExcel.add(dupKey);
       if (!catCounters[categoryId]) {
         const { count } = await supabase.from("contestants").select("*", { count: "exact", head: true }).eq("category_id", categoryId);
         catCounters[categoryId] = count ?? 0;
@@ -201,10 +228,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (inserts.length === 0) return NextResponse.json({ error: "등록할 선수가 없습니다" }, { status: 400 });
+    if (inserts.length === 0) return NextResponse.json({ error: `등록할 선수가 없습니다 (중복 ${skippedDup}명 제외)` }, { status: 400 });
     const { data, error } = await supabase.from("contestants").insert(inserts).select();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ inserted: data?.length ?? 0, skipped });
+    return NextResponse.json({ inserted: data?.length ?? 0, skipped, skipped_dup: skippedDup });
   }
 
   if (action === "judges") {

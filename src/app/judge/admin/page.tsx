@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 // ─── Types ───────────────────────────────────────────────────
 interface Competition { id: string; title: string; description?: string; date_display?: string; status: string; contest_slug?: string; }
 interface Category { id: string; competition_id: string; name: string; display_order: number; }
-interface Contestant { id: string; category_id: string; name: string; phone?: string; email?: string; company?: string; grade?: string; number?: number; display_order: number; contestant_files?: ContestantFile[]; }
+interface Contestant { id: string; category_id: string; name: string; phone?: string; email?: string; company?: string; grade?: string; number?: number; display_order: number; paid?: boolean; contestant_files?: ContestantFile[]; }
 interface ContestantFile { id: string; contestant_id: string; storage_path: string | null; file_name: string; file_type: string; video_url?: string | null; }
 interface Criterion { id: string; category_id: string; name: string; max_score: number; display_order: number; }
 interface Assignment { id: string; user_id: string; category_id: string; title?: string; users: { email: string; name?: string; }; }
@@ -263,6 +263,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
   const [loading, setLoading] = useState(false);
   const [ytInputId, setYtInputId] = useState<string | null>(null);
   const [ytUrl, setYtUrl] = useState("");
+  const [editCompany, setEditCompany] = useState<{ id: string; value: string } | null>(null);
 
   // 신청서 import state
   const [importAthletes, setImportAthletes] = useState<ImportAthlete[]>([]);
@@ -347,7 +348,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
           fallback_category_id: fallbackToCurrent && category ? category.id : undefined,
         }),
       });
-      onMsg(`단체접수 파일에서 선수 ${result.inserted}명 등록 완료${result.skipped > 0 ? ` (${result.skipped}건 종목 미매핑 제외)` : ""}`);
+      onMsg(`단체접수 파일에서 선수 ${result.inserted}명 등록 완료${result.skipped > 0 ? ` (종목미매핑 ${result.skipped}건)` : ""}${result.skipped_dup > 0 ? ` (중복 ${result.skipped_dup}명 제외)` : ""}`);
       setShowDataFile(false);
       await load();
     } catch (e: unknown) { onMsg((e as Error).message); }
@@ -372,7 +373,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
           athletes: selected,
         }),
       });
-      onMsg(`선수 ${result.inserted}명 등록 완료`);
+      onMsg(`선수 ${result.inserted}명 등록 완료${result.skipped_dup > 0 ? ` (중복 ${result.skipped_dup}명 제외)` : ""}`);
       setShowImport(false);
       await load();
     } catch (e: unknown) { onMsg((e as Error).message); }
@@ -451,6 +452,33 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
     catch (e: unknown) { onMsg((e as Error).message); }
   };
 
+  const deduplicateContestants = async () => {
+    if (!competition) return;
+    if (!confirm("이름+연락처+종목이 동일한 중복 선수를 자동 삭제하고 번호를 재정렬합니다. 계속하시겠습니까?")) return;
+    setLoading(true);
+    try {
+      const result = await api("/api/judge/contestants/dedup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ competition_id: competition.id }) });
+      onMsg(result.deleted > 0 ? `✅ 중복 선수 ${result.deleted}명 삭제 완료 (번호 재정렬됨)` : "중복 선수가 없습니다.");
+      await load();
+    } catch (e: unknown) { onMsg((e as Error).message); }
+    setLoading(false);
+  };
+
+  const saveCompany = async (id: string, value: string) => {
+    try {
+      await api(`/api/judge/contestants/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ company: value }) });
+      setEditCompany(null);
+      setAllContestants((prev) => prev.map((c) => c.id === id ? { ...c, company: value } : c));
+    } catch (e: unknown) { onMsg((e as Error).message); }
+  };
+
+  const togglePaid = async (id: string, current: boolean) => {
+    try {
+      await api(`/api/judge/contestants/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paid: !current }) });
+      setAllContestants((prev) => prev.map((c) => c.id === id ? { ...c, paid: !current } : c));
+    } catch (e: unknown) { onMsg((e as Error).message); }
+  };
+
   const uploadFile = async (contestantId: string, file: File) => {
     setUploading(contestantId);
     try {
@@ -516,6 +544,11 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
           📊 엑셀 업로드
           <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleExcel(f); e.target.value = ""; }} />
         </label>
+        {allContestants.length > 0 && (
+          <button onClick={deduplicateContestants} disabled={loading} className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-200 disabled:opacity-50 border border-orange-300">
+            🔄 중복 자동 삭제
+          </button>
+        )}
       </div>
 
       {/* data-file 폴더 Import UI */}
@@ -671,6 +704,7 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                       <tr className="bg-gray-50 text-xs text-gray-500 border-b">
                         <th className="px-3 py-2 text-center w-10 font-medium">번호</th>
                         <th className="px-3 py-2 text-left font-medium">이름</th>
+                        <th className="px-3 py-2 text-center w-12 font-medium">입금</th>
                         <th className="px-3 py-2 text-left font-medium">단체명</th>
                         <th className="px-3 py-2 text-left font-medium">연락처</th>
                         <th className="px-3 py-2 text-left font-medium">부문</th>
@@ -687,7 +721,37 @@ function ContestantsTab({ category, competition, categories, onMsg }: { category
                             )}
                           </td>
                           <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">{c.name}</td>
-                          <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">{c.company ?? "-"}</td>
+                          <td className="px-3 py-2.5 text-center">
+                            <label className="inline-flex flex-col items-center gap-0.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={c.paid ?? false}
+                                onChange={() => togglePaid(c.id, c.paid ?? false)}
+                                className="w-4 h-4 accent-green-600"
+                              />
+                              <span className={`text-xs font-medium ${c.paid ? "text-green-600" : "text-gray-300"}`}>{c.paid ? "✓" : "-"}</span>
+                            </label>
+                          </td>
+                          <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">
+                            {editCompany?.id === c.id ? (
+                              <input
+                                autoFocus
+                                value={editCompany.value}
+                                onChange={(e) => setEditCompany({ id: c.id, value: e.target.value })}
+                                onBlur={() => saveCompany(c.id, editCompany.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") saveCompany(c.id, editCompany.value); if (e.key === "Escape") setEditCompany(null); }}
+                                className="border rounded px-1.5 py-0.5 text-xs w-full min-w-[80px] focus:outline-none focus:border-blue-400"
+                              />
+                            ) : (
+                              <span
+                                onClick={() => setEditCompany({ id: c.id, value: c.company ?? "" })}
+                                className="cursor-pointer hover:text-blue-600 hover:underline"
+                                title="클릭하여 수정"
+                              >
+                                {c.company ?? <span className="text-gray-300 italic">단체명 없음</span>}
+                              </span>
+                            )}
+                          </td>
                           <td className="px-3 py-2.5 text-gray-400 text-xs whitespace-nowrap">{c.phone ?? "-"}</td>
                           <td className="px-3 py-2.5 text-xs whitespace-nowrap">
                             {c.grade && <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{c.grade}</span>}
