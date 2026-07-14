@@ -5,6 +5,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import FloatingContact from "@/components/FloatingContact";
 import AuthSessionProvider from "@/components/providers/SessionProvider";
+import JudgeGlobalPopup from "@/components/JudgeGlobalPopup";
 import { getCurrentTheme } from "@/lib/theme";
 import { services } from "@/lib/services";
 import { isAdminContext } from "@/lib/admin-context";
@@ -78,6 +79,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-white">
         <AuthSessionProvider>
+          <JudgeGlobalPopup />
           <Header />
           <main className="flex-1">{children}</main>
           <footer className="bg-brand-deep text-white/60 px-4 sm:px-6 py-12 sm:py-16">

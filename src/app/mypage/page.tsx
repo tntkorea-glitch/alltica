@@ -3,7 +3,6 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { formatPrice } from "@/lib/seminars";
-import JudgeNoticePopup from "./JudgeNoticePopup";
 
 export const dynamic = "force-dynamic";
 
@@ -99,8 +98,7 @@ export default async function MyPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
-      {isJudge && <JudgeNoticePopup judgeName={judgeName} judgeTitle={judgeTitle} categories={judgeCategories} />}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+<div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">마이페이지</h1>
           <p className="text-sm text-gray-500 mt-1">내 정보와 세미나 신청 내역을 확인할 수 있습니다.</p>
