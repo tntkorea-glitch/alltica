@@ -68,6 +68,57 @@ metadata:
 - **Admin CriteriaTab 업그레이드**: "자동 설정" 버튼 + 대면/출품 토글 추가 — 한 번 클릭으로 전종목 채점항목 등록
 - **`/judge/score` ScoreCard 5단계 버튼 UX**: 숫자 직접 입력 → 매우미흡/미흡/보통/잘함/매우잘함 5개 버튼 (scale 값 표시), scoresRef로 stale closure 버그 수정
 
+<<<<<<< Updated upstream
+=======
+## 2026-07-15 추가 완료
+
+### 심사위원 배정 탭 개편
+- **미입금 체크박스**: 신청서 목록 우측 열 — 체크 시 목록에서 제외, 하단 "미입금자 리스트" 빨간 테이블로 분리 표시
+- **미입금 상태 보존**: 신청서 재불러오기 시 `judgeConfig.unpaid` 값 유지 (이전엔 덮어쓰기로 초기화됨)
+- **배정완료 → 미입금 이동**: 배정 완료 섹션 각 심사위원 이름 아래 "배정취소" 버튼 추가 (전체 종목 일괄 삭제)
+- **중복 제외 3중 기준**: 이름 + 이메일 + 전화번호(숫자) 매칭 — "Thu Sen"/"석 미 숙" 같은 이름 불일치 케이스도 이메일·전화번호로 자동 제외
+- **종목별 탭 정렬**: 각 대종목 그룹 내 직책순(JUDGE_TITLES 순) → 이름 가나다순 고정 정렬
+- `judge_assignments` API: users 조회 시 phone 컬럼 추가 포함
+
+### SQL로 처리된 데이터 수정 이력 (2026-07-15)
+- Thu Sen → 류수진 (email: sujinryu711@gmail.com), 직책 수석심사위원
+- 석 미 숙 → 석미숙 (email: 78kumisms@naver.com)
+- 신민지, 김예빈, 서한솔 직책 → 수석심사위원
+- 유가현 직책 → 심사위원 (gahyun0093@naver.com)
+- 노태영 직책 → 심사위원 (a01024425659@gmail.com)
+- 김지혜(woojoo8933@naver.com) 배정 취소 (동명이인 오배정)
+
+## 2026-07-15 추가 완료 (이번 세션)
+
+### 채점결과 화면 (`/judge/result`) 개편
+- **합치기 탭**: score 페이지와 동일한 MERGE_GROUPS 적용 (블로드라이/원랭스/살롱헤어커트 등 병합)
+- **사진·영상 미리보기**: PhotoCell/VideoCell + 왼쪽 패널 + 풀스크린 지원 (score 페이지와 동일 UX)
+- **심사위원 이름**: `judge_assignments.judge_name` 기준 (Google 프로필명 아닌 신청서 이름)
+- **탭 색상 구분**: 제출완료 → 초록/✅, 일부제출 → 주황/⏳, 미제출 → 흰색
+- **구분행**: 병합탭 내 세부종목별 제출 상태 색상 표시 (초록/주황)
+
+### 심사위원 배정 개선
+- **조직위(-committee) 신청자 불러오기**: import 시 `-judge`와 `-committee` slug 모두 포함
+- **전화번호 매칭**: ibc.local 임시계정 생성 전 전화번호로 실 Google 계정 먼저 탐색
+- **Google 로그인 시 자동 병합**: `auth.ts` — 로그인 시 동일 전화번호 ibc.local 계정의 judge_assignments를 실 계정으로 이전
+- **회원에서 추가**: admin 페이지에서 시스템 회원 검색 후 심사위원으로 직접 추가 (`/api/judge/users` 신규)
+
+### 관리자 반려 기능 (`/judge/result`)
+- 채점결과 화면에서 ✅ 제출완료 심사위원 이름 옆 **[반려]** 버튼 표시 (관리자만)
+- 반려 시 `judge_submissions` 레코드 삭제 → 심사위원이 다시 채점 수정·제출 가능
+- 병합탭에서는 "반려 (세부종목명)" 형태로 표시
+- API: `GET /api/judge/admin/submissions` (신규), `DELETE /api/judge/scores/submit` (기존)
+- 관리자 감지: `/api/judge/me` → `isAdmin` 필드 추가
+
+### 데이터 수정 (SQL)
+- 이름 오타: 김미희→김민희, 이 아라→이아라
+- 노태영 테스트 채점 데이터 전체 삭제 (judge_scores + judge_submissions)
+
+### 팝업 이름 표기 수정 (2026-07-15 이번 세션)
+- `/api/judge/me` — `judge_name`(신청서 실명) 우선 → `user.name`(DB) → Google 계정명 순으로 폴백
+- 효과: 구글 계정 표시명(예: 람페로마lamperoma)이 팝업에 뜨던 심사위원 전원 실명으로 변경
+
+>>>>>>> Stashed changes
 ## 남은 작업 (다음 세션 우선순위)
 
 1. **채점항목 실제 등록**: admin `/judge/admin` → 채점 항목 탭 → 각 종목 선택 → "자동 설정" 버튼 클릭 (출품대회 선택)
