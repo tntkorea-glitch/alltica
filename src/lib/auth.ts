@@ -98,7 +98,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return token;
       }
 
-      if (!user && token.id && token.role) return token;
+      if (!user && token.id && token.role && token.phone !== undefined) return token;
 
       const email = user?.email ?? token.email;
       if (email) {

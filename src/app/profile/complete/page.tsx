@@ -53,8 +53,8 @@ function ProfileCompleteInner() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "저장 실패"); return; }
-      // 세션 갱신 후 이동
-      await update({ phone: trimmedPhone, name: name.trim() });
+      // JWT 콜백이 다음 요청 시 DB에서 phone을 자동으로 읽어오므로 update() await 불필요
+      update({ phone: trimmedPhone, name: name.trim() }).catch(() => {});
       router.replace(callbackUrl);
     } catch {
       setError("오류가 발생했습니다. 다시 시도해주세요.");

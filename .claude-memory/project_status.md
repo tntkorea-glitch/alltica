@@ -123,15 +123,9 @@ alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
 
 ## ⚠️ Next up when resuming (최우선)
 
-### /judge 심사 시스템 (2026-07-15 세션 완료)
+### /judge 심사 시스템 (2026-07-14 세션 종료 시점)
 → 상세 현황: [[judge-system]]
 
-<<<<<<< Updated upstream
-**남은 설정 작업:**
-1. **admin에서 채점항목 등록**: `/judge/admin` → 채점 항목 탭 → 각 종목 → 출품대회 → "자동 설정" 클릭
-2. **admin에서 시상 등록**: 시상 설정 탭 → "전체 종목 일괄 적용" 1번 클릭
-3. **.env.local 복구**: Vercel CLI pull로 AUTH_SECRET 등 중요 환경변수 삭제됨 — Vercel 대시보드에서 확인 후 로컬 .env.local 수동 복구 필요
-=======
 **대회 당일(2026-07-15) 전 반드시 완료할 것:**
 1. **admin에서 채점항목 등록**: `/judge/admin` → 채점 항목 탭 → 각 종목 선택 → 출품대회 → "자동 설정" 클릭 (종목별 반복) ← 아직 미완료
 2. **admin에서 시상 등록**: 시상 설정 탭 → "전체 종목 일괄 적용" 클릭 1번 ← 아직 미완료
@@ -140,7 +134,6 @@ alltica.co.kr (신 Vercel a01092935659, Supabase ytemhdubbjrinpbdbgri)
 **2026-07-14 세션에서 완료:**
 - Supabase judge-alter.sql 실행 완료 (contestants.company/grade/number, contestant_files.video_url, competitions.contest_slug, categories.major_category, judge_assignments.title)
 - Claude Code 자동 승인 모드 설정 (bypassPermissions)
->>>>>>> Stashed changes
 
 ### 기타
 - **추가모집 마감 후**: IBC 12th 상태 `"마감"` 복원 (이미 지났을 수 있음, 확인 필요)
