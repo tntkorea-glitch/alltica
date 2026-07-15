@@ -24,7 +24,7 @@ export async function GET() {
 
   const { data: assignments } = await supabase
     .from("judge_assignments")
-    .select("title, categories(name, major_category)")
+    .select("title, judge_name, categories(name, major_category)")
     .eq("user_id", user.id)
     .eq("commission_only", false);
 
@@ -41,7 +41,8 @@ export async function GET() {
   ];
 
   const title = (assignments[0] as { title?: string }).title ?? "";
-  const name = user.name || session.user.name || "";
+  const judgeName = (assignments as Array<{ judge_name?: string | null }>).find(a => a.judge_name)?.judge_name ?? null;
+  const name = judgeName || user.name || session.user.name || "";
 
   return NextResponse.json({ isJudge: true, isAdmin: false, name, title, majorCategories });
 }
