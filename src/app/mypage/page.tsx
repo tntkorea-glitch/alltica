@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { formatPrice } from "@/lib/seminars";
+import JudgeNoticePopup from "./JudgeNoticePopup";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,7 @@ export default async function MyPage() {
   const contests = contestSubs ?? [];
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 pt-20">
 <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div>
@@ -156,6 +158,41 @@ export default async function MyPage() {
             </div>
           </dl>
         </section>
+
+        {/* 심사위원 배정 */}
+        {isJudge && (
+          <section className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-purple-200 p-6">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xl">⚖️</span>
+                  <h2 className="text-lg font-bold text-gray-900">심사위원 배정</h2>
+                </div>
+                <p className="text-sm text-gray-600">
+                  {judgeName}{judgeTitle ? ` · ${judgeTitle}` : ""}
+                </p>
+              </div>
+              <Link
+                href="/judge"
+                className="shrink-0 px-4 py-2.5 bg-purple-600 text-white text-sm font-bold rounded-xl hover:bg-purple-700 transition"
+              >
+                심사 시작하기 →
+              </Link>
+            </div>
+            {judgeCategories.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">배정 종목</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {judgeCategories.map((c) => (
+                    <span key={c} className="bg-purple-100 text-purple-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* 세미나 신청 내역 */}
         <section className="bg-white rounded-2xl border border-gray-100 p-6">
@@ -227,5 +264,14 @@ export default async function MyPage() {
         </section>
       </div>
     </div>
+
+    {isJudge && (
+      <JudgeNoticePopup
+        judgeName={judgeName}
+        judgeTitle={judgeTitle}
+        categories={judgeCategories}
+      />
+    )}
+    </>
   );
 }
