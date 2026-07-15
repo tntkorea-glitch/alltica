@@ -1167,6 +1167,44 @@ function UsersTab() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [solapiTarget, setSolapiTarget] = useState<AdminUser | null>(null);
   const [pending, setPending] = useState<Record<string, { role?: SysRole; kba_grade?: KbaGrade | null }>>({});
+  const [mergeTarget, setMergeTarget] = useState<AdminUser[] | null>(null);
+  const [mergePrimaryId, setMergePrimaryId] = useState<string>("");
+  const [mergeLoading, setMergeLoading] = useState(false);
+
+  const dupGroups = useMemo(() => {
+    const groups = new Map<string, AdminUser[]>();
+    for (const u of users) {
+      if (!u.name || !u.phone) continue;
+      const key = `${u.name}||${u.phone.replace(/\D/g, "")}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(u);
+    }
+    return [...groups.values()].filter((g) => g.length > 1);
+  }, [users]);
+
+  async function mergeGroup() {
+    if (!mergeTarget || !mergePrimaryId) return;
+    const secondaryIds = mergeTarget.filter((u) => u.id !== mergePrimaryId).map((u) => u.id);
+    if (secondaryIds.length === 0) return;
+    if (!confirm(`"${mergeTarget.find((u) => u.id === mergePrimaryId)?.name}" 계정으로 ${secondaryIds.length}개를 병합합니다.\n보조 계정은 삭제됩니다. 계속하시겠습니까?`)) return;
+    setMergeLoading(true);
+    try {
+      const res = await fetch("/api/admin/users/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ primary_id: mergePrimaryId, secondary_ids: secondaryIds }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "병합 실패");
+      setUsers((prev) => prev.filter((u) => !secondaryIds.includes(u.id)));
+      setMergeTarget(null);
+      alert(`병합 완료: ${json.merged ?? secondaryIds.length}개 계정 통합`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "병합 실패");
+    } finally {
+      setMergeLoading(false);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1316,6 +1354,101 @@ function UsersTab() {
               <span className="text-xs text-amber-700">명 이름 미등록</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 중복 계정 탐지 */}
+      {!loading && dupGroups.length > 0 && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-amber-600 font-bold">⚠ 중복 계정 {dupGroups.length}그룹 탐지</span>
+              <span className="text-xs text-amber-600">이름+연락처가 동일한 계정</span>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {dupGroups.map((group, gi) => (
+              <div key={gi} className="bg-white rounded-lg border border-amber-100 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 space-y-1">
+                    {group.map((u) => (
+                      <div key={u.id} className="flex items-center gap-2 text-sm">
+                        <span className="font-semibold text-gray-800 w-16 shrink-0">{u.name}</span>
+                        <span className="text-gray-500 font-mono text-xs">{u.email}</span>
+                        <span className="text-gray-400 text-xs">{u.phone}</span>
+                        <span className="text-xs text-gray-400">{u.provider}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => { setMergeTarget(group); setMergePrimaryId(group[0].id); }}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 transition-colors shrink-0"
+                  >
+                    병합
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 병합 모달 */}
+      {mergeTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">계정 병합</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              대표 계정을 선택하세요. 나머지 계정의 모든 데이터(심사 배정, 점수 등)가 대표 계정으로 이전되고,
+              보조 계정으로도 계속 로그인할 수 있습니다.
+            </p>
+            <div className="space-y-2 mb-5">
+              {mergeTarget.map((u) => (
+                <label
+                  key={u.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                    mergePrimaryId === u.id
+                      ? "border-brand bg-brand/5"
+                      : "border-gray-100 hover:border-gray-200"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="merge-primary"
+                    value={u.id}
+                    checked={mergePrimaryId === u.id}
+                    onChange={() => setMergePrimaryId(u.id)}
+                    className="accent-brand"
+                  />
+                  <div>
+                    <div className="font-semibold text-gray-900 text-sm">{u.name}</div>
+                    <div className="text-xs text-gray-500 font-mono">{u.email}</div>
+                    <div className="text-xs text-gray-400">
+                      {u.phone} · {u.provider} · 가입: {formatKST(u.created_at)}
+                    </div>
+                  </div>
+                  {mergePrimaryId === u.id && (
+                    <span className="ml-auto text-xs font-bold text-brand">대표 계정</span>
+                  )}
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setMergeTarget(null)}
+                className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={mergeGroup}
+                disabled={mergeLoading}
+                className="text-sm px-5 py-2 rounded-lg bg-brand text-white font-semibold hover:bg-brand-hover disabled:opacity-50 transition-colors"
+              >
+                {mergeLoading ? "병합 중..." : "병합 실행"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

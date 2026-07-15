@@ -252,24 +252,37 @@ export async function POST(request: NextRequest) {
          nameSlug ? `judge-${nameSlug}@ibc.local` : "");
       if (!email) { errors.push(`${a.name ?? "??"}: 이메일/연락처 없음`); continue; }
 
-      // 1. 이메일로 기존 유저 조회
+      // 1. 이메일로 기존 유저 조회 (linked_accounts 도 포함)
       let { data: user } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
+      if (!user) {
+        const { data: linked } = await supabase.from("user_linked_accounts").select("user_id").eq("email", email).maybeSingle();
+        if (linked) user = { id: linked.user_id };
+      }
 
-      // 2. 이메일이 ibc.local 임시계정이고 연락처가 있으면 → 실제 구글 계정 연락처 매칭 시도
-      if (!user && phone && email.includes("@ibc.local")) {
+      // 2. 연락처로 실제 구글 계정 매칭 (이메일 불일치 시 → 신청서 이메일을 linked로 보존)
+      if (!user && phone) {
         const phoneSuffix = phone.slice(-8);
         const { data: phoneCandidates } = await supabase
           .from("users")
           .select("id, phone")
           .like("phone", `%${phoneSuffix}`)
-          .not("email", "like", "%@ibc.local");
+          .eq("provider", "google");
         const byPhone = (phoneCandidates ?? []).find(
-          (u) => u.phone && u.phone.replace(/\D/g, "") === phone
+          (u) => u.phone && u.phone.replace(/\D/g, "") === phone,
         );
-        if (byPhone) user = byPhone;
+        if (byPhone) {
+          user = byPhone;
+          // 신청서 이메일을 linked_accounts에 등록 (재로그인 시 구글 계정으로 연결)
+          if (!email.includes("@ibc.local")) {
+            await supabase.from("user_linked_accounts").upsert(
+              { user_id: byPhone.id, email, provider: "form" },
+              { onConflict: "email" },
+            );
+          }
+        }
       }
 
-      // 3. 그래도 없으면 ibc.local 임시 유저 생성
+      // 3. 그래도 없으면 플레이스홀더 유저 생성
       if (!user) {
         const { data: created, error: createErr } = await supabase
           .from("users")
