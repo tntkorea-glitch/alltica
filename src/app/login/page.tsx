@@ -53,7 +53,7 @@ function LoginInner() {
           {/* 카카오 */}
           <button
             type="button"
-            onClick={() => signIn("kakao", { callbackUrl })}
+            onClick={() => alert("카카오 로그인은 준비 중입니다")}
             className="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-[#FEE500] rounded-2xl text-sm font-semibold text-[#3C1E1E] hover:bg-[#F5DC00] transition-all shadow-sm"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -65,7 +65,7 @@ function LoginInner() {
           {/* 네이버 */}
           <button
             type="button"
-            onClick={() => signIn("naver", { callbackUrl })}
+            onClick={() => alert("네이버 로그인은 준비 중입니다")}
             className="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-[#03C75A] rounded-2xl text-sm font-semibold text-white hover:bg-[#02b351] transition-all shadow-sm"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
