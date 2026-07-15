@@ -210,12 +210,11 @@ export default function JudgeResultPage() {
       setPreviewFiles(filesMap);
       setGradeTab("전체");
 
-      if (isAdminRef.current) {
-        try {
-          const adminData = await api(`/api/judge/admin/submissions?category_ids=${tab.categoryIds.join(",")}`);
-          setAdminJudges(adminData);
-        } catch { setAdminJudges([]); }
-      }
+      // isAdminRef 체크 없이 항상 시도 — API가 직접 권한 검사 (race condition 방지)
+      try {
+        const adminData = await api(`/api/judge/admin/submissions?category_ids=${tab.categoryIds.join(",")}`);
+        setAdminJudges(adminData);
+      } catch { setAdminJudges([]); }
     } catch (e: unknown) { setMsg((e as Error).message); }
     setLoading(false);
   }, []);
@@ -227,6 +226,17 @@ export default function JudgeResultPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTabKey]);
+
+  // isAdmin이 늦게 resolve 된 경우 (race condition) adminJudges 재로드
+  useEffect(() => {
+    if (!isAdmin || !selectedTabKey) return;
+    const tab = tabs.find((t) => t.key === selectedTabKey);
+    if (!tab) return;
+    api(`/api/judge/admin/submissions?category_ids=${tab.categoryIds.join(",")}`)
+      .then(setAdminJudges)
+      .catch(() => setAdminJudges([]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
 
   useEffect(() => { if (msg) { const t = setTimeout(() => setMsg(""), 4000); return () => clearTimeout(t); } }, [msg]);
 
