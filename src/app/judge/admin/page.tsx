@@ -1612,10 +1612,8 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
   const unpaidJudges = importJudges.filter((j) => judgeConfig[j.id]?.unpaid);
   const unassignedJudges = importJudges.filter((j) => {
     if (judgeConfig[j.id]?.unpaid) return false;
-    if (assignedJudgeNames.has(j.name)) return false;
+    // 이메일만으로 중복 판단 — 이름/전화번호는 동명이인·동일번호 오탐 발생
     if (j.email && assignedJudgeEmails.has(j.email)) return false;
-    const phone = j.phone.replace(/\D/g, "");
-    if (phone && assignedJudgePhones.has(phone)) return false;
     return true;
   });
 
