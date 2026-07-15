@@ -1310,6 +1310,25 @@ function UsersTab() {
 
   const noPhoneCount = users.filter((u) => !u.phone).length;
   const noNameCount = users.filter((u) => !u.name).length;
+  const [userFilter, setUserFilter] = useState<"all" | "no-phone" | "has-phone" | "no-name">("all");
+  const [userSearch, setUserSearch] = useState("");
+
+  const filteredUsers = useMemo(() => {
+    let list = users;
+    if (userFilter === "no-phone") list = list.filter((u) => !u.phone);
+    else if (userFilter === "has-phone") list = list.filter((u) => !!u.phone);
+    else if (userFilter === "no-name") list = list.filter((u) => !u.name);
+    if (userSearch.trim()) {
+      const q = userSearch.trim().toLowerCase();
+      list = list.filter(
+        (u) =>
+          u.email.toLowerCase().includes(q) ||
+          (u.name ?? "").toLowerCase().includes(q) ||
+          (u.phone ?? "").replace(/\D/g, "").includes(q.replace(/\D/g, "")),
+      );
+    }
+    return list;
+  }, [users, userFilter, userSearch]);
 
   return (
     <div>
@@ -1330,29 +1349,60 @@ function UsersTab() {
         </button>
       </div>
 
-      {/* 회원 현황 요약 */}
+      {/* 회원 현황 요약 — 클릭하면 필터 */}
       {!loading && users.length > 0 && (
         <div className="flex flex-wrap gap-3 mb-4">
-          <div className="bg-white rounded-xl border border-gray-100 px-4 py-2.5 flex items-center gap-2">
-            <span className="text-lg font-bold text-brand">{users.length}</span>
-            <span className="text-xs text-gray-500">명 전체</span>
-          </div>
-          <div className={`rounded-xl border px-4 py-2.5 flex items-center gap-2 ${noPhoneCount > 0 ? "bg-orange-50 border-orange-200" : "bg-emerald-50 border-emerald-200"}`}>
-            <span className={`text-lg font-bold ${noPhoneCount > 0 ? "text-orange-600" : "text-emerald-600"}`}>{noPhoneCount}</span>
-            <div>
-              <div className={`text-xs font-semibold ${noPhoneCount > 0 ? "text-orange-700" : "text-emerald-700"}`}>연락처 미등록</div>
-              {noPhoneCount > 0 && <div className="text-[10px] text-orange-500">재로그인 시 자동 안내</div>}
+          <button
+            onClick={() => setUserFilter("all")}
+            className={`rounded-xl border px-4 py-2.5 flex items-center gap-2 transition-colors ${userFilter === "all" ? "bg-brand text-white border-brand" : "bg-white border-gray-100 hover:border-brand/40"}`}
+          >
+            <span className={`text-lg font-bold ${userFilter === "all" ? "text-white" : "text-brand"}`}>{users.length}</span>
+            <span className={`text-xs ${userFilter === "all" ? "text-white/90" : "text-gray-500"}`}>명 전체</span>
+          </button>
+          <button
+            onClick={() => setUserFilter(userFilter === "no-phone" ? "all" : "no-phone")}
+            className={`rounded-xl border px-4 py-2.5 flex items-center gap-2 transition-colors ${userFilter === "no-phone" ? "bg-orange-500 text-white border-orange-500" : noPhoneCount > 0 ? "bg-orange-50 border-orange-200 hover:border-orange-400" : "bg-emerald-50 border-emerald-200"}`}
+          >
+            <span className={`text-lg font-bold ${userFilter === "no-phone" ? "text-white" : noPhoneCount > 0 ? "text-orange-600" : "text-emerald-600"}`}>{noPhoneCount}</span>
+            <div className="text-left">
+              <div className={`text-xs font-semibold ${userFilter === "no-phone" ? "text-white" : noPhoneCount > 0 ? "text-orange-700" : "text-emerald-700"}`}>연락처 미등록</div>
+              {noPhoneCount > 0 && <div className={`text-[10px] ${userFilter === "no-phone" ? "text-white/80" : "text-orange-500"}`}>재로그인 시 자동 안내</div>}
             </div>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-100 px-4 py-2.5 flex items-center gap-2">
-            <span className="text-lg font-bold text-gray-700">{users.length - noPhoneCount}</span>
-            <span className="text-xs text-gray-500">명 연락처 등록 완료</span>
-          </div>
+          </button>
+          <button
+            onClick={() => setUserFilter(userFilter === "has-phone" ? "all" : "has-phone")}
+            className={`rounded-xl border px-4 py-2.5 flex items-center gap-2 transition-colors ${userFilter === "has-phone" ? "bg-gray-700 text-white border-gray-700" : "bg-white border-gray-100 hover:border-gray-300"}`}
+          >
+            <span className={`text-lg font-bold ${userFilter === "has-phone" ? "text-white" : "text-gray-700"}`}>{users.length - noPhoneCount}</span>
+            <span className={`text-xs ${userFilter === "has-phone" ? "text-white/90" : "text-gray-500"}`}>명 연락처 등록 완료</span>
+          </button>
           {noNameCount > 0 && (
-            <div className="bg-amber-50 rounded-xl border border-amber-200 px-4 py-2.5 flex items-center gap-2">
-              <span className="text-lg font-bold text-amber-600">{noNameCount}</span>
-              <span className="text-xs text-amber-700">명 이름 미등록</span>
-            </div>
+            <button
+              onClick={() => setUserFilter(userFilter === "no-name" ? "all" : "no-name")}
+              className={`rounded-xl border px-4 py-2.5 flex items-center gap-2 transition-colors ${userFilter === "no-name" ? "bg-amber-500 text-white border-amber-500" : "bg-amber-50 border-amber-200 hover:border-amber-400"}`}
+            >
+              <span className={`text-lg font-bold ${userFilter === "no-name" ? "text-white" : "text-amber-600"}`}>{noNameCount}</span>
+              <span className={`text-xs ${userFilter === "no-name" ? "text-white/90" : "text-amber-700"}`}>명 이름 미등록</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 검색 */}
+      {!loading && users.length > 0 && (
+        <div className="mb-4">
+          <input
+            type="text"
+            value={userSearch}
+            onChange={(e) => setUserSearch(e.target.value)}
+            placeholder="이메일·이름·연락처 검색..."
+            className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-brand/50"
+          />
+          {(userFilter !== "all" || userSearch) && (
+            <span className="ml-3 text-xs text-gray-400">
+              {filteredUsers.length}명 표시
+              <button onClick={() => { setUserFilter("all"); setUserSearch(""); }} className="ml-2 text-brand hover:underline">초기화</button>
+            </span>
           )}
         </div>
       )}
@@ -1474,7 +1524,7 @@ function UsersTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <tr key={u.id} className="hover:bg-gray-50/50">
                   <Td className="font-mono text-xs text-gray-700 whitespace-nowrap">
                     {u.email}
