@@ -138,10 +138,31 @@ export async function DELETE(request: NextRequest) {
   const ctx = await getJudgeAdminContext();
   if (!ctx) return NextResponse.json({ error: "권한 없음" }, { status: 403 });
 
-  const { id } = await request.json();
-  if (!id) return NextResponse.json({ error: "id 필수" }, { status: 400 });
-
+  const body = await request.json();
   const supabase = getSupabaseAdmin();
+
+  // 일괄 삭제: user_id + competition_id → 해당 심사위원의 모든 배정 삭제
+  if (body.user_id && body.competition_id) {
+    const { data: cats } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("competition_id", body.competition_id);
+    const catIds = (cats ?? []).map((c: { id: string }) => c.id);
+    if (catIds.length > 0) {
+      const { error } = await supabase
+        .from("judge_assignments")
+        .delete()
+        .eq("user_id", body.user_id)
+        .in("category_id", catIds);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  // 단건 삭제
+  const { id } = body;
+  if (!id) return NextResponse.json({ error: "id 또는 user_id+competition_id 필수" }, { status: 400 });
+
   const { error } = await supabase.from("judge_assignments").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

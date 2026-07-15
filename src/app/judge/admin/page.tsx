@@ -1523,10 +1523,14 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
 
   const toggleJudgeFlag = async (userId: string, flag: "commissioned" | "commission_only", value: boolean) => {
     if (!competition) return;
+    // 즉시 로컬 state 업데이트
+    setAllAssignments((prev) => prev.map((a) => a.user_id === userId ? { ...a, [flag]: value } : a));
     try {
       await api("/api/judge/assignments", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId, competition_id: competition.id, [flag]: value }) });
-      await loadAssignments();
-    } catch (e: unknown) { onMsg((e as Error).message); }
+    } catch (e: unknown) {
+      onMsg((e as Error).message);
+      await loadAssignments(); // 실패 시 복구
+    }
   };
 
   const linkEmail = async (userId: string) => {
@@ -1576,29 +1580,42 @@ function JudgesTab({ competition, categories, onMsg }: { category: Category | nu
     setLoading(true);
     try {
       const subCats = categories.filter((c) => c.major_category === directMajor);
-      for (const cat of subCats) {
-        await api("/api/judge/assignments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim(), category_id: cat.id }) });
-      }
+      // 병렬 전송
+      await Promise.all(
+        subCats.map((cat) =>
+          api("/api/judge/assignments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim(), category_id: cat.id }) })
+        )
+      );
       setEmail(""); await loadAssignments();
     } catch (e: unknown) { onMsg((e as Error).message); }
     setLoading(false);
   };
 
   const removeJudge = async (id: string) => {
-    try { await api("/api/judge/assignments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }); await loadAssignments(); }
-    catch (e: unknown) { onMsg((e as Error).message); }
+    // 즉시 로컬 state 업데이트 (리로드 없음)
+    setAllAssignments((prev) => prev.filter((a) => a.id !== id));
+    try {
+      await api("/api/judge/assignments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    } catch (e: unknown) {
+      onMsg((e as Error).message);
+      await loadAssignments(); // 실패 시 서버 상태로 복구
+    }
   };
 
   const removeAllJudge = async (userId: string, name: string) => {
+    if (!competition) return;
     if (!confirm(`"${name}"의 모든 심사 배정을 취소하시겠습니까?`)) return;
+    const cnt = allAssignments.filter((a) => a.user_id === userId).length;
+    // 즉시 로컬 state 업데이트
+    setAllAssignments((prev) => prev.filter((a) => a.user_id !== userId));
     try {
-      const cats = allAssignments.filter((a) => a.user_id === userId);
-      for (const a of cats) {
-        await api("/api/judge/assignments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: a.id }) });
-      }
-      await loadAssignments();
-      onMsg(`"${name}" 배정 취소 완료 (${cats.length}건)`);
-    } catch (e: unknown) { onMsg((e as Error).message); }
+      // 서버에 단 1번 요청으로 일괄 삭제
+      await api("/api/judge/assignments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId, competition_id: competition.id }) });
+      onMsg(`"${name}" 배정 취소 완료 (${cnt}건)`);
+    } catch (e: unknown) {
+      onMsg((e as Error).message);
+      await loadAssignments(); // 실패 시 복구
+    }
   };
 
   // 이미 배정 완료된 심사위원 이름·이메일·전화 set (목록에서 제외)
