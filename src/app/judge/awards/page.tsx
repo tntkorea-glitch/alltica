@@ -49,7 +49,7 @@ interface ResultsData {
   total_student: number;
 }
 
-type ViewTab = "전체" | "프로전문가부" | "학생부" | "단체별";
+type ViewTab = "전체" | "프로전문가부" | "학생부" | "종목별" | "단체별";
 type DraftAward = { award_name?: string; count?: number | null; percent?: number | null; per_major_category?: boolean };
 
 const AWARD_COLORS: Record<string, string> = {
@@ -518,11 +518,13 @@ export default function JudgeAwardsPage() {
 
                 {/* View tabs */}
                 <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
-                  {(["전체", "프로전문가부", "학생부", "단체별"] as ViewTab[]).map((t) => {
+                  {(["전체", "프로전문가부", "학생부", "종목별", "단체별"] as ViewTab[]).map((t) => {
+                    const allCats = new Set([...results.pro_results, ...results.student_results].map(r => r.category_name));
                     const cnt =
                       t === "전체" ? results.pro_results.length + results.student_results.length
                       : t === "프로전문가부" ? results.total_pro
                       : t === "학생부" ? results.total_student
+                      : t === "종목별" ? allCats.size
                       : results.by_company.length;
                     return (
                       <button key={t} onClick={() => setViewTab(t)}
@@ -589,6 +591,157 @@ export default function JudgeAwardsPage() {
                       </table>
                     </div>
                   )}
+
+                  {/* 종목별 */}
+                  {viewTab === "종목별" && (() => {
+                    const proAwardNames = proAwards.map(a => a.award_name);
+                    const studentAwardNames = studentAwards.map(a => a.award_name);
+
+                    // Build category summary: category_name → { major, grade, counts per award }
+                    type CatSummaryRow = {
+                      major_category: string | null;
+                      category_name: string;
+                      grade: string;
+                      counts: Record<string, number>;
+                      total_contestants: number;
+                      total_awarded: number;
+                      items: ContestantResult[];
+                    };
+
+                    const buildSummary = (contestants: ContestantResult[], awardNames: string[], gradeLabel: string): CatSummaryRow[] => {
+                      const map = new Map<string, CatSummaryRow>();
+                      for (const c of contestants) {
+                        if (!map.has(c.category_name)) {
+                          map.set(c.category_name, {
+                            major_category: c.major_category,
+                            category_name: c.category_name,
+                            grade: gradeLabel,
+                            counts: Object.fromEntries(awardNames.map(n => [n, 0])),
+                            total_contestants: 0,
+                            total_awarded: 0,
+                            items: [],
+                          });
+                        }
+                        const row = map.get(c.category_name)!;
+                        row.total_contestants++;
+                        row.items.push(c);
+                        if (c.award && awardNames.includes(c.award)) {
+                          row.counts[c.award]++;
+                          row.total_awarded++;
+                        }
+                      }
+                      return [...map.values()].sort((a, b) =>
+                        (a.major_category ?? "").localeCompare(b.major_category ?? "", "ko") ||
+                        a.category_name.localeCompare(b.category_name, "ko")
+                      );
+                    };
+
+                    const proSummary = buildSummary(results.pro_results, proAwardNames, "프로전문가부");
+                    const studentSummary = buildSummary(results.student_results, studentAwardNames, "학생부");
+
+                    const SummaryTable = ({ rows, awardNames, gradeColor }: { rows: CatSummaryRow[]; awardNames: string[]; gradeColor: string }) => (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-gray-50 border-b border-gray-200">
+                              <th className="px-3 py-2.5 text-left font-semibold text-gray-500">대종목</th>
+                              <th className="px-3 py-2.5 text-left font-semibold text-gray-500">종목</th>
+                              <th className="px-3 py-2.5 text-center font-semibold text-gray-500">참가</th>
+                              {awardNames.map(n => (
+                                <th key={n} className="px-2 py-2.5 text-center font-semibold text-gray-500 whitespace-nowrap">
+                                  {awardBadge(n)}
+                                </th>
+                              ))}
+                              <th className="px-3 py-2.5 text-center font-semibold text-gray-500">수상계</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map(row => (
+                              <tr key={row.category_name} className="border-b border-gray-100 hover:bg-gray-50">
+                                <td className="px-3 py-2 text-gray-500">{row.major_category ?? "-"}</td>
+                                <td className="px-3 py-2 font-medium text-gray-800">{row.category_name}</td>
+                                <td className="px-3 py-2 text-center text-gray-600">{row.total_contestants}</td>
+                                {awardNames.map(n => (
+                                  <td key={n} className="px-2 py-2 text-center">
+                                    {row.counts[n] > 0
+                                      ? <span className={`inline-block w-6 h-6 rounded-full text-xs font-bold leading-6 ${gradeColor}`}>{row.counts[n]}</span>
+                                      : <span className="text-gray-200">-</span>}
+                                  </td>
+                                ))}
+                                <td className="px-3 py-2 text-center font-semibold text-gray-700">{row.total_awarded || "-"}</td>
+                              </tr>
+                            ))}
+                            {/* Total row */}
+                            <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold">
+                              <td className="px-3 py-2 text-gray-600" colSpan={2}>합계 ({rows.length}개 종목)</td>
+                              <td className="px-3 py-2 text-center text-gray-700">{rows.reduce((s,r) => s+r.total_contestants, 0)}</td>
+                              {awardNames.map(n => {
+                                const total = rows.reduce((s,r) => s+(r.counts[n]||0), 0);
+                                return <td key={n} className="px-2 py-2 text-center text-gray-700">{total || "-"}</td>;
+                              })}
+                              <td className="px-3 py-2 text-center text-gray-700">{rows.reduce((s,r) => s+r.total_awarded, 0)}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+
+                    return (
+                      <div className="divide-y divide-gray-100">
+                        {/* Pro summary table */}
+                        {proSummary.length > 0 && (
+                          <div className="px-4 py-4">
+                            <h3 className="text-sm font-semibold text-blue-700 mb-3">🔵 프로전문가부 종목별 시상 현황</h3>
+                            <SummaryTable rows={proSummary} awardNames={proAwardNames} gradeColor="bg-blue-100 text-blue-700" />
+                          </div>
+                        )}
+
+                        {/* Student summary table */}
+                        {studentSummary.length > 0 && (
+                          <div className="px-4 py-4">
+                            <h3 className="text-sm font-semibold text-green-700 mb-3">🟢 학생부 종목별 시상 현황</h3>
+                            <SummaryTable rows={studentSummary} awardNames={studentAwardNames} gradeColor="bg-green-100 text-green-700" />
+                          </div>
+                        )}
+
+                        {/* Detailed per-category list */}
+                        {[...proSummary, ...studentSummary].map(row => (
+                          <div key={`${row.grade}-${row.category_name}`} className="px-5 py-4">
+                            <div className="flex items-center gap-3 mb-3 flex-wrap">
+                              <span className="text-xs text-gray-400">{row.major_category}</span>
+                              <h3 className="font-semibold text-gray-900">{row.category_name}</h3>
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full border ${row.grade === "프로전문가부" ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-green-50 text-green-600 border-green-200"}`}>
+                                {row.grade === "프로전문가부" ? "프로" : "학생"}
+                              </span>
+                              <span className="text-xs text-gray-400">{row.total_contestants}명</span>
+                              {row.total_awarded > 0 && (
+                                <span className="text-xs text-purple-600 font-medium bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                                  수상 {row.total_awarded}명
+                                </span>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              {row.items.map(c => (
+                                <div key={c.id} className="flex items-center gap-3 text-sm flex-wrap">
+                                  <span className="text-gray-400 text-xs w-8 text-right">{c.rank ?? "-"}<span className="text-gray-300">위</span></span>
+                                  <span className="text-gray-400 text-xs w-12 text-right">{c.number ?? ""}</span>
+                                  <span className={`font-medium ${c.award ? "text-gray-900" : "text-gray-500"}`}>{c.name}</span>
+                                  {c.normalized_score !== null && (
+                                    <span className="text-xs text-gray-400">{c.normalized_score.toFixed(1)}점</span>
+                                  )}
+                                  {awardBadge(c.award)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+
+                        {proSummary.length === 0 && studentSummary.length === 0 && (
+                          <div className="text-center py-12 text-gray-400 text-sm">집계된 결과가 없습니다.</div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* 단체별 */}
                   {viewTab === "단체별" && (
