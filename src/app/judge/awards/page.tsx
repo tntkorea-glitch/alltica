@@ -180,6 +180,7 @@ export default function JudgeAwardsPage() {
   const [results, setResults] = useState<ResultsData | null>(null);
   const [viewTab, setViewTab] = useState<ViewTab>("전체");
   const [loading, setLoading] = useState(false);
+  const [showScores, setShowScores] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [msg, setMsg] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -858,6 +859,7 @@ export default function JudgeAwardsPage() {
 
                   {/* 단체별 */}
                   {viewTab === "단체별" && (() => {
+                    // 점수 ON/OFF 버튼 렌더는 아래 return 안에 포함됨
                     const specialMap = new Map<string, "최우수선수상" | "우수선수상">();
                     const personCatMap = new Map<string, { grade: string | null; cats: Set<string> }>();
                     for (const r of [...results.pro_results, ...results.student_results]) {
@@ -876,6 +878,20 @@ export default function JudgeAwardsPage() {
                     };
 
                     return (
+                      <div>
+                        <div className="flex justify-end px-5 pt-3 pb-1">
+                          <button
+                            onClick={() => setShowScores(v => !v)}
+                            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                              showScores
+                                ? "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
+                                : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200"
+                            }`}
+                          >
+                            <span>{showScores ? "📊" : "📊"}</span>
+                            <span>점수 {showScores ? "ON" : "OFF"}</span>
+                          </button>
+                        </div>
                       <div className="divide-y divide-gray-100">
                         {results.by_company.length === 0 ? (
                           <div className="text-center py-12 text-gray-400 text-sm">
@@ -925,7 +941,7 @@ export default function JudgeAwardsPage() {
                                       <th className="px-3 py-2 text-left text-gray-500 font-semibold border-l border-gray-200">이름</th>
                                       <th className="px-2 py-2 text-center text-gray-500 font-semibold border-l border-gray-200">부문</th>
                                       <th className="px-3 py-2 text-left text-gray-500 font-semibold border-l border-gray-200">종목</th>
-                                      <th className="px-3 py-2 text-center text-gray-500 font-semibold border-l border-gray-200 w-16">점수</th>
+                                      {showScores && <th className="px-3 py-2 text-center text-gray-500 font-semibold border-l border-gray-200 w-16">점수</th>}
                                       <th className="px-3 py-2 text-center text-gray-500 font-semibold border-l border-gray-200">시상</th>
                                       <th className="px-3 py-2 text-center text-gray-500 font-semibold border-l border-gray-200">특별상</th>
                                     </tr>
@@ -957,11 +973,13 @@ export default function JudgeAwardsPage() {
                                               </td>
                                             )}
                                             <td className="px-3 py-2.5 text-xs text-gray-700 border-l border-gray-200">{r.category_name}</td>
-                                            <td className="px-3 py-2.5 text-center border-l border-gray-200">
-                                              {r.normalized_score !== null
-                                                ? <span className="font-bold text-gray-800 tabular-nums">{r.normalized_score.toFixed(1)}</span>
-                                                : <span className="text-gray-300 text-xs">-</span>}
-                                            </td>
+                                            {showScores && (
+                                              <td className="px-3 py-2.5 text-center border-l border-gray-200">
+                                                {r.normalized_score !== null
+                                                  ? <span className="font-bold text-gray-800 tabular-nums">{r.normalized_score.toFixed(1)}</span>
+                                                  : <span className="text-gray-300 text-xs">-</span>}
+                                              </td>
+                                            )}
                                             <td className="px-3 py-2.5 text-center border-l border-gray-200">
                                               {awardBadge(r.award) ?? <span className="text-gray-200 text-xs">-</span>}
                                             </td>
@@ -980,6 +998,7 @@ export default function JudgeAwardsPage() {
                             </div>
                           );
                         })}
+                      </div>
                       </div>
                     );
                   })()}
