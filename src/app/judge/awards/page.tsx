@@ -49,7 +49,7 @@ interface ResultsData {
   total_student: number;
 }
 
-type ViewTab = "전체" | "프로전문가부" | "학생부" | "종목별" | "단체별";
+type ViewTab = "전체" | "프로전문가부" | "학생부" | "종목별" | "단체별" | "특별상";
 type DraftAward = { award_name?: string; count?: number | null; percent?: number | null; per_major_category?: boolean };
 
 const AWARD_COLORS: Record<string, string> = {
@@ -518,13 +518,22 @@ export default function JudgeAwardsPage() {
 
                 {/* View tabs */}
                 <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
-                  {(["전체", "프로전문가부", "학생부", "종목별", "단체별"] as ViewTab[]).map((t) => {
+                  {(["전체", "프로전문가부", "학생부", "종목별", "단체별", "특별상"] as ViewTab[]).map((t) => {
                     const allCats = new Set([...results.pro_results, ...results.student_results].map(r => r.category_name));
+                    // compute multi-category special award counts
+                    const personMap = new Map<string, { grade: string | null; cats: Set<string> }>();
+                    for (const r of [...results.pro_results, ...results.student_results]) {
+                      const key = `${r.name}|${r.company ?? ""}|${r.grade ?? ""}`;
+                      if (!personMap.has(key)) personMap.set(key, { grade: r.grade, cats: new Set() });
+                      personMap.get(key)!.cats.add(r.category_name);
+                    }
+                    const specialCount = [...personMap.values()].filter(p => p.cats.size >= 3).length;
                     const cnt =
                       t === "전체" ? results.pro_results.length + results.student_results.length
                       : t === "프로전문가부" ? results.total_pro
                       : t === "학생부" ? results.total_student
                       : t === "종목별" ? allCats.size
+                      : t === "특별상" ? specialCount
                       : results.by_company.length;
                     return (
                       <button key={t} onClick={() => setViewTab(t)}
@@ -591,6 +600,89 @@ export default function JudgeAwardsPage() {
                       </table>
                     </div>
                   )}
+
+                  {/* 특별상 */}
+                  {viewTab === "특별상" && (() => {
+                    type PersonEntry = {
+                      name: string;
+                      grade: string | null;
+                      company: string | null;
+                      categories: string[];
+                      catCount: number;
+                      awards: string[];
+                      bestScore: number | null;
+                    };
+                    const personMap = new Map<string, PersonEntry>();
+                    for (const r of [...results.pro_results, ...results.student_results]) {
+                      const key = `${r.name}|${r.company ?? ""}|${r.grade ?? ""}`;
+                      if (!personMap.has(key)) {
+                        personMap.set(key, { name: r.name, grade: r.grade, company: r.company, categories: [], catCount: 0, awards: [], bestScore: null });
+                      }
+                      const p = personMap.get(key)!;
+                      if (!p.categories.includes(r.category_name)) {
+                        p.categories.push(r.category_name);
+                        p.catCount++;
+                      }
+                      if (r.award && !p.awards.includes(r.award)) p.awards.push(r.award);
+                      if (r.normalized_score !== null && (p.bestScore === null || r.normalized_score > p.bestScore)) p.bestScore = r.normalized_score;
+                    }
+                    const allPersons = [...personMap.values()].filter(p => p.catCount >= 3);
+                    const 최우수 = allPersons.filter(p => p.grade === "프로전문가부").sort((a,b) => b.catCount - a.catCount || (b.bestScore ?? 0) - (a.bestScore ?? 0));
+                    const 우수 = allPersons.filter(p => p.grade === "학생부").sort((a,b) => b.catCount - a.catCount || (b.bestScore ?? 0) - (a.bestScore ?? 0));
+
+                    const SpecialTable = ({ persons, title, color, awardName }: { persons: PersonEntry[]; title: string; color: string; awardName: string }) => (
+                      <div className="px-4 py-5">
+                        <div className="flex items-center gap-3 mb-4">
+                          <h3 className={`text-sm font-bold ${color}`}>{title}</h3>
+                          <span className="text-xs text-gray-400">3종목 이상 참가자 · {persons.length}명</span>
+                          {awardBadge(awardName)}
+                        </div>
+                        {persons.length === 0 ? (
+                          <p className="text-sm text-gray-400 py-4 text-center">해당 선수가 없습니다.</p>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="bg-gray-50 border-b border-gray-200 text-xs">
+                                  <th className="px-3 py-2.5 text-left font-semibold text-gray-500">이름</th>
+                                  <th className="px-3 py-2.5 text-left font-semibold text-gray-500">단체</th>
+                                  <th className="px-3 py-2.5 text-center font-semibold text-gray-500">참가종목수</th>
+                                  <th className="px-3 py-2.5 text-left font-semibold text-gray-500">참가 종목</th>
+                                  <th className="px-3 py-2.5 text-left font-semibold text-gray-500">획득 시상</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {persons.map((p, i) => (
+                                  <tr key={i} className="border-b border-gray-100 hover:bg-blue-50/20">
+                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{p.name}</td>
+                                    <td className="px-3 py-2.5 text-xs text-gray-500">{p.company ?? "-"}</td>
+                                    <td className="px-3 py-2.5 text-center">
+                                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${p.catCount >= 5 ? "bg-purple-100 text-purple-700" : p.catCount >= 4 ? "bg-blue-100 text-blue-700" : "bg-teal-100 text-teal-700"}`}>
+                                        {p.catCount}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-xs text-gray-600">{p.categories.join(", ")}</td>
+                                    <td className="px-3 py-2.5">
+                                      <div className="flex gap-1 flex-wrap">
+                                        {p.awards.length > 0 ? p.awards.map(a => awardBadge(a)) : <span className="text-gray-300 text-xs">-</span>}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+
+                    return (
+                      <div className="divide-y divide-gray-100">
+                        <SpecialTable persons={최우수} title="🏅 최우수선수상 (프로전문가부 · 3종목 이상)" color="text-blue-700" awardName="최우수선수상" />
+                        <SpecialTable persons={우수} title="🌟 우수선수상 (학생부 · 3종목 이상)" color="text-green-700" awardName="우수선수상" />
+                      </div>
+                    );
+                  })()}
 
                   {/* 종목별 */}
                   {viewTab === "종목별" && (() => {
@@ -686,8 +778,61 @@ export default function JudgeAwardsPage() {
                       </div>
                     );
 
+                    // Per-category pro/student count overview
+                    type CatGradeRow = { major: string | null; name: string; pro: number; student: number; total: number };
+                    const catGradeMap = new Map<string, CatGradeRow>();
+                    for (const r of [...results.pro_results, ...results.student_results]) {
+                      if (!catGradeMap.has(r.category_name)) catGradeMap.set(r.category_name, { major: r.major_category, name: r.category_name, pro: 0, student: 0, total: 0 });
+                      const row = catGradeMap.get(r.category_name)!;
+                      if (r.grade === "프로전문가부") row.pro++;
+                      else if (r.grade === "학생부") row.student++;
+                      row.total++;
+                    }
+                    const catGradeRows = [...catGradeMap.values()].sort((a, b) =>
+                      (a.major ?? "").localeCompare(b.major ?? "", "ko") || a.name.localeCompare(b.name, "ko")
+                    );
+
                     return (
                       <div className="divide-y divide-gray-100">
+                        {/* 종목별 프로/학생 인원 현황 */}
+                        <div className="px-4 py-4">
+                          <h3 className="text-sm font-semibold text-gray-700 mb-3">📋 종목별 부문 인원 현황</h3>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="bg-gray-50 border-b border-gray-200">
+                                  <th className="px-3 py-2.5 text-left font-semibold text-gray-500">대종목</th>
+                                  <th className="px-3 py-2.5 text-left font-semibold text-gray-500">종목</th>
+                                  <th className="px-3 py-2.5 text-center font-semibold text-blue-600">프로전문가부</th>
+                                  <th className="px-3 py-2.5 text-center font-semibold text-green-600">학생부</th>
+                                  <th className="px-3 py-2.5 text-center font-semibold text-gray-600">합계</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {catGradeRows.map(row => (
+                                  <tr key={row.name} className="border-b border-gray-100 hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-gray-400">{row.major ?? "-"}</td>
+                                    <td className="px-3 py-2 font-medium text-gray-800">{row.name}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      {row.pro > 0 ? <span className="inline-block bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 font-semibold">{row.pro}명</span> : <span className="text-gray-200">-</span>}
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      {row.student > 0 ? <span className="inline-block bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5 font-semibold">{row.student}명</span> : <span className="text-gray-200">-</span>}
+                                    </td>
+                                    <td className="px-3 py-2 text-center font-semibold text-gray-700">{row.total}명</td>
+                                  </tr>
+                                ))}
+                                <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold text-xs">
+                                  <td className="px-3 py-2 text-gray-600" colSpan={2}>합계 ({catGradeRows.length}개 종목)</td>
+                                  <td className="px-3 py-2 text-center text-blue-700">{catGradeRows.reduce((s, r) => s + r.pro, 0)}명</td>
+                                  <td className="px-3 py-2 text-center text-green-700">{catGradeRows.reduce((s, r) => s + r.student, 0)}명</td>
+                                  <td className="px-3 py-2 text-center text-gray-700">{catGradeRows.reduce((s, r) => s + r.total, 0)}명</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
                         {/* Pro summary table */}
                         {proSummary.length > 0 && (
                           <div className="px-4 py-4">
@@ -744,54 +889,99 @@ export default function JudgeAwardsPage() {
                   })()}
 
                   {/* 단체별 */}
-                  {viewTab === "단체별" && (
-                    <div className="divide-y divide-gray-100">
-                      {results.by_company.length === 0 ? (
-                        <div className="text-center py-12 text-gray-400 text-sm">
-                          단체 정보가 없습니다. 선수 등록 시 단체명을 입력해주세요.
-                        </div>
-                      ) : (
-                        results.by_company.map((group) => {
-                          const all = [...group.pro, ...group.student, ...group.other];
-                          return (
-                            <div key={group.company} className="px-5 py-4">
-                              <div className="flex items-center gap-3 mb-3 flex-wrap">
-                                <h3 className="font-semibold text-gray-900">{group.company}</h3>
-                                <span className="text-xs text-gray-400">{all.length}명 참가</span>
-                                {group.awarded_count > 0 && (
-                                  <span className="text-xs text-purple-700 font-medium bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
-                                    수상 {group.awarded_count}명
-                                  </span>
-                                )}
-                              </div>
-                              <div className="space-y-2">
-                                {all.map((c) => (
-                                  <div key={c.id} className="flex items-center gap-3 text-sm flex-wrap">
-                                    <span className="text-gray-400 text-xs w-6 text-right">{c.number ?? ""}</span>
-                                    <span className={`font-medium ${c.award ? "text-gray-900" : "text-gray-600"}`}>{c.name}</span>
-                                    {c.grade && (
-                                      <span className={`text-xs px-1.5 py-0.5 rounded-full border ${
-                                        c.grade === "프로전문가부"
-                                          ? "bg-blue-50 text-blue-600 border-blue-200"
-                                          : "bg-green-50 text-green-600 border-green-200"
-                                      }`}>
-                                        {c.grade === "프로전문가부" ? "프로" : "학생"}
-                                      </span>
-                                    )}
-                                    <span className="text-xs text-gray-400">{c.category_name}</span>
-                                    {c.normalized_score !== null && (
-                                      <span className="text-xs text-gray-400">{c.normalized_score.toFixed(1)}점</span>
-                                    )}
-                                    {awardBadge(c.award)}
+                  {viewTab === "단체별" && (() => {
+                    // Build per-person special award map (3종목+)
+                    const specialMap = new Map<string, "최우수선수상" | "우수선수상">();
+                    const personCatMap = new Map<string, { grade: string | null; cats: Set<string> }>();
+                    for (const r of [...results.pro_results, ...results.student_results]) {
+                      const key = `${r.name}|${r.company ?? ""}|${r.grade ?? ""}`;
+                      if (!personCatMap.has(key)) personCatMap.set(key, { grade: r.grade, cats: new Set() });
+                      personCatMap.get(key)!.cats.add(r.category_name);
+                    }
+                    for (const [key, p] of personCatMap) {
+                      if (p.cats.size >= 3) {
+                        specialMap.set(key, p.grade === "프로전문가부" ? "최우수선수상" : "우수선수상");
+                      }
+                    }
+
+                    return (
+                      <div className="divide-y divide-gray-100">
+                        {results.by_company.length === 0 ? (
+                          <div className="text-center py-12 text-gray-400 text-sm">
+                            단체 정보가 없습니다. 선수 등록 시 단체명을 입력해주세요.
+                          </div>
+                        ) : (
+                          results.by_company.map((group) => {
+                            const all = [...group.pro, ...group.student, ...group.other];
+                            const specialInGroup = all.filter(c => specialMap.has(`${c.name}|${c.company ?? ""}|${c.grade ?? ""}`));
+                            return (
+                              <div key={group.company} className="px-5 py-4">
+                                <div className="flex items-center gap-3 mb-3 flex-wrap">
+                                  <h3 className="font-semibold text-gray-900">{group.company}</h3>
+                                  <span className="text-xs text-gray-400">{all.length}명 참가</span>
+                                  {group.awarded_count > 0 && (
+                                    <span className="text-xs text-purple-700 font-medium bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                                      수상 {group.awarded_count}명
+                                    </span>
+                                  )}
+                                  {specialInGroup.length > 0 && (
+                                    <span className="text-xs text-amber-700 font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                      🌟 특별상 {specialInGroup.length}명
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Special award highlight */}
+                                {specialInGroup.length > 0 && (
+                                  <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <div className="text-xs font-semibold text-amber-700 mb-1.5">특별상 수상자</div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {specialInGroup.map(c => {
+                                        const specKey = `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`;
+                                        const specAward = specialMap.get(specKey)!;
+                                        return (
+                                          <div key={c.id + "-special"} className="flex items-center gap-1.5 text-xs">
+                                            <span className="font-semibold text-gray-900">{c.name}</span>
+                                            {awardBadge(specAward)}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
-                                ))}
+                                )}
+                                <div className="space-y-2">
+                                  {all.map((c) => {
+                                    const specKey = `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`;
+                                    const specAward = specialMap.get(specKey);
+                                    return (
+                                      <div key={c.id} className="flex items-center gap-3 text-sm flex-wrap">
+                                        <span className="text-gray-400 text-xs w-6 text-right">{c.number ?? ""}</span>
+                                        <span className={`font-medium ${c.award || specAward ? "text-gray-900" : "text-gray-600"}`}>{c.name}</span>
+                                        {c.grade && (
+                                          <span className={`text-xs px-1.5 py-0.5 rounded-full border ${
+                                            c.grade === "프로전문가부"
+                                              ? "bg-blue-50 text-blue-600 border-blue-200"
+                                              : "bg-green-50 text-green-600 border-green-200"
+                                          }`}>
+                                            {c.grade === "프로전문가부" ? "프로" : "학생"}
+                                          </span>
+                                        )}
+                                        <span className="text-xs text-gray-400">{c.category_name}</span>
+                                        {c.normalized_score !== null && (
+                                          <span className="text-xs text-gray-400">{c.normalized_score.toFixed(1)}점</span>
+                                        )}
+                                        {awardBadge(c.award)}
+                                        {specAward && awardBadge(specAward)}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
+                            );
+                          })
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </>
             )}
