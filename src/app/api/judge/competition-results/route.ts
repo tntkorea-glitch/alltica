@@ -116,8 +116,8 @@ export async function GET(request: NextRequest) {
   const contestantIds = contestants.map((c) => c.id);
 
   const [{ data: criteria }, { data: scores }, { data: awardSettings }] = await Promise.all([
-    supabase.from("scoring_criteria").select("id, category_id, max_score").in("category_id", categoryIds),
-    supabase.from("scores").select("contestant_id, criterion_id, score").in("contestant_id", contestantIds),
+    supabase.from("scoring_criteria").select("id, category_id, max_score").in("category_id", categoryIds).limit(5000),
+    supabase.from("scores").select("contestant_id, criterion_id, score").in("contestant_id", contestantIds).limit(100000),
     supabase.from("competition_award_settings").select("*").eq("competition_id", competitionId).order("display_order"),
   ]);
 
