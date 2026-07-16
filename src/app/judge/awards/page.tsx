@@ -890,7 +890,6 @@ export default function JudgeAwardsPage() {
 
                   {/* 단체별 */}
                   {viewTab === "단체별" && (() => {
-                    // Build per-person special award map (3종목+)
                     const specialMap = new Map<string, "최우수선수상" | "우수선수상">();
                     const personCatMap = new Map<string, { grade: string | null; cats: Set<string> }>();
                     for (const r of [...results.pro_results, ...results.student_results]) {
@@ -899,10 +898,14 @@ export default function JudgeAwardsPage() {
                       personCatMap.get(key)!.cats.add(r.category_name);
                     }
                     for (const [key, p] of personCatMap) {
-                      if (p.cats.size >= 3) {
-                        specialMap.set(key, p.grade === "프로전문가부" ? "최우수선수상" : "우수선수상");
-                      }
+                      if (p.cats.size >= 3) specialMap.set(key, p.grade === "프로전문가부" ? "최우수선수상" : "우수선수상");
                     }
+
+                    type PersonGroup = {
+                      key: string; name: string; grade: string | null;
+                      specialAward: "최우수선수상" | "우수선수상" | undefined;
+                      rows: ContestantResult[];
+                    };
 
                     return (
                       <div className="divide-y divide-gray-100">
@@ -910,84 +913,105 @@ export default function JudgeAwardsPage() {
                           <div className="text-center py-12 text-gray-400 text-sm">
                             단체 정보가 없습니다. 선수 등록 시 단체명을 입력해주세요.
                           </div>
-                        ) : (
-                          results.by_company.map((group) => {
-                            const all = [...group.pro, ...group.student, ...group.other].sort((a, b) => a.name.localeCompare(b.name, "ko"));
-                            const specialInGroup = all.filter(c => specialMap.has(`${c.name}|${c.company ?? ""}|${c.grade ?? ""}`));
-                            const uniqueSpecialCount = new Set(specialInGroup.map(c => `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`)).size;
-                            return (
-                              <div key={group.company} className="px-5 py-4">
-                                <div className="flex items-center gap-3 mb-3 flex-wrap">
-                                  <h3 className="font-semibold text-gray-900">{group.company}</h3>
-                                  <span className="text-xs text-gray-400">{all.length}명 참가</span>
-                                  {group.awarded_count > 0 && (
-                                    <span className="text-xs text-purple-700 font-medium bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
-                                      수상 {group.awarded_count}명
-                                    </span>
-                                  )}
-                                  {uniqueSpecialCount > 0 && (
-                                    <span className="text-xs text-amber-700 font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                                      🌟 특별상 {uniqueSpecialCount}명
-                                    </span>
-                                  )}
-                                </div>
-                                {/* Special award highlight — deduplicated by person */}
-                                {specialInGroup.length > 0 && (() => {
-                                  const seen = new Set<string>();
-                                  const unique = specialInGroup.filter(c => {
-                                    const k = `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`;
-                                    if (seen.has(k)) return false;
-                                    seen.add(k); return true;
-                                  }).sort((a, b) => a.name.localeCompare(b.name, "ko"));
-                                  return (
-                                    <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
-                                      <div className="text-xs font-semibold text-amber-700 mb-1.5">특별상 수상자 ({unique.length}명)</div>
-                                      <div className="flex flex-wrap gap-2">
-                                        {unique.map(c => {
-                                          const specKey = `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`;
-                                          const specAward = specialMap.get(specKey)!;
-                                          return (
-                                            <div key={specKey} className="flex items-center gap-1.5 text-xs">
-                                              <span className="font-semibold text-gray-900">{c.name}</span>
-                                              {awardBadge(specAward)}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-                                <div className="space-y-2">
-                                  {all.map((c) => {
-                                    const specKey = `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`;
-                                    const specAward = specialMap.get(specKey);
-                                    return (
-                                      <div key={c.id} className="flex items-center gap-3 text-sm flex-wrap">
-                                        <span className="text-gray-400 text-xs w-6 text-right">{c.number ?? ""}</span>
-                                        <span className={`font-medium ${c.award || specAward ? "text-gray-900" : "text-gray-600"}`}>{c.name}</span>
-                                        {c.grade && (
-                                          <span className={`text-xs px-1.5 py-0.5 rounded-full border ${
-                                            c.grade === "프로전문가부"
-                                              ? "bg-blue-50 text-blue-600 border-blue-200"
-                                              : "bg-green-50 text-green-600 border-green-200"
-                                          }`}>
-                                            {c.grade === "프로전문가부" ? "프로" : "학생"}
-                                          </span>
-                                        )}
-                                        <span className="text-xs text-gray-400">{c.category_name}</span>
-                                        {c.normalized_score !== null && (
-                                          <span className="text-xs text-gray-400">{c.normalized_score.toFixed(1)}점</span>
-                                        )}
-                                        {awardBadge(c.award)}
-                                        {specAward && awardBadge(specAward)}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
+                        ) : results.by_company.map((group) => {
+                          const all = [...group.pro, ...group.student, ...group.other].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+                          const uniqueSpecialCount = new Set(
+                            all.filter(c => specialMap.has(`${c.name}|${c.company ?? ""}|${c.grade ?? ""}`))
+                               .map(c => `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`)
+                          ).size;
+
+                          // Group by person key, preserving sorted order
+                          const personGroups: PersonGroup[] = [];
+                          const seenKeys = new Map<string, number>();
+                          for (const c of all) {
+                            const k = `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`;
+                            if (seenKeys.has(k)) {
+                              personGroups[seenKeys.get(k)!].rows.push(c);
+                            } else {
+                              seenKeys.set(k, personGroups.length);
+                              personGroups.push({ key: k, name: c.name, grade: c.grade, specialAward: specialMap.get(k), rows: [c] });
+                            }
+                          }
+
+                          return (
+                            <div key={group.company} className="px-5 py-4">
+                              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                                <h3 className="font-semibold text-gray-900">{group.company}</h3>
+                                <span className="text-xs text-gray-400">{all.length}명 참가</span>
+                                {group.awarded_count > 0 && (
+                                  <span className="text-xs text-purple-700 font-medium bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                                    수상 {group.awarded_count}명
+                                  </span>
+                                )}
+                                {uniqueSpecialCount > 0 && (
+                                  <span className="text-xs text-amber-700 font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                    🌟 특별상 {uniqueSpecialCount}명
+                                  </span>
+                                )}
                               </div>
-                            );
-                          })
-                        )}
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm border-collapse">
+                                  <thead>
+                                    <tr className="bg-gray-50 border-b-2 border-gray-300 text-xs">
+                                      <th className="px-2 py-2 text-center text-gray-500 font-semibold w-10">번호</th>
+                                      <th className="px-3 py-2 text-left text-gray-500 font-semibold">이름</th>
+                                      <th className="px-2 py-2 text-center text-gray-500 font-semibold">부문</th>
+                                      <th className="px-3 py-2 text-left text-gray-500 font-semibold border-l border-gray-200">종목</th>
+                                      <th className="px-3 py-2 text-center text-gray-500 font-semibold border-l border-gray-200 w-16">점수</th>
+                                      <th className="px-3 py-2 text-center text-gray-500 font-semibold border-l border-gray-200">시상</th>
+                                      <th className="px-3 py-2 text-center text-gray-500 font-semibold border-l border-gray-200">특별상</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {personGroups.flatMap((pg, pgIdx) =>
+                                      pg.rows.map((r, rowIdx) => {
+                                        const isFirst = rowIdx === 0;
+                                        const rowCls = pgIdx > 0 && isFirst ? "border-t-2 border-gray-200" : "border-t border-gray-100";
+                                        return (
+                                          <tr key={r.id} className={`hover:bg-blue-50/20 transition-colors ${rowCls}`}>
+                                            <td className="px-2 py-2.5 text-xs text-gray-400 text-center">{r.number ?? "-"}</td>
+                                            {isFirst && (
+                                              <td rowSpan={pg.rows.length} className="px-3 py-2.5 font-semibold text-gray-900 align-middle">
+                                                {pg.name}
+                                              </td>
+                                            )}
+                                            {isFirst && (
+                                              <td rowSpan={pg.rows.length} className="px-2 py-2.5 text-center align-middle">
+                                                {pg.grade && (
+                                                  <span className={`text-xs px-1.5 py-0.5 rounded-full border whitespace-nowrap ${
+                                                    pg.grade === "프로전문가부"
+                                                      ? "bg-blue-50 text-blue-600 border-blue-200"
+                                                      : "bg-green-50 text-green-600 border-green-200"
+                                                  }`}>
+                                                    {pg.grade === "프로전문가부" ? "프로" : "학생"}
+                                                  </span>
+                                                )}
+                                              </td>
+                                            )}
+                                            <td className="px-3 py-2.5 text-xs text-gray-700 border-l border-gray-200">{r.category_name}</td>
+                                            <td className="px-3 py-2.5 text-center border-l border-gray-200">
+                                              {r.normalized_score !== null
+                                                ? <span className="font-bold text-gray-800 tabular-nums">{r.normalized_score.toFixed(1)}</span>
+                                                : <span className="text-gray-300 text-xs">-</span>}
+                                            </td>
+                                            <td className="px-3 py-2.5 text-center border-l border-gray-200">
+                                              {awardBadge(r.award) ?? <span className="text-gray-200 text-xs">-</span>}
+                                            </td>
+                                            {isFirst && (
+                                              <td rowSpan={pg.rows.length} className="px-3 py-2.5 text-center align-middle border-l border-gray-200">
+                                                {pg.specialAward ? awardBadge(pg.specialAward) : <span className="text-gray-200 text-xs">-</span>}
+                                              </td>
+                                            )}
+                                          </tr>
+                                        );
+                                      })
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })()}
