@@ -12,6 +12,7 @@ interface CompAward {
   count: number | null;
   percent: number | null;
   per_major_category: boolean;
+  min_group_size: number | null;
   display_order: number;
 }
 
@@ -50,7 +51,7 @@ interface ResultsData {
 }
 
 type ViewTab = "전체" | "프로전문가부" | "학생부" | "종목별" | "단체별" | "특별상";
-type DraftAward = { award_name?: string; count?: number | null; percent?: number | null; per_major_category?: boolean };
+type DraftAward = { award_name?: string; count?: number | null; percent?: number | null; per_major_category?: boolean; min_group_size?: number | null };
 
 const AWARD_COLORS: Record<string, string> = {
   "월드MVP챔피언": "bg-purple-100 text-purple-800 border-purple-300",
@@ -120,11 +121,12 @@ function AwardRow({
   const isDirty = Object.keys(draft).length > 0;
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition ${isDirty ? "bg-yellow-50 border-yellow-300" : "bg-white border-gray-200"}`}>
+    <div className={`flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg border text-sm transition ${isDirty ? "bg-yellow-50 border-yellow-300" : "bg-white border-gray-200"}`}>
       <input
         value={merged.award_name}
         onChange={(e) => onDraftChange(base.id, { award_name: e.target.value })}
         className="flex-1 min-w-0 outline-none bg-transparent font-medium text-gray-800"
+        title="상명 직접 수정 — 저장 후 전체 자동 반영"
       />
       <select
         value={mode}
@@ -145,6 +147,22 @@ function AwardRow({
           />
           <span className="text-xs text-gray-400">{mode === "퍼센트" ? "%" : "명"}</span>
         </>
+      )}
+      {mode === "대종목별" && (
+        <label className="flex items-center gap-1 text-xs text-gray-500">
+          최소
+          <input
+            type="number" min="1" step="1"
+            value={merged.min_group_size ?? ""}
+            placeholder="제한없음"
+            onChange={(e) => {
+              const v = e.target.value;
+              onDraftChange(base.id, { min_group_size: v === "" ? null : Math.max(1, parseInt(v) || 1) });
+            }}
+            className="w-16 border rounded px-2 py-0.5 text-xs text-center"
+          />
+          명↑만
+        </label>
       )}
       {isDirty && <span className="text-xs text-yellow-600 font-bold">*</span>}
       <button onClick={() => onDelete(base.id)} className="text-red-400 hover:text-red-600 text-sm ml-1" title="삭제">✕</button>
@@ -516,8 +534,9 @@ export default function JudgeAwardsPage() {
                   </div>
                 )}
 
-                {/* View tabs */}
-                <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+                {/* View tabs — sticky below navbar */}
+                <div className="sticky top-16 z-20 bg-white/95 backdrop-blur-sm -mx-5 px-5 py-2 border-b border-gray-100 mb-4">
+                <div className="flex gap-1 overflow-x-auto pb-1">
                   {(["전체", "프로전문가부", "학생부", "종목별", "단체별", "특별상"] as ViewTab[]).map((t) => {
                     const allCats = new Set([...results.pro_results, ...results.student_results].map(r => r.category_name));
                     // compute multi-category special award counts
@@ -545,6 +564,7 @@ export default function JudgeAwardsPage() {
                       </button>
                     );
                   })}
+                </div>
                 </div>
 
                 {/* Results table */}
@@ -686,183 +706,132 @@ export default function JudgeAwardsPage() {
 
                   {/* 종목별 */}
                   {viewTab === "종목별" && (() => {
-                    const proAwardNames = proAwards.map(a => a.award_name);
-                    const studentAwardNames = studentAwards.map(a => a.award_name);
+                    // Collect all unique award names in display order (student first, then pro)
+                    const allAwardNames = [...new Set([
+                      ...studentAwards.map(a => a.award_name),
+                      ...proAwards.map(a => a.award_name),
+                    ])];
 
-                    // Build category summary: category_name → { major, grade, counts per award }
-                    type CatSummaryRow = {
-                      major_category: string | null;
+                    // Build combined row per (category × grade)
+                    type CombinedRow = {
+                      key: string;
+                      major: string | null;
                       category_name: string;
                       grade: string;
+                      isPro: boolean;
+                      total: number;
+                      awarded: number;
                       counts: Record<string, number>;
-                      total_contestants: number;
-                      total_awarded: number;
                       items: ContestantResult[];
                     };
 
-                    const buildSummary = (contestants: ContestantResult[], awardNames: string[], gradeLabel: string): CatSummaryRow[] => {
-                      const map = new Map<string, CatSummaryRow>();
+                    const buildRows = (contestants: ContestantResult[], grade: string): CombinedRow[] => {
+                      const map = new Map<string, CombinedRow>();
                       for (const c of contestants) {
                         if (!map.has(c.category_name)) {
                           map.set(c.category_name, {
-                            major_category: c.major_category,
+                            key: `${grade}|${c.category_name}`,
+                            major: c.major_category,
                             category_name: c.category_name,
-                            grade: gradeLabel,
-                            counts: Object.fromEntries(awardNames.map(n => [n, 0])),
-                            total_contestants: 0,
-                            total_awarded: 0,
+                            grade,
+                            isPro: grade === "프로전문가부",
+                            total: 0, awarded: 0,
+                            counts: Object.fromEntries(allAwardNames.map(n => [n, 0])),
                             items: [],
                           });
                         }
                         const row = map.get(c.category_name)!;
-                        row.total_contestants++;
+                        row.total++;
                         row.items.push(c);
-                        if (c.award && awardNames.includes(c.award)) {
-                          row.counts[c.award]++;
-                          row.total_awarded++;
-                        }
+                        if (c.award) { row.counts[c.award] = (row.counts[c.award] ?? 0) + 1; row.awarded++; }
                       }
-                      return [...map.values()].sort((a, b) =>
-                        (a.major_category ?? "").localeCompare(b.major_category ?? "", "ko") ||
-                        a.category_name.localeCompare(b.category_name, "ko")
-                      );
+                      return [...map.values()];
                     };
 
-                    const proSummary = buildSummary(results.pro_results, proAwardNames, "프로전문가부");
-                    const studentSummary = buildSummary(results.student_results, studentAwardNames, "학생부");
-
-                    const SummaryTable = ({ rows, awardNames, gradeColor }: { rows: CatSummaryRow[]; awardNames: string[]; gradeColor: string }) => (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200">
-                              <th className="px-3 py-2.5 text-left font-semibold text-gray-500">대종목</th>
-                              <th className="px-3 py-2.5 text-left font-semibold text-gray-500">종목</th>
-                              <th className="px-3 py-2.5 text-center font-semibold text-gray-500">참가</th>
-                              {awardNames.map(n => (
-                                <th key={n} className="px-2 py-2.5 text-center font-semibold text-gray-500 whitespace-nowrap">
-                                  {awardBadge(n)}
-                                </th>
-                              ))}
-                              <th className="px-3 py-2.5 text-center font-semibold text-gray-500">수상계</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {rows.map(row => (
-                              <tr key={row.category_name} className="border-b border-gray-100 hover:bg-gray-50">
-                                <td className="px-3 py-2 text-gray-500">{row.major_category ?? "-"}</td>
-                                <td className="px-3 py-2 font-medium text-gray-800">{row.category_name}</td>
-                                <td className="px-3 py-2 text-center text-gray-600">{row.total_contestants}</td>
-                                {awardNames.map(n => (
-                                  <td key={n} className="px-2 py-2 text-center">
-                                    {row.counts[n] > 0
-                                      ? <span className={`inline-block w-6 h-6 rounded-full text-xs font-bold leading-6 ${gradeColor}`}>{row.counts[n]}</span>
-                                      : <span className="text-gray-200">-</span>}
-                                  </td>
-                                ))}
-                                <td className="px-3 py-2 text-center font-semibold text-gray-700">{row.total_awarded || "-"}</td>
-                              </tr>
-                            ))}
-                            {/* Total row */}
-                            <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold">
-                              <td className="px-3 py-2 text-gray-600" colSpan={2}>합계 ({rows.length}개 종목)</td>
-                              <td className="px-3 py-2 text-center text-gray-700">{rows.reduce((s,r) => s+r.total_contestants, 0)}</td>
-                              {awardNames.map(n => {
-                                const total = rows.reduce((s,r) => s+(r.counts[n]||0), 0);
-                                return <td key={n} className="px-2 py-2 text-center text-gray-700">{total || "-"}</td>;
-                              })}
-                              <td className="px-3 py-2 text-center text-gray-700">{rows.reduce((s,r) => s+r.total_awarded, 0)}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
+                    const allRows = [
+                      ...buildRows(results.pro_results, "프로전문가부"),
+                      ...buildRows(results.student_results, "학생부"),
+                    ].sort((a, b) =>
+                      (a.major ?? "").localeCompare(b.major ?? "", "ko") ||
+                      a.category_name.localeCompare(b.category_name, "ko") ||
+                      (a.isPro ? 0 : 1) - (b.isPro ? 0 : 1)
                     );
 
-                    // Per-category pro/student count overview
-                    type CatGradeRow = { major: string | null; name: string; pro: number; student: number; total: number };
-                    const catGradeMap = new Map<string, CatGradeRow>();
-                    for (const r of [...results.pro_results, ...results.student_results]) {
-                      if (!catGradeMap.has(r.category_name)) catGradeMap.set(r.category_name, { major: r.major_category, name: r.category_name, pro: 0, student: 0, total: 0 });
-                      const row = catGradeMap.get(r.category_name)!;
-                      if (r.grade === "프로전문가부") row.pro++;
-                      else if (r.grade === "학생부") row.student++;
-                      row.total++;
-                    }
-                    const catGradeRows = [...catGradeMap.values()].sort((a, b) =>
-                      (a.major ?? "").localeCompare(b.major ?? "", "ko") || a.name.localeCompare(b.name, "ko")
-                    );
+                    // Column totals
+                    const colTotals = Object.fromEntries(allAwardNames.map(n => [n, allRows.reduce((s, r) => s + (r.counts[n] || 0), 0)]));
+                    const proColTotals = Object.fromEntries(allAwardNames.map(n => [n, allRows.filter(r => r.isPro).reduce((s, r) => s + (r.counts[n] || 0), 0)]));
+                    const studentColTotals = Object.fromEntries(allAwardNames.map(n => [n, allRows.filter(r => !r.isPro).reduce((s, r) => s + (r.counts[n] || 0), 0)]));
+                    const grandTotal = allRows.reduce((s, r) => s + r.total, 0);
+                    const proTotal = allRows.filter(r => r.isPro).reduce((s, r) => s + r.total, 0);
+                    const studentTotal = allRows.filter(r => !r.isPro).reduce((s, r) => s + r.total, 0);
+
+                    const numCell = (n: number, isPro: boolean) => n > 0
+                      ? <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${isPro ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>{n}</span>
+                      : <span className="text-gray-200 text-xs">-</span>;
 
                     return (
                       <div className="divide-y divide-gray-100">
-                        {/* 종목별 프로/학생 인원 현황 */}
+                        {/* 종합 집계표 */}
                         <div className="px-4 py-4">
-                          <h3 className="text-sm font-semibold text-gray-700 mb-3">📋 종목별 부문 인원 현황</h3>
+                          <h3 className="text-sm font-semibold text-gray-700 mb-3">🏆 종목별 시상 집계표</h3>
                           <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
+                            <table className="text-xs border-collapse" style={{ minWidth: "max-content" }}>
                               <thead>
-                                <tr className="bg-gray-50 border-b border-gray-200">
-                                  <th className="px-3 py-2.5 text-left font-semibold text-gray-500">대종목</th>
-                                  <th className="px-3 py-2.5 text-left font-semibold text-gray-500">종목</th>
-                                  <th className="px-3 py-2.5 text-center font-semibold text-blue-600">프로전문가부</th>
-                                  <th className="px-3 py-2.5 text-center font-semibold text-green-600">학생부</th>
-                                  <th className="px-3 py-2.5 text-center font-semibold text-gray-600">합계</th>
+                                {/* Summary totals row */}
+                                <tr className="bg-gray-800 text-white text-center">
+                                  <th className="px-3 py-2 text-left sticky left-0 bg-gray-800 z-10 font-semibold">출품</th>
+                                  <th className="px-3 py-2 font-semibold whitespace-nowrap">총갯수<br /><span className="font-bold text-yellow-300">{grandTotal}</span></th>
+                                  <th className="px-3 py-2 font-semibold whitespace-nowrap border-l border-gray-600">프로전문가부<br /><span className="font-bold text-blue-300">{proTotal}</span></th>
+                                  <th className="px-3 py-2 font-semibold whitespace-nowrap">학생부<br /><span className="font-bold text-green-300">{studentTotal}</span></th>
+                                  {allAwardNames.map(n => (
+                                    <th key={n} className="px-2 py-2 whitespace-nowrap border-l border-gray-600">
+                                      <div className="flex flex-col items-center gap-0.5">
+                                        {awardBadge(n)}
+                                        <span className="font-bold text-yellow-300">{colTotals[n] || 0}</span>
+                                        <span className="text-blue-300 text-xs leading-none">{proColTotals[n] > 0 ? `프로 ${proColTotals[n]}` : ""}</span>
+                                        <span className="text-green-300 text-xs leading-none">{studentColTotals[n] > 0 ? `학생 ${studentColTotals[n]}` : ""}</span>
+                                      </div>
+                                    </th>
+                                  ))}
                                 </tr>
                               </thead>
                               <tbody>
-                                {catGradeRows.map(row => (
-                                  <tr key={row.name} className="border-b border-gray-100 hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-gray-400">{row.major ?? "-"}</td>
-                                    <td className="px-3 py-2 font-medium text-gray-800">{row.name}</td>
-                                    <td className="px-3 py-2 text-center">
-                                      {row.pro > 0 ? <span className="inline-block bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 font-semibold">{row.pro}명</span> : <span className="text-gray-200">-</span>}
+                                {allRows.map((row) => (
+                                  <tr key={row.key} className={`border-b border-gray-100 hover:bg-blue-50/30 transition-colors ${row.isPro ? "" : "bg-green-50/20"}`}>
+                                    <td className={`px-3 py-1.5 sticky left-0 z-10 font-medium text-gray-800 whitespace-nowrap ${row.isPro ? "bg-white hover:bg-blue-50/30" : "bg-green-50/40 hover:bg-green-50/60"}`}>
+                                      {row.major ? `${row.major} - ` : ""}{row.category_name}
                                     </td>
-                                    <td className="px-3 py-2 text-center">
-                                      {row.student > 0 ? <span className="inline-block bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5 font-semibold">{row.student}명</span> : <span className="text-gray-200">-</span>}
+                                    <td className="px-3 py-1.5 text-center font-semibold text-gray-700">{row.total}</td>
+                                    <td className="px-3 py-1.5 text-center border-l border-gray-100">
+                                      {row.isPro ? <span className="font-bold text-blue-700">{row.total}</span> : <span className="text-gray-200">-</span>}
                                     </td>
-                                    <td className="px-3 py-2 text-center font-semibold text-gray-700">{row.total}명</td>
+                                    <td className="px-3 py-1.5 text-center">
+                                      {!row.isPro ? <span className="font-bold text-green-700">{row.total}</span> : <span className="text-gray-200">-</span>}
+                                    </td>
+                                    {allAwardNames.map(n => (
+                                      <td key={n} className="px-2 py-1.5 text-center border-l border-gray-100">
+                                        {numCell(row.counts[n] || 0, row.isPro)}
+                                      </td>
+                                    ))}
                                   </tr>
                                 ))}
-                                <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold text-xs">
-                                  <td className="px-3 py-2 text-gray-600" colSpan={2}>합계 ({catGradeRows.length}개 종목)</td>
-                                  <td className="px-3 py-2 text-center text-blue-700">{catGradeRows.reduce((s, r) => s + r.pro, 0)}명</td>
-                                  <td className="px-3 py-2 text-center text-green-700">{catGradeRows.reduce((s, r) => s + r.student, 0)}명</td>
-                                  <td className="px-3 py-2 text-center text-gray-700">{catGradeRows.reduce((s, r) => s + r.total, 0)}명</td>
-                                </tr>
                               </tbody>
                             </table>
                           </div>
                         </div>
 
-                        {/* Pro summary table */}
-                        {proSummary.length > 0 && (
-                          <div className="px-4 py-4">
-                            <h3 className="text-sm font-semibold text-blue-700 mb-3">🔵 프로전문가부 종목별 시상 현황</h3>
-                            <SummaryTable rows={proSummary} awardNames={proAwardNames} gradeColor="bg-blue-100 text-blue-700" />
-                          </div>
-                        )}
-
-                        {/* Student summary table */}
-                        {studentSummary.length > 0 && (
-                          <div className="px-4 py-4">
-                            <h3 className="text-sm font-semibold text-green-700 mb-3">🟢 학생부 종목별 시상 현황</h3>
-                            <SummaryTable rows={studentSummary} awardNames={studentAwardNames} gradeColor="bg-green-100 text-green-700" />
-                          </div>
-                        )}
-
-                        {/* Detailed per-category list */}
-                        {[...proSummary, ...studentSummary].map(row => (
-                          <div key={`${row.grade}-${row.category_name}`} className="px-5 py-4">
-                            <div className="flex items-center gap-3 mb-3 flex-wrap">
-                              <span className="text-xs text-gray-400">{row.major_category}</span>
+                        {/* Detailed per-category contestant list */}
+                        {allRows.map(row => (
+                          <div key={row.key} className="px-5 py-4">
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
+                              <span className="text-xs text-gray-400">{row.major}</span>
                               <h3 className="font-semibold text-gray-900">{row.category_name}</h3>
-                              <span className={`text-xs px-1.5 py-0.5 rounded-full border ${row.grade === "프로전문가부" ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-green-50 text-green-600 border-green-200"}`}>
-                                {row.grade === "프로전문가부" ? "프로" : "학생"}
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full border ${row.isPro ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-green-50 text-green-600 border-green-200"}`}>
+                                {row.isPro ? "프로" : "학생"}
                               </span>
-                              <span className="text-xs text-gray-400">{row.total_contestants}명</span>
-                              {row.total_awarded > 0 && (
-                                <span className="text-xs text-purple-600 font-medium bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
-                                  수상 {row.total_awarded}명
-                                </span>
+                              <span className="text-xs text-gray-400">{row.total}명</span>
+                              {row.awarded > 0 && (
+                                <span className="text-xs text-purple-600 font-medium bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">수상 {row.awarded}명</span>
                               )}
                             </div>
                             <div className="space-y-1">
@@ -871,9 +840,7 @@ export default function JudgeAwardsPage() {
                                   <span className="text-gray-400 text-xs w-8 text-right">{c.rank ?? "-"}<span className="text-gray-300">위</span></span>
                                   <span className="text-gray-400 text-xs w-12 text-right">{c.number ?? ""}</span>
                                   <span className={`font-medium ${c.award ? "text-gray-900" : "text-gray-500"}`}>{c.name}</span>
-                                  {c.normalized_score !== null && (
-                                    <span className="text-xs text-gray-400">{c.normalized_score.toFixed(1)}점</span>
-                                  )}
+                                  {c.normalized_score !== null && <span className="text-xs text-gray-400">{c.normalized_score.toFixed(1)}점</span>}
                                   {awardBadge(c.award)}
                                 </div>
                               ))}
@@ -881,7 +848,7 @@ export default function JudgeAwardsPage() {
                           </div>
                         ))}
 
-                        {proSummary.length === 0 && studentSummary.length === 0 && (
+                        {allRows.length === 0 && (
                           <div className="text-center py-12 text-gray-400 text-sm">집계된 결과가 없습니다.</div>
                         )}
                       </div>
@@ -954,8 +921,8 @@ export default function JudgeAwardsPage() {
                                   <thead>
                                     <tr className="bg-gray-50 border-b-2 border-gray-300 text-xs">
                                       <th className="px-2 py-2 text-center text-gray-500 font-semibold w-10">번호</th>
-                                      <th className="px-3 py-2 text-left text-gray-500 font-semibold">이름</th>
-                                      <th className="px-2 py-2 text-center text-gray-500 font-semibold">부문</th>
+                                      <th className="px-3 py-2 text-left text-gray-500 font-semibold border-l border-gray-200">이름</th>
+                                      <th className="px-2 py-2 text-center text-gray-500 font-semibold border-l border-gray-200">부문</th>
                                       <th className="px-3 py-2 text-left text-gray-500 font-semibold border-l border-gray-200">종목</th>
                                       <th className="px-3 py-2 text-center text-gray-500 font-semibold border-l border-gray-200 w-16">점수</th>
                                       <th className="px-3 py-2 text-center text-gray-500 font-semibold border-l border-gray-200">시상</th>
@@ -971,12 +938,12 @@ export default function JudgeAwardsPage() {
                                           <tr key={r.id} className={`hover:bg-blue-50/20 transition-colors ${rowCls}`}>
                                             <td className="px-2 py-2.5 text-xs text-gray-400 text-center">{r.number ?? "-"}</td>
                                             {isFirst && (
-                                              <td rowSpan={pg.rows.length} className="px-3 py-2.5 font-semibold text-gray-900 align-middle">
+                                              <td rowSpan={pg.rows.length} className="px-3 py-2.5 font-semibold text-gray-900 align-middle border-l border-gray-200">
                                                 {pg.name}
                                               </td>
                                             )}
                                             {isFirst && (
-                                              <td rowSpan={pg.rows.length} className="px-2 py-2.5 text-center align-middle">
+                                              <td rowSpan={pg.rows.length} className="px-2 py-2.5 text-center align-middle border-l border-gray-200">
                                                 {pg.grade && (
                                                   <span className={`text-xs px-1.5 py-0.5 rounded-full border whitespace-nowrap ${
                                                     pg.grade === "프로전문가부"

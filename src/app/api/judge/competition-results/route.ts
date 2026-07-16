@@ -10,6 +10,7 @@ interface AwardSetting {
   count: number | null;
   percent: number | null;
   per_major_category: boolean;
+  min_group_size: number | null;
   display_order: number;
 }
 
@@ -44,7 +45,9 @@ function assignAwards(sorted: ContestantResult[], settings: AwardSetting[]): Con
           byMajor.get(mc)!.push(c);
         }
       }
+      const minSize = setting.min_group_size ?? 1;
       for (const [, group] of byMajor) {
+        if (group.length < minSize) continue;
         const n = setting.count ?? 1;
         for (let i = 0; i < Math.min(n, group.length); i++) {
           const found = result.find((r) => r.id === group[i].id);
@@ -115,11 +118,22 @@ export async function GET(request: NextRequest) {
 
   const contestantIds = contestants.map((c) => c.id);
 
-  const [{ data: criteria }, { data: scores }, { data: awardSettings }] = await Promise.all([
+  // Batch scores queries to bypass Supabase server-side 1000-row limit
+  const SCORE_BATCH = 50;
+  const scoreBatches: string[][] = [];
+  for (let i = 0; i < contestantIds.length; i += SCORE_BATCH) {
+    scoreBatches.push(contestantIds.slice(i, i + SCORE_BATCH));
+  }
+  const [criteriaRes, awardSettingsRes, ...scoreBatchResults] = await Promise.all([
     supabase.from("scoring_criteria").select("id, category_id, max_score").in("category_id", categoryIds).limit(5000),
-    supabase.from("scores").select("contestant_id, criterion_id, score").in("contestant_id", contestantIds).limit(100000),
     supabase.from("competition_award_settings").select("*").eq("competition_id", competitionId).order("display_order"),
+    ...scoreBatches.map(batch =>
+      supabase.from("scores").select("contestant_id, criterion_id, score").in("contestant_id", batch)
+    ),
   ]);
+  const criteria = criteriaRes.data;
+  const awardSettings = awardSettingsRes.data;
+  const scores = scoreBatchResults.flatMap(r => (r as { data: { contestant_id: string; criterion_id: string; score: number }[] | null }).data ?? []);
 
   const criteriaByCategory = new Map<string, { id: string; max_score: number }[]>();
   for (const cr of criteria ?? []) {

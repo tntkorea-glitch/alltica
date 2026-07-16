@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest) {
   const { id, ...updates } = body;
   if (!id) return NextResponse.json({ error: "id 필수" }, { status: 400 });
 
-  const allowed = ["award_name", "count", "percent", "per_major_category", "display_order", "grade"];
+  const allowed = ["award_name", "count", "percent", "per_major_category", "min_group_size", "display_order", "grade"];
   const safe = Object.fromEntries(Object.entries(updates).filter(([k]) => allowed.includes(k)));
 
   const supabase = getSupabaseAdmin();
