@@ -664,7 +664,7 @@ export default function JudgeAwardsPage() {
                                     <td className="px-3 py-2.5 text-xs text-gray-600">{p.categories.join(", ")}</td>
                                     <td className="px-3 py-2.5">
                                       <div className="flex gap-1 flex-wrap">
-                                        {p.awards.length > 0 ? p.awards.map(a => awardBadge(a)) : <span className="text-gray-300 text-xs">-</span>}
+                                        {p.awards.length > 0 ? p.awards.map(a => <span key={a}>{awardBadge(a)}</span>) : <span className="text-gray-300 text-xs">-</span>}
                                       </div>
                                     </td>
                                   </tr>
