@@ -28,6 +28,7 @@ interface ContestantResult {
   normalized_score: number | null;
   rank: number | null;
   award: string | null;
+  manual_award: string | null;
 }
 
 function assignAwards(sorted: ContestantResult[], settings: AwardSetting[]): ContestantResult[] {
@@ -75,7 +76,80 @@ function assignAwards(sorted: ContestantResult[], settings: AwardSetting[]): Con
     if (c.normalized_score !== null) c.rank = rank++;
   }
 
+  // manual_award 오버라이드 적용
+  for (const c of result) {
+    if (c.manual_award !== null && c.manual_award !== undefined) {
+      c.award = c.manual_award;
+    }
+  }
+
   return result;
+}
+
+// 동일인 다종목 시상 중복 제거: 같은 사람이 같은 상을 2개 이상 받은 경우
+// 점수가 낮은 쪽을 한 단계 내림 (더 낮은 tier). 내릴 수 없으면 한 단계 올림.
+function deduplicateMultiCategoryAwards(
+  results: ContestantResult[],
+  awardNames: string[] // display_order 순서 (0=최고 tier)
+): ContestantResult[] {
+  if (awardNames.length < 2) return results;
+
+  // 이름+회사+부문 기준으로 같은 사람 묶기
+  const personMap = new Map<string, ContestantResult[]>();
+  for (const r of results) {
+    const key = `${r.name}|${r.company ?? ""}|${r.grade ?? ""}`;
+    if (!personMap.has(key)) personMap.set(key, []);
+    personMap.get(key)!.push(r);
+  }
+
+  const out = results.map(r => ({ ...r }));
+
+  for (const [, group] of personMap) {
+    if (group.length < 2) continue;
+
+    // 점수 내림차순 정렬 (높은 점수 = 더 좋은 성적)
+    const sorted = [...group].sort((a, b) => (b.normalized_score ?? -1) - (a.normalized_score ?? -1));
+
+    // 각 행 순회하며 중복 상 감지 → 조정
+    const usedAwards = new Set<string>();
+    for (const r of sorted) {
+      if (!r.award) continue;
+
+      if (!usedAwards.has(r.award)) {
+        usedAwards.add(r.award);
+        continue;
+      }
+
+      // 중복 발생: 이 row의 award를 조정
+      const idx = awardNames.indexOf(r.award);
+      let newAward: string | null = null;
+
+      // 한 단계 내림 (tier 낮춤 = index 높임 = 덜 좋은 상)
+      for (let i = idx + 1; i < awardNames.length; i++) {
+        if (!usedAwards.has(awardNames[i])) {
+          newAward = awardNames[i];
+          break;
+        }
+      }
+      // 내릴 상 없으면 한 단계 올림
+      if (!newAward) {
+        for (let i = idx - 1; i >= 0; i--) {
+          if (!usedAwards.has(awardNames[i])) {
+            newAward = awardNames[i];
+            break;
+          }
+        }
+      }
+
+      if (newAward) {
+        const target = out.find(o => o.id === r.id);
+        if (target) target.award = newAward;
+        usedAwards.add(newAward);
+      }
+    }
+  }
+
+  return out;
 }
 
 export async function GET(request: NextRequest) {
@@ -105,7 +179,7 @@ export async function GET(request: NextRequest) {
 
   const { data: contestants } = await supabase
     .from("contestants")
-    .select("id, name, grade, company, number, category_id")
+    .select("id, name, grade, company, number, category_id, manual_award")
     .in("category_id", categoryIds)
     .order("display_order");
 
@@ -119,7 +193,8 @@ export async function GET(request: NextRequest) {
   const contestantIds = contestants.map((c) => c.id);
 
   // Batch scores queries to bypass Supabase server-side 1000-row limit
-  const SCORE_BATCH = 50;
+  // 총 점수 3192개 / 127명 = 25점/명 → batch=15이면 375점/배치 (1000 한도 안전)
+  const SCORE_BATCH = 15;
   const scoreBatches: string[][] = [];
   for (let i = 0; i < contestantIds.length; i += SCORE_BATCH) {
     scoreBatches.push(contestantIds.slice(i, i + SCORE_BATCH));
@@ -174,6 +249,7 @@ export async function GET(request: NextRequest) {
       normalized_score: normalized !== null ? Math.round(normalized * 100) / 100 : null,
       rank: null,
       award: null,
+      manual_award: (contestant as { manual_award?: string | null }).manual_award ?? null,
     };
   });
 
@@ -189,8 +265,15 @@ export async function GET(request: NextRequest) {
     .filter((c) => !c.grade || (c.grade !== "프로전문가부" && c.grade !== "학생부"))
     .sort(desc);
 
-  const proRanked = assignAwards(proSorted, proSettings);
-  const studentRanked = assignAwards(studentSorted, studentSettings);
+  const proAwardNames = proSettings.map(s => s.award_name);
+  const studentAwardNames = studentSettings.map(s => s.award_name);
+
+  const proRanked = deduplicateMultiCategoryAwards(
+    assignAwards(proSorted, proSettings), proAwardNames
+  );
+  const studentRanked = deduplicateMultiCategoryAwards(
+    assignAwards(studentSorted, studentSettings), studentAwardNames
+  );
 
   // by_company: 단체별 그룹
   const companyMap = new Map<string, { pro: ContestantResult[]; student: ContestantResult[]; other: ContestantResult[] }>();

@@ -29,6 +29,7 @@ interface ContestantResult {
   normalized_score: number | null;
   rank: number | null;
   award: string | null;
+  manual_award: string | null;
 }
 
 interface CompanyGroup {
