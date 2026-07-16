@@ -912,8 +912,9 @@ export default function JudgeAwardsPage() {
                           </div>
                         ) : (
                           results.by_company.map((group) => {
-                            const all = [...group.pro, ...group.student, ...group.other];
+                            const all = [...group.pro, ...group.student, ...group.other].sort((a, b) => a.name.localeCompare(b.name, "ko"));
                             const specialInGroup = all.filter(c => specialMap.has(`${c.name}|${c.company ?? ""}|${c.grade ?? ""}`));
+                            const uniqueSpecialCount = new Set(specialInGroup.map(c => `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`)).size;
                             return (
                               <div key={group.company} className="px-5 py-4">
                                 <div className="flex items-center gap-3 mb-3 flex-wrap">
@@ -924,30 +925,38 @@ export default function JudgeAwardsPage() {
                                       수상 {group.awarded_count}명
                                     </span>
                                   )}
-                                  {specialInGroup.length > 0 && (
+                                  {uniqueSpecialCount > 0 && (
                                     <span className="text-xs text-amber-700 font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                                      🌟 특별상 {specialInGroup.length}명
+                                      🌟 특별상 {uniqueSpecialCount}명
                                     </span>
                                   )}
                                 </div>
-                                {/* Special award highlight */}
-                                {specialInGroup.length > 0 && (
-                                  <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
-                                    <div className="text-xs font-semibold text-amber-700 mb-1.5">특별상 수상자</div>
-                                    <div className="flex flex-wrap gap-2">
-                                      {specialInGroup.map(c => {
-                                        const specKey = `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`;
-                                        const specAward = specialMap.get(specKey)!;
-                                        return (
-                                          <div key={c.id + "-special"} className="flex items-center gap-1.5 text-xs">
-                                            <span className="font-semibold text-gray-900">{c.name}</span>
-                                            {awardBadge(specAward)}
-                                          </div>
-                                        );
-                                      })}
+                                {/* Special award highlight — deduplicated by person */}
+                                {specialInGroup.length > 0 && (() => {
+                                  const seen = new Set<string>();
+                                  const unique = specialInGroup.filter(c => {
+                                    const k = `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`;
+                                    if (seen.has(k)) return false;
+                                    seen.add(k); return true;
+                                  }).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+                                  return (
+                                    <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                                      <div className="text-xs font-semibold text-amber-700 mb-1.5">특별상 수상자 ({unique.length}명)</div>
+                                      <div className="flex flex-wrap gap-2">
+                                        {unique.map(c => {
+                                          const specKey = `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`;
+                                          const specAward = specialMap.get(specKey)!;
+                                          return (
+                                            <div key={specKey} className="flex items-center gap-1.5 text-xs">
+                                              <span className="font-semibold text-gray-900">{c.name}</span>
+                                              {awardBadge(specAward)}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  );
+                                })()}
                                 <div className="space-y-2">
                                   {all.map((c) => {
                                     const specKey = `${c.name}|${c.company ?? ""}|${c.grade ?? ""}`;
