@@ -560,7 +560,7 @@ export default function JudgeAwardsPage() {
 
                 {/* View tabs — sticky below navbar */}
                 <div className="sticky top-16 z-20 bg-white/95 backdrop-blur-sm -mx-5 px-5 py-2 border-b border-gray-100 mb-4">
-                <div className="flex gap-1 overflow-x-auto pb-1">
+                <div className="flex gap-1 overflow-x-auto pb-1 items-center">
                   {(["전체", "프로전문가부", "학생부", "종목별", "단체별", "특별상"] as ViewTab[]).map((t) => {
                     const allCats = new Set([...results.pro_results, ...results.student_results].map(r => r.category_name));
                     // compute multi-category special award counts
@@ -588,6 +588,14 @@ export default function JudgeAwardsPage() {
                       </button>
                     );
                   })}
+                  <div className="flex-shrink-0 ml-auto pl-2">
+                    <button
+                      onClick={() => window.open(`/judge/awards/print?competition_id=${selectedComp!.id}`, "_blank")}
+                      className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 whitespace-nowrap"
+                    >
+                      🖨️ 인쇄 / PDF
+                    </button>
+                  </div>
                 </div>
                 </div>
 
@@ -954,6 +962,15 @@ export default function JudgeAwardsPage() {
                                     🌟 특별상 {uniqueSpecialCount}명
                                   </span>
                                 )}
+                                <button
+                                  onClick={() => window.open(
+                                    `/judge/awards/print?competition_id=${selectedComp!.id}&company=${encodeURIComponent(group.company)}`,
+                                    "_blank"
+                                  )}
+                                  className="ml-auto text-xs px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 flex items-center gap-1"
+                                >
+                                  🖨️ 단체 출력
+                                </button>
                               </div>
                               <div className="overflow-x-auto">
                                 <table className="w-full text-sm border-collapse">
