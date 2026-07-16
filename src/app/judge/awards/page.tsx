@@ -182,6 +182,8 @@ export default function JudgeAwardsPage() {
   const [loading, setLoading] = useState(false);
   const [showScores, setShowScores] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editingAward, setEditingAward] = useState<string | null>(null);
+  const [savingAward, setSavingAward] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -219,6 +221,26 @@ export default function JudgeAwardsPage() {
     if (selectedComp) loadAll(selectedComp);
     else { setResults(null); setAwardSettings([]); setDrafts({}); }
   }, [selectedComp, loadAll]);
+
+  const handleManualAward = useCallback(async (contestantId: string, award: string | null) => {
+    setEditingAward(null);
+    setSavingAward(contestantId);
+    try {
+      await apiFetch(`/api/judge/contestants/${contestantId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manual_award: award }),
+      });
+      if (selectedComp) {
+        const res = await apiFetch(`/api/judge/competition-results?competition_id=${selectedComp.id}`);
+        setResults(res as ResultsData);
+      }
+    } catch (e) {
+      alert(`저장 실패: ${(e as Error).message}`);
+    } finally {
+      setSavingAward(null);
+    }
+  }, [selectedComp]);
 
   const handleSeed = async (grade: string) => {
     if (!selectedComp) return;
@@ -980,8 +1002,39 @@ export default function JudgeAwardsPage() {
                                                   : <span className="text-gray-300 text-xs">-</span>}
                                               </td>
                                             )}
-                                            <td className="px-3 py-2.5 text-center border-l border-gray-200">
-                                              {awardBadge(r.award) ?? <span className="text-gray-200 text-xs">-</span>}
+                                            <td className="px-3 py-2.5 text-center border-l border-gray-200 min-w-[90px]">
+                                              {savingAward === r.id ? (
+                                                <span className="text-gray-300 text-xs">저장중…</span>
+                                              ) : editingAward === r.id ? (
+                                                <select
+                                                  autoFocus
+                                                  className="text-xs border border-blue-300 rounded px-1 py-0.5 bg-white outline-none w-full"
+                                                  defaultValue={r.award ?? ""}
+                                                  onChange={(e) => handleManualAward(r.id, e.target.value || null)}
+                                                  onBlur={() => setEditingAward(null)}
+                                                >
+                                                  <option value="">— 초기화 —</option>
+                                                  {(r.grade === "프로전문가부" ? results.pro_awards : results.student_awards)
+                                                    .map(a => <option key={a.id} value={a.award_name}>{a.award_name}</option>)}
+                                                </select>
+                                              ) : (
+                                                <button
+                                                  onClick={() => setEditingAward(r.id)}
+                                                  className="group hover:opacity-75 transition-opacity"
+                                                  title="클릭하여 시상 수정"
+                                                >
+                                                  {r.award ? (
+                                                    <span className="inline-flex items-center gap-1">
+                                                      {r.manual_award && (
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0" title="수동 설정됨" />
+                                                      )}
+                                                      {awardBadge(r.award)}
+                                                    </span>
+                                                  ) : (
+                                                    <span className="text-gray-300 text-xs group-hover:text-blue-400 transition-colors">+ 추가</span>
+                                                  )}
+                                                </button>
+                                              )}
                                             </td>
                                             {isFirst && (
                                               <td rowSpan={pg.rows.length} className="px-3 py-2.5 text-center align-middle border-l border-gray-200">
