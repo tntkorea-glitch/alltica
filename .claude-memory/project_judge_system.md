@@ -17,119 +17,63 @@ metadata:
 
 - `competitions` — id, title, description, date_display, status, allow_contestant_upload, contest_slug
 - `categories` — id, competition_id, name, display_order
-- `contestants` — id, category_id, name, phone, email, company, grade, number, display_order
+- `contestants` — id, category_id, name, phone, email, company, grade, number, display_order, **manual_award** (text, nullable)
 - `contestant_files` — id, contestant_id, storage_path, file_name, file_type, video_url
 - `judge_assignments` — id, user_id, category_id, assigned_by, title
-- `criteria` (채점항목) — 아직 미설정, 탭만 있음
-- `awards` (시상설정) — 아직 미설정, 탭만 있음
+- `competition_award_settings` — id, competition_id, grade, award_name, count, percent, per_major_category, min_group_size, display_order
 
 ## 구현 완료
 
 ### 대회·종목 탭
 - 대회 목록 + 신청서에서 자동 생성 (contest_slug 연동)
 - 종목 추가 (직접입력 / 신청서에서 자동 추가)
-- `contest_slug` 저장 필수 — competitions POST에 이미 포함
 
 ### 선수·파일 탭
 - 대회 선택 시 전체 선수 자동 로드 (category 선택 불필요)
-- 종목 필터 탭 (상단) — 전체/종목별 토글
-- **종목별 그룹 테이블 형태** (2026-07-13 완료):
-  - 보라색 헤더로 종목 구분
-  - 컬럼: 번호(파란원) | 이름 | 단체명 | 연락처 | 부문 | 파일/첨부 | 삭제
-  - 파일/첨부 셀에 +파일 업로드 + ▶YT YouTube 버튼 인라인
+- 종목별 그룹 테이블 형태
 - 참가번호 자동 부여 (종목별 1부터, number 컬럼)
 - 신청서에서 불러오기: division → category 매핑, 2종목 이상 선수 각 종목에 중복 등록
-- 단체접수 파일 (data-file/*.xlsx): IBC 서식 파싱 (row9=헤더, row10+=데이터, col: 0=순번,1=이름,2=상호,5=연락처,8=참가부문,9=대종목,10=세부종목)
-- 엑셀 업로드: IBC 서식 자동 감지 or 일반 서식 (이름/연락처 컬럼 자동 탐색)
-- 매핑 안 된 종목 → 현재 선택 종목에 fallback 등록 옵션 (체크박스)
 
 ### 심사위원 배정 탭
-- 신청서에서 불러오기 → 테이블 형태 (2026-07-13 완료):
-  - 컬럼: 이름/이메일 | 연락처 | 직책 | 신청종목 | 경력 | 입금확인 | 배정종목 | 배정직책
-  - 입금확인 체크 시 해당 행에 배정종목/배정직책 셀렉트 인라인 표시
-  - 일괄 배정 버튼 (입금확인된 인원 수 표시)
-- 배정완료 심사위원 목록 → 테이블 형태 (2026-07-13 완료):
-  - 컬럼: 종목 | 이름 | 이메일 | 직책 | 해제
+- 신청서에서 불러오기 → 테이블 형태
+- 배정완료 심사위원 목록 → 테이블 형태
+- 조직위(-committee) 신청자 포함
+- 전화번호 매칭으로 실 Google 계정 연결
 
-### API 라우트
-- `GET /api/judge/contestants?competition_id=` → 전체 선수 + category_name 조인
-- `GET /api/judge/contestants?category_id=` → 종목별 선수
-- `POST /api/judge/contestants` → number 자동 부여 후 저장
-- `GET /api/judge/import-excel` → data-file/*.xlsx IBC 파싱 반환 (static import * as XLSX 필수!)
-- `POST /api/judge/import` action=athletes → 일괄 등록 (fallback_category_id 지원)
-- `POST /api/judge/import` action=excel-rows → IBC 행 일괄 등록
-- `POST /api/judge/import` action=judges → 심사위원 배정 (email → user_id 매핑)
+### 심사 화면 + 채점항목
+- `/judge/score` — 5단계 버튼 UX (scale 값 표시)
+- 채점항목 자동 설정 (IBC 기준표 전종목)
 
-## 2026-07-14 추가 완료
+### 시상 화면 (`/judge/awards`) — 2026-07-17 완성
+- 탭: 전체 / 프로전문가부 / 학생부 / 종목별 / 단체별 / 특별상
+- **sticky 탭바**: top-16에 고정
+- **종목별 집계표**: 프로/학생 통합 테이블, 상별 트로피 수(합계+프로+학생) 헤더 표시
+- **단체별 rowspan 테이블**: 이름/부문 셀 병합, 열 구분선
+- **단체별 점수 ON/OFF 토글**: 오른쪽 상단 버튼으로 점수 열 표시/숨김
+- **상명 직접 수정**: AwardRow 인라인 편집 → PATCH API → 모든 탭 자동 반영
+- **min_group_size**: 월드MVP챔피언 등 per_major_category 시상에서 최소 인원 조건 설정 가능
+- **manual_award**: contestants 테이블 컬럼 추가 완료. 이 값이 있으면 computed award를 덮어씀
+- **2종목 중복상 방지**: `deduplicateMultiCategoryAwards` — 같은 사람이 같은 상 2개 이상이면 하위 상으로 조정
 
-### 심사 화면 + 채점항목 자동 설정 (IBC 기준표 분석 기반)
-- **`src/lib/judge-criteria-data.ts`**: JSON 기준표 파싱 결과를 하드코딩 — PMU/SMP/네일(11종)/메이크업(10종)/속눈썹/왁싱/슈가링/피부/헤어/플래닝/플라즈마 전종목 scale 배열 포함
-- **`/api/judge/criteria/seed` (POST)**: 종목명 자동 감지 → scoring_criteria 일괄 등록 (기존 항목 교체)
-- **Admin CriteriaTab 업그레이드**: "자동 설정" 버튼 + 대면/출품 토글 추가 — 한 번 클릭으로 전종목 채점항목 등록
-- **`/judge/score` ScoreCard 5단계 버튼 UX**: 숫자 직접 입력 → 매우미흡/미흡/보통/잘함/매우잘함 5개 버튼 (scale 값 표시), scoresRef로 stale closure 버그 수정
+### 미집계 해결 (2026-07-17)
+- **근본 원인**: Supabase PostgREST 서버사이드 1000row 제한. batch=50 → 1,257 rows/batch → 절단
+- **수정**: `SCORE_BATCH = 15` (375 rows/batch, 1000 안전)
+- **파일**: `src/app/api/judge/competition-results/route.ts`
+- 결과: 25명 "미집계"가 모두 정상 집계됨 (점수 자체는 정상 존재)
 
-<<<<<<< Updated upstream
-=======
-## 2026-07-15 추가 완료
-
-### 심사위원 배정 탭 개편
-- **미입금 체크박스**: 신청서 목록 우측 열 — 체크 시 목록에서 제외, 하단 "미입금자 리스트" 빨간 테이블로 분리 표시
-- **미입금 상태 보존**: 신청서 재불러오기 시 `judgeConfig.unpaid` 값 유지 (이전엔 덮어쓰기로 초기화됨)
-- **배정완료 → 미입금 이동**: 배정 완료 섹션 각 심사위원 이름 아래 "배정취소" 버튼 추가 (전체 종목 일괄 삭제)
-- **중복 제외 3중 기준**: 이름 + 이메일 + 전화번호(숫자) 매칭 — "Thu Sen"/"석 미 숙" 같은 이름 불일치 케이스도 이메일·전화번호로 자동 제외
-- **종목별 탭 정렬**: 각 대종목 그룹 내 직책순(JUDGE_TITLES 순) → 이름 가나다순 고정 정렬
-- `judge_assignments` API: users 조회 시 phone 컬럼 추가 포함
-
-### SQL로 처리된 데이터 수정 이력 (2026-07-15)
-- Thu Sen → 류수진 (email: sujinryu711@gmail.com), 직책 수석심사위원
-- 석 미 숙 → 석미숙 (email: 78kumisms@naver.com)
-- 신민지, 김예빈, 서한솔 직책 → 수석심사위원
-- 유가현 직책 → 심사위원 (gahyun0093@naver.com)
-- 노태영 직책 → 심사위원 (a01024425659@gmail.com)
-- 김지혜(woojoo8933@naver.com) 배정 취소 (동명이인 오배정)
-
-## 2026-07-15 추가 완료 (이번 세션)
-
-### 채점결과 화면 (`/judge/result`) 개편
-- **합치기 탭**: score 페이지와 동일한 MERGE_GROUPS 적용 (블로드라이/원랭스/살롱헤어커트 등 병합)
-- **사진·영상 미리보기**: PhotoCell/VideoCell + 왼쪽 패널 + 풀스크린 지원 (score 페이지와 동일 UX)
-- **심사위원 이름**: `judge_assignments.judge_name` 기준 (Google 프로필명 아닌 신청서 이름)
-- **탭 색상 구분**: 제출완료 → 초록/✅, 일부제출 → 주황/⏳, 미제출 → 흰색
-- **구분행**: 병합탭 내 세부종목별 제출 상태 색상 표시 (초록/주황)
-
-### 심사위원 배정 개선
-- **조직위(-committee) 신청자 불러오기**: import 시 `-judge`와 `-committee` slug 모두 포함
-- **전화번호 매칭**: ibc.local 임시계정 생성 전 전화번호로 실 Google 계정 먼저 탐색
-- **Google 로그인 시 자동 병합**: `auth.ts` — 로그인 시 동일 전화번호 ibc.local 계정의 judge_assignments를 실 계정으로 이전
-- **회원에서 추가**: admin 페이지에서 시스템 회원 검색 후 심사위원으로 직접 추가 (`/api/judge/users` 신규)
-
-### 관리자 반려 기능 (`/judge/result`)
-- 채점결과 화면에서 ✅ 제출완료 심사위원 이름 옆 **[반려]** 버튼 표시 (관리자만)
-- 반려 시 `judge_submissions` 레코드 삭제 → 심사위원이 다시 채점 수정·제출 가능
-- 병합탭에서는 "반려 (세부종목명)" 형태로 표시
-- API: `GET /api/judge/admin/submissions` (신규), `DELETE /api/judge/scores/submit` (기존)
-- 관리자 감지: `/api/judge/me` → `isAdmin` 필드 추가
-
-### 데이터 수정 (SQL)
-- 이름 오타: 김미희→김민희, 이 아라→이아라
-- 노태영 테스트 채점 데이터 전체 삭제 (judge_scores + judge_submissions)
-
-### 팝업 이름 표기 수정 (2026-07-15 이번 세션)
-- `/api/judge/me` — `judge_name`(신청서 실명) 우선 → `user.name`(DB) → Google 계정명 순으로 폴백
-- 효과: 구글 계정 표시명(예: 람페로마lamperoma)이 팝업에 뜨던 심사위원 전원 실명으로 변경
-
->>>>>>> Stashed changes
 ## 남은 작업 (다음 세션 우선순위)
 
-1. **채점항목 실제 등록**: admin `/judge/admin` → 채점 항목 탭 → 각 종목 선택 → "자동 설정" 버튼 클릭 (출품대회 선택)
-2. **시상설정**: 각 종목별로 금상/은상/동상/장려상 수 설정
-3. **결과 확인** `/judge/result` — 이미 구현 완료, 결과 확인 버튼만 admin과 연동 필요
+1. **단체별 인라인 시상 수정 UI**: 단체별 탭에서 award 배지 클릭 → 드롭다운 → manual_award 저장 → 모든 탭 반영 (미구현)
+2. **월드MVP챔피언 min_group_size**: 시상설정 패널에서 월드MVP챔피언 → "최소 N명↑만" 필드에 숫자 입력 (UI는 있음, 실제 설정값 입력 필요)
+3. **시상식 프린트/PDF 출력**: 단체별 또는 전체 시상 결과 인쇄 포맷
 
 ## 주의사항
 
-- `xlsx` 패키지: 반드시 `import * as XLSX from "xlsx"` (static top-level) — dynamic import 쓰면 ESM/CJS 이슈로 XLSX.readFile undefined
-- `data-file/` 폴더: `D:\dev\alltica\data-file\` — 포항뷰티인.xlsx, 익산뷰티명가.xlsx, 아뜰리에.xlsx
-- judge_assignments upsert onConflict: `"user_id,category_id"` (복합 유니크)
+- `xlsx` 패키지: 반드시 `import * as XLSX from "xlsx"` (static top-level)
+- `data-file/` 폴더: `D:\dev\alltica\data-file\`
+- judge_assignments upsert onConflict: `"user_id,category_id"`
+- Supabase 1000row 제한: score 배치 조회는 반드시 batch=15 이하로 유지
+- .env.local 값에 따옴표 있으면 Node.js 스크립트에서 `replace(/^['"]|['"]$/g,'')` 처리 필요
 
 **Why:** IBC 12th 2026-07-15 대회 준비용. 온라인 심사 시스템 신규 구축 중.
-**How to apply:** judge 관련 작업 시 이 문서 먼저 확인, 위 API 시그니처 그대로 사용.
+**How to apply:** judge 관련 작업 시 이 문서 먼저 확인.
