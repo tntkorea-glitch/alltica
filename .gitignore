@@ -30,11 +30,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+.env*.local
 
-# vercel
-.vercel
+# vercel — project.json은 계정 연결 정보라 커밋 유지 (민감정보 없음)
+.vercel/*
+!.vercel/project.json
 
 # typescript
 *.tsbuildinfo
@@ -48,9 +50,6 @@ next-env.d.ts
 secrets/
 credentials*.json
 
-.vercel
-.env*.local
-
 # prisma — generated client must not be committed
 /src/generated/
 # local sqlite (dev only)
@@ -58,6 +57,3 @@ credentials*.json
 *.db-journal
 # claude scheduler lock
 .claude/scheduled_tasks.lock
-
-.vercel
-.env*
