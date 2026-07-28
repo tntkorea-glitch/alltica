@@ -347,7 +347,40 @@ export default function JudgeAwardsPage() {
           ? <span className="font-bold text-gray-800">{r.normalized_score.toFixed(1)}</span>
           : <span className="text-gray-300 text-xs">미집계</span>}
       </td>
-      <td className="px-3 py-2.5 text-center">{awardBadge(r.award)}</td>
+      <td className="px-3 py-2.5 text-center min-w-[100px]">
+        {savingAward === r.id ? (
+          <span className="text-gray-300 text-xs">저장중…</span>
+        ) : editingAward === r.id ? (
+          <select
+            autoFocus
+            className="text-xs border border-blue-300 rounded px-1 py-0.5 bg-white outline-none w-full"
+            defaultValue={r.award ?? ""}
+            onChange={(e) => handleManualAward(r.id, e.target.value || null)}
+            onBlur={() => setEditingAward(null)}
+          >
+            <option value="">— 초기화 —</option>
+            {(r.grade === "프로전문가부" ? (results?.pro_awards ?? []) : (results?.student_awards ?? []))
+              .map((a) => <option key={a.id} value={a.award_name}>{a.award_name}</option>)}
+          </select>
+        ) : (
+          <button
+            onClick={() => setEditingAward(r.id)}
+            className="group hover:opacity-75 transition-opacity"
+            title="클릭하여 시상 수정"
+          >
+            {r.award ? (
+              <span className="inline-flex items-center gap-1">
+                {r.manual_award && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0" title="수동 설정됨" />
+                )}
+                {awardBadge(r.award)}
+              </span>
+            ) : (
+              <span className="text-gray-300 text-xs group-hover:text-blue-400 transition-colors">+ 추가</span>
+            )}
+          </button>
+        )}
+      </td>
     </tr>
   );
 
