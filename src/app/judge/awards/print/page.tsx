@@ -261,6 +261,46 @@ export default function AwardsPrintPage() {
                       )}
                     </tbody>
                   </table>
+
+                  {/* 시상별 수량 요약 */}
+                  {(() => {
+                    const specialCounts: Record<string, number> = {};
+                    for (const pg of pgs) {
+                      if (pg.specialAward) {
+                        specialCounts[pg.specialAward] = (specialCounts[pg.specialAward] || 0) + 1;
+                      }
+                    }
+                    const awardCounts = allAwardNames.map(aw => ({
+                      name: aw.award_name,
+                      count: all.filter(r => r.award === aw.award_name).length,
+                    }));
+                    return (
+                      <div style={{ marginTop: "4mm" }}>
+                        <table style={{ borderCollapse: "collapse", border: "1.5px dashed #aaa", fontSize: "8pt" }}>
+                          <thead>
+                            <tr>
+                              <th style={{ border: "0.5px solid #ccc", padding: "2px 20px", textAlign: "center", background: "#f0f0f0" }}>시상</th>
+                              <th style={{ border: "0.5px solid #ccc", padding: "2px 16px", textAlign: "center", background: "#f0f0f0" }}>수량</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {awardCounts.map(({ name, count }) => (
+                              <tr key={name}>
+                                <td style={{ border: "0.5px solid #ccc", padding: "2px 20px", textAlign: "center" }}>{name}</td>
+                                <td style={{ border: "0.5px solid #ccc", padding: "2px 16px", textAlign: "center" }}>{count > 0 ? count : ""}</td>
+                              </tr>
+                            ))}
+                            {Object.entries(specialCounts).map(([name, count]) => (
+                              <tr key={name}>
+                                <td style={{ border: "0.5px solid #ccc", padding: "2px 20px", textAlign: "center", color: "#555" }}>{name}</td>
+                                <td style={{ border: "0.5px solid #ccc", padding: "2px 16px", textAlign: "center" }}>{count}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
