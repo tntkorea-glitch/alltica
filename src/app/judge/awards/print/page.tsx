@@ -126,12 +126,14 @@ export default function AwardsPrintPage() {
           .no-print { display: none !important; }
           body { margin: 0; padding: 0; font-size: 9pt; color: #000; }
           .print-page { padding: 0; }
-          .company-block { margin-bottom: 6mm; break-inside: avoid; }
-          .company-block + .company-block { page-break-before: always; break-before: page; }
+          .company-break { page-break-before: always; break-before: page; }
           .award-block { page-break-inside: avoid; break-inside: avoid; margin-bottom: 6mm; }
           table { border-collapse: collapse; width: 100%; }
+          thead { display: table-header-group; }
           th, td { border: 0.5px solid #ccc; padding: 2px 4px; }
           tr { page-break-inside: avoid; break-inside: avoid; }
+          .print-only { display: table-row !important; }
+          .company-name-cell { background: #e0e0e0 !important; font-weight: bold; font-size: 10pt; padding: 3px 6px; }
           .award-badge { border: 0.5px solid #999; border-radius: 3px; padding: 1px 4px; font-size: 8pt; }
           h1 { font-size: 14pt; margin-bottom: 2mm; }
           h2 { font-size: 10pt; margin: 0 0 2mm; }
@@ -191,7 +193,7 @@ export default function AwardsPrintPage() {
             <h2 className="text-base font-bold text-gray-700 mb-4 no-print">
               {filterCompany ? `${filterCompany} 시상 결과` : "단체별 시상 결과"}
             </h2>
-            {displayGroups.map(group => {
+            {displayGroups.map((group, gi) => {
               const all = [...group.pro, ...group.student, ...group.other]
                 .sort((a, b) => a.name.localeCompare(b.name, "ko"));
               if (all.length === 0) return null;
@@ -211,13 +213,21 @@ export default function AwardsPrintPage() {
               const pgs = pgOrder.map(k => pgMap.get(k)!);
 
               return (
-                <div key={group.company} className="company-block mb-6">
-                  <div className="flex items-baseline gap-2 mb-1">
+                <div key={group.company} className={gi > 0 ? "company-break" : ""} style={{ marginBottom: "6mm" }}>
+                  {/* 화면 전용 단체명 헤더 */}
+                  <div className="no-print flex items-baseline gap-2 mb-1">
                     <h3 className="font-bold text-gray-900">{group.company}</h3>
                     <span className="text-xs text-gray-400">{all.length}명 참가 · 수상 {group.awarded_count}명</span>
                   </div>
                   <table className="w-full text-xs border-collapse">
                     <thead>
+                      {/* 인쇄 시 페이지마다 반복되는 단체명 행 */}
+                      <tr className="print-only" style={{ display: "none" }}>
+                        <th colSpan={6} className="company-name-cell border border-gray-400 px-2 py-1.5 text-left">
+                          {group.company}
+                          <span className="ml-3 font-normal text-gray-500 text-xs">{all.length}명 참가 · 수상 {group.awarded_count}명</span>
+                        </th>
+                      </tr>
                       <tr className="bg-gray-100">
                         <th className="border border-gray-300 px-2 py-1 text-center w-10">번호</th>
                         <th className="border border-gray-300 px-2 py-1 text-left w-20">이름</th>
@@ -232,29 +242,23 @@ export default function AwardsPrintPage() {
                         pg.rows.map((r, ri) => (
                           <tr key={r.id} className={pi % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                             <td className="border border-gray-200 px-2 py-1 text-center text-gray-500">{r.number ?? "-"}</td>
-                            {ri === 0 && (
-                              <td rowSpan={pg.rows.length} className="border border-gray-200 px-2 py-1 font-semibold align-middle">
-                                {pg.name}
-                              </td>
-                            )}
-                            {ri === 0 && (
-                              <td rowSpan={pg.rows.length} className="border border-gray-200 px-2 py-1 text-center align-middle text-gray-600">
-                                {pg.grade === "프로전문가부" ? "프로" : pg.grade === "학생부" ? "학생" : ""}
-                              </td>
-                            )}
+                            <td className="border border-gray-200 px-2 py-1 font-semibold">{ri === 0 ? pg.name : ""}</td>
+                            <td className="border border-gray-200 px-2 py-1 text-center text-gray-600">
+                              {ri === 0 ? (pg.grade === "프로전문가부" ? "프로" : pg.grade === "학생부" ? "학생" : "") : ""}
+                            </td>
                             <td className="border border-gray-200 px-2 py-1 text-gray-700">{r.category_name}</td>
                             <td className="border border-gray-200 px-2 py-1 text-center">
                               {r.award ? (
                                 <span className="award-badge font-semibold">{r.award}</span>
                               ) : <span className="text-gray-300">-</span>}
                             </td>
-                            {ri === 0 && (
-                              <td rowSpan={pg.rows.length} className="border border-gray-200 px-2 py-1 text-center align-middle">
-                                {pg.specialAward ? (
-                                  <span className="award-badge font-semibold">{pg.specialAward}</span>
-                                ) : <span className="text-gray-300">-</span>}
-                              </td>
-                            )}
+                            <td className="border border-gray-200 px-2 py-1 text-center">
+                              {ri === 0 ? (
+                                pg.specialAward
+                                  ? <span className="award-badge font-semibold">{pg.specialAward}</span>
+                                  : <span className="text-gray-300">-</span>
+                              ) : ""}
+                            </td>
                           </tr>
                         ))
                       )}
