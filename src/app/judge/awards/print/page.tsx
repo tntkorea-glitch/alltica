@@ -264,55 +264,62 @@ export default function AwardsPrintPage() {
 
                   {/* 시상별 수량 요약 */}
                   {(() => {
-                    const specialCounts: Record<string, number> = {};
-                    for (const pg of pgs) {
-                      if (pg.specialAward) {
-                        specialCounts[pg.specialAward] = (specialCounts[pg.specialAward] || 0) + 1;
+                    const proSet = new Set(results.pro_awards.map(a => a.award_name));
+                    const studentSet = new Set(results.student_awards.map(a => a.award_name));
+                    type AwardGroup = { division: string; awards: { name: string; count: number }[] };
+                    const groups: AwardGroup[] = [];
+                    for (const aw of allAwardNames) {
+                      const isPro = proSet.has(aw.award_name);
+                      const isStudent = studentSet.has(aw.award_name);
+                      const division = isPro && isStudent ? "프로전문가부\n/ 학생부" : isPro ? "프로전문가부" : "학생부";
+                      const count = all.filter(r => r.award === aw.award_name).length;
+                      if (groups.length === 0 || groups[groups.length - 1].division !== division) {
+                        groups.push({ division, awards: [{ name: aw.award_name, count }] });
+                      } else {
+                        groups[groups.length - 1].awards.push({ name: aw.award_name, count });
                       }
                     }
-                    const SPECIAL_AWARD_ORDER = ["최우수선수상", "우수선수상"];
-                    const summaryRows = [
-                      ...allAwardNames.map(aw => ({
-                        name: aw.award_name,
-                        count: all.filter(r => r.award === aw.award_name).length,
-                      })),
-                      ...SPECIAL_AWARD_ORDER
-                        .filter(n => specialCounts[n] !== undefined || true)
-                        .map(n => ({ name: n, count: specialCounts[n] ?? 0 })),
+                    const specialRows = [
+                      { division: "프로부", name: "최우수선수상", count: pgs.filter(p => p.specialAward === "최우수선수상").length },
+                      { division: "학생부", name: "우수선수상", count: pgs.filter(p => p.specialAward === "우수선수상").length },
                     ];
-                    const cellStyle: React.CSSProperties = {
-                      border: "1px solid #aaa",
-                      padding: "5px 0",
-                      textAlign: "center",
-                      color: "#1a56a0",
-                      fontSize: "9pt",
-                    };
-                    const thStyle: React.CSSProperties = {
-                      border: "1px solid #aaa",
-                      padding: "6px 0",
-                      textAlign: "center",
-                      color: "#1a56a0",
-                      fontWeight: "bold",
-                      fontSize: "9pt",
-                    };
+                    const C: React.CSSProperties = { border: "1px solid #aaa", padding: "6px 10px", textAlign: "center", color: "#1a56a0", fontSize: "9pt" };
+                    const TH: React.CSSProperties = { ...C, fontWeight: "bold" };
                     return (
                       <div style={{ marginTop: "5mm" }}>
-                        <table style={{ borderCollapse: "collapse", width: "55%" }}>
+                        <table style={{ borderCollapse: "collapse", width: "68%" }}>
                           <thead>
                             <tr>
-                              <th style={{ ...thStyle, width: "30%" }}>시상</th>
-                              <th style={{ ...thStyle, width: "15%" }}>수량</th>
-                              <th style={{ ...thStyle, width: "27.5%" }}>출고확인</th>
-                              <th style={{ ...thStyle, width: "27.5%" }}>입고확인</th>
+                              <th style={{ ...TH, width: "22%" }}></th>
+                              <th style={{ ...TH, width: "22%" }}>시상</th>
+                              <th style={{ ...TH, width: "14%" }}>수량</th>
+                              <th style={{ ...TH, width: "21%" }}>출고확인</th>
+                              <th style={{ ...TH, width: "21%" }}>입고확인</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {summaryRows.map(({ name, count }) => (
-                              <tr key={name}>
-                                <td style={cellStyle}>{name}</td>
-                                <td style={cellStyle}>{count > 0 ? count : ""}</td>
-                                <td style={cellStyle}></td>
-                                <td style={cellStyle}></td>
+                            {groups.flatMap(g =>
+                              g.awards.map((aw, i) => (
+                                <tr key={aw.name}>
+                                  {i === 0 && (
+                                    <td rowSpan={g.awards.length} style={{ ...C, whiteSpace: "pre-line", verticalAlign: "middle" }}>
+                                      {g.division}
+                                    </td>
+                                  )}
+                                  <td style={C}>{aw.name}</td>
+                                  <td style={C}>{aw.count > 0 ? aw.count : ""}</td>
+                                  <td style={C}></td>
+                                  <td style={C}></td>
+                                </tr>
+                              ))
+                            )}
+                            {specialRows.map(r => (
+                              <tr key={r.name}>
+                                <td style={C}>{r.division}</td>
+                                <td style={C}>{r.name}</td>
+                                <td style={C}>{r.count > 0 ? r.count : ""}</td>
+                                <td style={C}></td>
+                                <td style={C}></td>
                               </tr>
                             ))}
                           </tbody>
