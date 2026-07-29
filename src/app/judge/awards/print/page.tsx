@@ -122,18 +122,18 @@ export default function AwardsPrintPage() {
   return (
     <>
       <style>{`
+        .company-name-cell { background: #e0e0e0; font-weight: bold; text-align: left; padding: 4px 8px; font-size: 10pt; }
         @media print {
           .no-print { display: none !important; }
           body { margin: 0; padding: 0; font-size: 9pt; color: #000; }
-          .print-page { padding: 0; }
+          .print-page { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
           .company-break { page-break-before: always; break-before: page; }
           .award-block { page-break-inside: avoid; break-inside: avoid; margin-bottom: 6mm; }
           table { border-collapse: collapse; width: 100%; }
           thead { display: table-header-group; }
           th, td { border: 0.5px solid #ccc; padding: 2px 4px; }
           tr { page-break-inside: avoid; break-inside: avoid; }
-          .print-only { display: table-row !important; }
-          .company-name-cell { background: #e0e0e0 !important; font-weight: bold; font-size: 10pt; padding: 3px 6px; }
+          .company-name-cell { background: #e0e0e0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .award-badge { border: 0.5px solid #999; border-radius: 3px; padding: 1px 4px; font-size: 8pt; }
           h1 { font-size: 14pt; margin-bottom: 2mm; }
           h2 { font-size: 10pt; margin: 0 0 2mm; }
@@ -162,7 +162,7 @@ export default function AwardsPrintPage() {
       </div>
 
       {/* 인쇄 본문 */}
-      <div ref={printRef} className="print-page max-w-4xl mx-auto px-8 py-6">
+      <div ref={printRef} className="print-page max-w-4xl mx-auto" style={{ padding: "24px 32px" }}>
 
         {/* 헤더 */}
         <div className="mb-6 border-b-2 border-gray-800 pb-3">
@@ -214,18 +214,14 @@ export default function AwardsPrintPage() {
 
               return (
                 <div key={group.company} className={gi > 0 ? "company-break" : ""} style={{ marginBottom: "6mm" }}>
-                  {/* 화면 전용 단체명 헤더 */}
-                  <div className="no-print flex items-baseline gap-2 mb-1">
-                    <h3 className="font-bold text-gray-900">{group.company}</h3>
-                    <span className="text-xs text-gray-400">{all.length}명 참가 · 수상 {group.awarded_count}명</span>
-                  </div>
                   <table className="w-full text-xs border-collapse">
                     <thead>
-                      {/* 인쇄 시 페이지마다 반복되는 단체명 행 */}
-                      <tr className="print-only" style={{ display: "none" }}>
-                        <th colSpan={6} className="company-name-cell border border-gray-400 px-2 py-1.5 text-left">
+                      <tr>
+                        <th colSpan={6} className="company-name-cell border border-gray-400">
                           {group.company}
-                          <span className="ml-3 font-normal text-gray-500 text-xs">{all.length}명 참가 · 수상 {group.awarded_count}명</span>
+                          <span style={{ marginLeft: "12px", fontWeight: "normal", fontSize: "0.8em", color: "#666" }}>
+                            {all.length}명 참가 · 수상 {group.awarded_count}명
+                          </span>
                         </th>
                       </tr>
                       <tr className="bg-gray-100">
