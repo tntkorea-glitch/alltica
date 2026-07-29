@@ -125,17 +125,19 @@ export default function AwardsPrintPage() {
         @media print {
           .no-print { display: none !important; }
           body { margin: 0; padding: 0; font-size: 9pt; color: #000; }
-          .print-page { padding: 12mm 10mm; }
-          .company-block { page-break-inside: avoid; margin-bottom: 6mm; }
-          .award-block { page-break-inside: avoid; margin-bottom: 6mm; }
+          .print-page { padding: 0; }
+          .company-block { margin-bottom: 6mm; break-inside: avoid; }
+          .company-block + .company-block { page-break-before: always; break-before: page; }
+          .award-block { page-break-inside: avoid; break-inside: avoid; margin-bottom: 6mm; }
           table { border-collapse: collapse; width: 100%; }
           th, td { border: 0.5px solid #ccc; padding: 2px 4px; }
+          tr { page-break-inside: avoid; break-inside: avoid; }
           .award-badge { border: 0.5px solid #999; border-radius: 3px; padding: 1px 4px; font-size: 8pt; }
           h1 { font-size: 14pt; margin-bottom: 2mm; }
           h2 { font-size: 10pt; margin: 0 0 2mm; }
           h3 { font-size: 9pt; margin: 0 0 1mm; }
         }
-        @page { size: A4; margin: 0; }
+        @page { size: A4; margin: 12mm 10mm; }
       `}</style>
 
       {/* 화면 컨트롤 영역 */}
