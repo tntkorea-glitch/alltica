@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import * as XLSX from "xlsx";
 
 interface Competition { id: string; title: string; }
 
@@ -834,11 +835,38 @@ export default function JudgeAwardsPage() {
                       ? <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${isPro ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>{n}</span>
                       : <span className="text-gray-200 text-xs">-</span>;
 
+                    const exportExcel = () => {
+                      const compTitle = selectedComp?.title ?? "대회";
+                      const headers = ["출품", "부문", "총갯수", ...allAwardNames];
+                      const totalsRow = ["합계", "", grandTotal, ...allAwardNames.map(n => colTotals[n] || 0)];
+                      const proTotalsRow = ["(프로 소계)", "프로전문가부", proTotal, ...allAwardNames.map(n => proColTotals[n] || 0)];
+                      const studentTotalsRow = ["(학생 소계)", "학생부", studentTotal, ...allAwardNames.map(n => studentColTotals[n] || 0)];
+                      const dataRows = allRows.map(row => [
+                        (row.major ? `${row.major} - ` : "") + row.category_name,
+                        row.isPro ? "프로전문가부" : "학생부",
+                        row.total,
+                        ...allAwardNames.map(n => row.counts[n] || 0),
+                      ]);
+                      const wsData = [headers, totalsRow, proTotalsRow, studentTotalsRow, [], ...dataRows];
+                      const ws = XLSX.utils.aoa_to_sheet(wsData);
+                      // 컬럼 너비 자동 설정
+                      ws["!cols"] = [{ wch: 30 }, { wch: 12 }, { wch: 8 }, ...allAwardNames.map(() => ({ wch: 12 }))];
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, "종목별 시상 집계표");
+                      XLSX.writeFile(wb, `종목별_시상_집계표_${compTitle}.xlsx`);
+                    };
+
                     return (
                       <div className="divide-y divide-gray-100">
                         {/* 종합 집계표 */}
                         <div className="px-4 py-4">
-                          <h3 className="text-sm font-semibold text-gray-700 mb-3">🏆 종목별 시상 집계표</h3>
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-gray-700">🏆 종목별 시상 집계표</h3>
+                            <button onClick={exportExcel}
+                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border bg-green-50 text-green-700 border-green-300 hover:bg-green-100 transition-colors font-medium">
+                              📥 엑셀 다운로드
+                            </button>
+                          </div>
                           <div className="overflow-x-auto">
                             <table className="text-xs border-collapse" style={{ minWidth: "max-content" }}>
                               <thead>
