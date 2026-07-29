@@ -125,6 +125,7 @@ export default function AwardsPrintPage() {
         .company-name-cell { background: #e0e0e0; font-weight: bold; text-align: left; padding: 4px 8px; font-size: 10pt; }
         @media print {
           .no-print { display: none !important; }
+          header, footer { display: none !important; }
           body { margin: 0; padding: 0; font-size: 9pt; color: #000; }
           .print-page { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
           .company-break { page-break-before: always; break-before: page; }
