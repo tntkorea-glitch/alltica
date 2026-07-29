@@ -76,13 +76,6 @@ function assignAwards(sorted: ContestantResult[], settings: AwardSetting[]): Con
     if (c.normalized_score !== null) c.rank = rank++;
   }
 
-  // manual_award 오버라이드 적용
-  for (const c of result) {
-    if (c.manual_award !== null && c.manual_award !== undefined) {
-      c.award = c.manual_award;
-    }
-  }
-
   return result;
 }
 
@@ -268,11 +261,18 @@ export async function GET(request: NextRequest) {
   const proAwardNames = proSettings.map(s => s.award_name);
   const studentAwardNames = studentSettings.map(s => s.award_name);
 
-  const proRanked = deduplicateMultiCategoryAwards(
-    assignAwards(proSorted, proSettings), proAwardNames
+  const applyManualAwards = (results: ContestantResult[]) => {
+    for (const c of results) {
+      if (c.manual_award != null) c.award = c.manual_award;
+    }
+    return results;
+  };
+
+  const proRanked = applyManualAwards(
+    deduplicateMultiCategoryAwards(assignAwards(proSorted, proSettings), proAwardNames)
   );
-  const studentRanked = deduplicateMultiCategoryAwards(
-    assignAwards(studentSorted, studentSettings), studentAwardNames
+  const studentRanked = applyManualAwards(
+    deduplicateMultiCategoryAwards(assignAwards(studentSorted, studentSettings), studentAwardNames)
   );
 
   // by_company: 단체별 그룹
