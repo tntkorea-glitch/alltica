@@ -270,30 +270,49 @@ export default function AwardsPrintPage() {
                         specialCounts[pg.specialAward] = (specialCounts[pg.specialAward] || 0) + 1;
                       }
                     }
-                    const awardCounts = allAwardNames.map(aw => ({
-                      name: aw.award_name,
-                      count: all.filter(r => r.award === aw.award_name).length,
-                    }));
+                    const SPECIAL_AWARD_ORDER = ["최우수선수상", "우수선수상"];
+                    const summaryRows = [
+                      ...allAwardNames.map(aw => ({
+                        name: aw.award_name,
+                        count: all.filter(r => r.award === aw.award_name).length,
+                      })),
+                      ...SPECIAL_AWARD_ORDER
+                        .filter(n => specialCounts[n] !== undefined || true)
+                        .map(n => ({ name: n, count: specialCounts[n] ?? 0 })),
+                    ];
+                    const cellStyle: React.CSSProperties = {
+                      border: "1px solid #aaa",
+                      padding: "5px 0",
+                      textAlign: "center",
+                      color: "#1a56a0",
+                      fontSize: "9pt",
+                    };
+                    const thStyle: React.CSSProperties = {
+                      border: "1px solid #aaa",
+                      padding: "6px 0",
+                      textAlign: "center",
+                      color: "#1a56a0",
+                      fontWeight: "bold",
+                      fontSize: "9pt",
+                    };
                     return (
-                      <div style={{ marginTop: "4mm" }}>
-                        <table style={{ borderCollapse: "collapse", border: "1.5px dashed #aaa", fontSize: "8pt" }}>
+                      <div style={{ marginTop: "5mm" }}>
+                        <table style={{ borderCollapse: "collapse", width: "55%" }}>
                           <thead>
                             <tr>
-                              <th style={{ border: "0.5px solid #ccc", padding: "2px 20px", textAlign: "center", background: "#f0f0f0" }}>시상</th>
-                              <th style={{ border: "0.5px solid #ccc", padding: "2px 16px", textAlign: "center", background: "#f0f0f0" }}>수량</th>
+                              <th style={{ ...thStyle, width: "30%" }}>시상</th>
+                              <th style={{ ...thStyle, width: "15%" }}>수량</th>
+                              <th style={{ ...thStyle, width: "27.5%" }}>출고확인</th>
+                              <th style={{ ...thStyle, width: "27.5%" }}>입고확인</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {awardCounts.map(({ name, count }) => (
+                            {summaryRows.map(({ name, count }) => (
                               <tr key={name}>
-                                <td style={{ border: "0.5px solid #ccc", padding: "2px 20px", textAlign: "center" }}>{name}</td>
-                                <td style={{ border: "0.5px solid #ccc", padding: "2px 16px", textAlign: "center" }}>{count > 0 ? count : ""}</td>
-                              </tr>
-                            ))}
-                            {Object.entries(specialCounts).map(([name, count]) => (
-                              <tr key={name}>
-                                <td style={{ border: "0.5px solid #ccc", padding: "2px 20px", textAlign: "center", color: "#555" }}>{name}</td>
-                                <td style={{ border: "0.5px solid #ccc", padding: "2px 16px", textAlign: "center" }}>{count}</td>
+                                <td style={cellStyle}>{name}</td>
+                                <td style={cellStyle}>{count > 0 ? count : ""}</td>
+                                <td style={cellStyle}></td>
+                                <td style={cellStyle}></td>
                               </tr>
                             ))}
                           </tbody>
