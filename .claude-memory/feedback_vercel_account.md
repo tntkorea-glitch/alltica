@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 7aa17396-7a5e-45f6-b4fc-c5dfba97fc36
+  modified: 2026-07-29T03:59:43.252Z
 ---
 
 이 프로젝트(/bye, /save, vercel 배포)는 반드시 Vercel 개인 계정 `a01092935659` (Hobby)에만 배포한다.
@@ -13,6 +14,7 @@ metadata:
 
 **How to apply:**
 - `/bye` 또는 `npx vercel --prod` 실행 전 `.vercel/project.json`의 `orgId`가 팀 계정(`team_tlz48...`)이 아닌지 확인
-- `.vercel/project.json` 올바른 값: `orgId: "a01092935659-s-projects"`, `projectId: "prj_tPXxYGm84RwTwXYLOHS5l0Gwuihy"`
-- 배포 전 `npx vercel whoami`로 `a01092935659` 계정인지 확인
+- `.vercel/project.json` 올바른 값: `orgId: "team_tlz48DHPiwm1LZkXYtpFO3pG"` (Vercel 내부적으로 개인 계정도 team_ prefix 사용), `projectId: "prj_tPXxYGm84RwTwXYLOHS5l0Gwuihy"`
+- 배포 명령: `npx vercel --prod --yes --scope a01092935659-s-projects --token $token`
+- 배포 전 `npx vercel whoami --token $token`으로 `a01092935659` 계정인지 확인
 - CLI 재인증 필요 시: `npx vercel login` (브라우저 자동 오픈 안되면 토큰 방식 사용)

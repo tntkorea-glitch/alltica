@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 7aa17396-7a5e-45f6-b4fc-c5dfba97fc36
-  modified: 2026-07-28T18:17:03.416Z
+  modified: 2026-07-29T04:00:02.680Z
 ---
 
 ## 위치 및 진입점
@@ -80,6 +80,21 @@ metadata:
 - 배지 클릭 → 해당 부문(프로/학생) 시상 드롭다운 → manual_award 저장 → 결과 재로드
 - 수동 설정 항목 노란 점(●) 표시, "— 초기화 —" 선택으로 자동배분 복원
 - **파일**: `src/app/judge/awards/page.tsx` (350~382줄, renderRow 내 시상 td)
+
+### 인쇄 페이지 완성 (2026-07-29)
+- **단체별 출고확인표**: 각 단체 하단에 5열 수량 표 (부문 rowspan / 시상 / 수량 / 출고확인 / 입고확인)
+- **페이지 절단 버그 수정**: `@page margin: 12mm`, `header { display: none !important }`, rowSpan 제거로 thead 반복 정상화
+- **파일**: `src/app/judge/awards/print/page.tsx`
+
+### dedup + manual_award 버그 수정 (2026-07-29)
+- **버그**: `assignAwards` 내부에서 manual_award 적용 후 dedup → 다른 사람 상이 잘못 조정됨
+- **수정**: 순서를 알고리즘→dedup→manual로 변경 (`applyManualAwards` 함수로 분리)
+- **파일**: `src/app/api/judge/competition-results/route.ts`
+
+### 종목별 집계표 엑셀 다운로드 추가 (2026-07-29)
+- `xlsx` 라이브러리 활용, 📥 엑셀 다운로드 버튼 → `종목별_시상_집계표_대회명.xlsx`
+- 합계/프로소계/학생소계 행 + 전체 종목 행 포함
+- **파일**: `src/app/judge/awards/page.tsx` (exportExcel 함수)
 
 ## 남은 작업 (다음 세션 우선순위)
 
